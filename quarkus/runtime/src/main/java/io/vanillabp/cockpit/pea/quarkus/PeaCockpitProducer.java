@@ -6,6 +6,7 @@ import java.util.TreeSet;
 
 import io.quarkus.arc.Unremovable;
 import io.quarkus.runtime.StartupEvent;
+import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
@@ -48,13 +49,13 @@ public class PeaCockpitProducer {
    * the way it does on Spring Boot.
    *
    * @param startup Quarkus' own signal that the application is starting
-   * @param properties VanillaBP's resolved configuration
+   * @param settings What the application wrote below the cockpit's own sections
    */
   void readTheSettingsWhileTheApplicationStarts(
       @Observes final StartupEvent startup,
-      final MigrationAdapterProperties properties) {
+      final CockpitSettings settings) {
 
-    PeaCockpitSettings.rememberedUserTasks(properties);
+    PeaCockpitSettings.rememberedUserTasks(settings);
 
   }
 
@@ -92,16 +93,16 @@ public class PeaCockpitProducer {
    * value is read while the application starts, so a number nobody can use is a message on the
    * first boot.
    *
-   * @param properties VanillaBP's resolved configuration
+   * @param settings What the application wrote below the cockpit's own sections
    * @return The memory
    */
   @Produces
   @Singleton
   @Unremovable
   public PeaDeliveredUserTasks businessCockpitPeaDeliveredUserTasks(
-      final MigrationAdapterProperties properties) {
+      final CockpitSettings settings) {
 
-    return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(properties));
+    return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(settings));
 
   }
 
@@ -154,6 +155,7 @@ public class PeaCockpitProducer {
    * deployment services of a BPMS adapter.
    *
    * @param properties VanillaBP's resolved configuration, which names the configured adapters
+   * @param settings What the application wrote below the cockpit's own sections
    * @param models The deployed models
    * @param deliveredUserTasks The memory of what a delivery said
    * @param versions The versions of the deployed processes
@@ -164,11 +166,12 @@ public class PeaCockpitProducer {
   @Unremovable
   public List<BusinessCockpitBpmsBridge> businessCockpitPeaBridges(
       final MigrationAdapterProperties properties,
+      final CockpitSettings settings,
       final PeaWorkflowModels models,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions) {
 
-    final var rememberedUserTasks = PeaCockpitSettings.rememberedUserTasks(properties);
+    final var rememberedUserTasks = PeaCockpitSettings.rememberedUserTasks(settings);
     return processEngineApiAdapterIds(properties)
         .stream()
         .<BusinessCockpitBpmsBridge>map(

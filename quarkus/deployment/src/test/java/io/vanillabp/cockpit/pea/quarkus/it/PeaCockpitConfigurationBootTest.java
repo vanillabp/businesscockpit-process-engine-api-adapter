@@ -35,9 +35,9 @@ public class PeaCockpitConfigurationBootTest {
               .addClass(TestWorkflowService.class)
               .addClass(CockpitServer.class))
       .overrideRuntimeConfigKey(
-          "vanillabp.extensions.business-cockpit.rest.base-url", CockpitServer.baseUrl())
+          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl())
       .overrideRuntimeConfigKey(
-          "vanillabp.extensions.business-cockpit.%s"
+          "vanillabp.cockpit.%s"
               .formatted(PeaCockpitSettings.REMEMBERED_USER_TASKS),
           "plenty")
       .assertException(throwable -> {

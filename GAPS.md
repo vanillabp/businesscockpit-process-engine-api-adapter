@@ -262,7 +262,7 @@ reports the user task without its details - the report is dropped and the log sa
 cockpit then misses that task until the engine delivers it again. The same holds for a report
 whose entry is dispatched on another node, and for a task which so many newer ones have pushed
 out of the memory that nothing is left of it. Sizing the memory
-(`vanillabp.extensions.business-cockpit.process-engine-api.remembered-user-tasks`) does not change
+(`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change
 that, it only decides how many tasks a node holds at once.
 
 **What would close it:** the single-task read of entry 7. With it, this extension answers a

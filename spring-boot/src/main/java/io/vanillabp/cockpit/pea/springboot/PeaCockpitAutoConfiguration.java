@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
+import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
@@ -67,14 +68,14 @@ public class PeaCockpitAutoConfiguration {
    * The configured value is read here, while the application starts, rather than when the first
    * task arrives: a number nobody can use is then a message on the first boot.
    *
-   * @param properties VanillaBP's resolved configuration
+   * @param settings What the application wrote below the cockpit's own sections
    * @return The memory
    */
   @Bean
   public PeaDeliveredUserTasks businessCockpitPeaDeliveredUserTasks(
-      final MigrationAdapterProperties properties) {
+      final CockpitSettings settings) {
 
-    return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(properties));
+    return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(settings));
 
   }
 

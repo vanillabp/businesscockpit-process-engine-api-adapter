@@ -10,11 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
-import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
-import io.vanillabp.integration.adapter.migration.config.WorkflowModuleAdapterProperties;
-import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
@@ -25,17 +23,11 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitSettingsTest {
 
-  private static MigrationAdapterProperties configuredWith(
+  private static CockpitSettings configuredWith(
       final String rememberedUserTasks) {
 
-    final var properties = TestModels.configuration(NameClashAvoidance.NONE);
-    properties
-        .setExtensions(
-            Map
-                .of(
-                    ConfigurationKeys.EXTENSION_ID,
-                    Map.of(PeaCockpitSettings.REMEMBERED_USER_TASKS, rememberedUserTasks)));
-    return properties;
+    return new CockpitSettings(
+        null, null, null, null, null, new CockpitSettings.ProcessEngineApi(rememberedUserTasks), Map.of());
 
   }
 
@@ -45,8 +37,7 @@ public class PeaCockpitSettingsTest {
 
     assertEquals(
         PeaCockpitSettings.DEFAULT_REMEMBERED_USER_TASKS,
-        PeaCockpitSettings
-            .rememberedUserTasks(TestModels.configuration(NameClashAvoidance.NONE)));
+        PeaCockpitSettings.rememberedUserTasks(CockpitSettings.none()));
 
   }
 
@@ -71,41 +62,6 @@ public class PeaCockpitSettingsTest {
             .getMessage()
             .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
         () -> "the message names the key to fix: "
-            + refused.getMessage());
-
-  }
-
-  @Test
-  @DisplayName("A value a workflow module wrote is refused, naming the key which works")
-  public void aValueOfAWorkflowModuleIsRefused() {
-
-    final var properties = TestModels.configuration(NameClashAvoidance.NONE);
-    final var workflowModule = new WorkflowModuleAdapterProperties();
-    workflowModule
-        .setExtensions(
-            Map
-                .of(
-                    ConfigurationKeys.EXTENSION_ID,
-                    Map.of(PeaCockpitSettings.REMEMBERED_USER_TASKS, "25")));
-    properties.setWorkflowModules(Map.of(TestModels.MODULE_ID, workflowModule));
-
-    final var refused = assertThrows(
-        IllegalStateException.class, () -> PeaCockpitSettings.rememberedUserTasks(properties));
-
-    assertTrue(
-        refused
-            .getMessage()
-            .contains(
-                ConfigurationKeys
-                    .workflowModuleKey(
-                        TestModels.MODULE_ID, PeaCockpitSettings.REMEMBERED_USER_TASKS)),
-        () -> "the message names the value which does nothing: "
-            + refused.getMessage());
-    assertTrue(
-        refused
-            .getMessage()
-            .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
-        () -> "the message names the key to move it to: "
             + refused.getMessage());
 
   }

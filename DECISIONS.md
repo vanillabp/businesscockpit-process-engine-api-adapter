@@ -51,7 +51,7 @@ It is deliberately not persisted. An extension writing the engine's state into t
 database keeps a second copy of a state nobody can reconcile it with, and the application's own
 data is the copy which already exists. The price is stated rather than hidden: a node which
 restarts between a delivery and its dispatch reports the task without its details, and a task
-delivered to one node is unknown to the others. `vanillabp.extensions.business-cockpit.process-engine-api.remembered-user-tasks`
+delivered to one node is unknown to the others. `vanillabp.cockpit.process-engine-api.remembered-user-tasks`
 sizes the map, and the repository's `GAPS.md` says what the Process-Engine-API would have to
 offer for this to become unnecessary.
 

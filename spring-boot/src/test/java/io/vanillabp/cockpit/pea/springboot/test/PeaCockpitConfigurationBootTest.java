@@ -61,9 +61,9 @@ public class PeaCockpitConfigurationBootTest {
         Exception.class,
         () -> boot(
             "spring.datasource.url=jdbc:h2:mem:pea-cockpit-boot-failure",
-            "vanillabp.extensions.business-cockpit.rest.base-url=%s".formatted(
+            "vanillabp.cockpit.rest.base-url=%s".formatted(
                 CockpitServer.baseUrl()),
-            "vanillabp.extensions.business-cockpit.%s=plenty"
+            "vanillabp.cockpit.%s=plenty"
                 .formatted(PeaCockpitSettings.REMEMBERED_USER_TASKS)));
 
     final var messages = messagesOf(refused);

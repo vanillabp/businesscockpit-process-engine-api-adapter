@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 
+import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
@@ -47,8 +48,7 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
                                     .bean(PeaDeliveredUserTasks.class), supplierContext
                                         .bean(PeaProcessVersions.class), PeaCockpitSettings
                                             .rememberedUserTasks(
-                                                supplierContext
-                                                    .bean(MigrationAdapterProperties.class))))));
+                                                supplierContext.bean(CockpitSettings.class))))));
 
   }
 

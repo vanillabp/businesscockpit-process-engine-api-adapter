@@ -14,19 +14,17 @@ vanillabp:
       name-clash-avoidance: none
   prioritized-adapters:
     - pea
-  extensions:
-    business-cockpit:
-      rest:
-        base-url: replaced-by-the-test
+  cockpit:
+    rest:
+      base-url: replaced-by-the-test
   workflow-modules:
     pea-cockpit:
       adapters:
         pea:
           resources-location: classpath*:pea-cockpit/processes
-      extensions:
-        business-cockpit:
-          workflow-module-uri: http://localhost:8081/pea-cockpit
-          ui-uri-type: WEBPACK_MF_REACT
-          ui-uri-path: /remoteEntry.js
-          i18n-languages: en
-          bpmn-description-language: en
+      cockpit:
+        workflow-module-uri: http://localhost:8081/pea-cockpit
+        ui-uri-type: WEBPACK_MF_REACT
+        ui-uri-path: /remoteEntry.js
+        i18n-languages: en
+        bpmn-description-language: en
