@@ -3,6 +3,7 @@ package io.vanillabp.cockpit.pea;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 
@@ -40,6 +41,14 @@ public record PeaUserTaskObservation(
                                      Map<String, Object> payload) {
 
   public PeaUserTaskObservation {
+    // what the delivery is about: an observation missing one of them cannot be reported under
+    // any workflow module, and finding that out where the report is built would name neither
+    // the task nor whoever handed it over
+    Objects.requireNonNull(adapterId, "adapterId");
+    Objects.requireNonNull(workflowModuleId, "workflowModuleId");
+    Objects.requireNonNull(bpmnProcessId, "bpmnProcessId");
+    Objects.requireNonNull(taskDefinition, "taskDefinition");
+    Objects.requireNonNull(taskInformation, "taskInformation");
     // not Map.copyOf: a process variable an engine holds as null is a value like any other,
     // and the cockpit passes it on to a '@TaskParam' parameter as null
     payload = payload == null
@@ -57,13 +66,12 @@ public record PeaUserTaskObservation(
   }
 
   /**
-   * @return What the engine says about the task, never <code>null</code>
+   * @return What the engine says about the task, which the Process-Engine-API guarantees to be
+   *         a map and may be an empty one
    */
   public Map<String, String> meta() {
 
-    return taskInformation.getMeta() == null
-        ? Map.of()
-        : taskInformation.getMeta();
+    return taskInformation.getMeta();
 
   }
 

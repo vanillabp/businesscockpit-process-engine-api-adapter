@@ -15,6 +15,10 @@ import io.vanillabp.cockpit.extension.spi.WorkflowReference;
  * The platform-neutral half of the extension, played by the test: it writes down what it was told
  * instead of writing an outbox entry, so that a test can tell "reported nothing" from "was never
  * asked".
+ * <p>
+ * It can also refuse to take a report, which is what a cockpit half has to survive: the outbox
+ * writes into a database, and a database says no. What the observer remembers about a report it
+ * could not write decides whether the case or the task is reported at all.
  */
 public class RecordingPublisher implements BusinessCockpitEventPublisher {
 
@@ -32,6 +36,38 @@ public class RecordingPublisher implements BusinessCockpitEventPublisher {
 
   private final List<String> workflowEventIds = new LinkedList<>();
 
+  private boolean refusingUserTaskEvents;
+
+  private boolean refusingWorkflowEvents;
+
+  /**
+   * Lets every following user-task report fail, the way a database which is gone would.
+   */
+  public void refuseUserTaskEvents() {
+
+    refusingUserTaskEvents = true;
+
+  }
+
+  /**
+   * Lets every following workflow report fail, the way a database which is gone would.
+   */
+  public void refuseWorkflowEvents() {
+
+    refusingWorkflowEvents = true;
+
+  }
+
+  /**
+   * Takes reports again.
+   */
+  public void takeEventsAgain() {
+
+    refusingUserTaskEvents = false;
+    refusingWorkflowEvents = false;
+
+  }
+
   @Override
   public boolean publishUserTaskEvent(
       final UserTaskReference userTask,
@@ -40,6 +76,9 @@ public class RecordingPublisher implements BusinessCockpitEventPublisher {
       final OffsetDateTime timestamp,
       final EventTransaction transaction) {
 
+    if (refusingUserTaskEvents) {
+      throw new IllegalStateException("the outbox of the test refuses this user-task report");
+    }
     userTasks.add(userTask);
     userTaskKinds.add(kind);
     userTaskEventIds.add(bpmsEventId);
@@ -56,6 +95,9 @@ public class RecordingPublisher implements BusinessCockpitEventPublisher {
       final OffsetDateTime timestamp,
       final EventTransaction transaction) {
 
+    if (refusingWorkflowEvents) {
+      throw new IllegalStateException("the outbox of the test refuses this workflow report");
+    }
     workflows.add(workflow);
     workflowKinds.add(kind);
     workflowEventIds.add(bpmsEventId);

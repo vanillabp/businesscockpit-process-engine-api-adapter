@@ -4,7 +4,6 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +68,7 @@ public final class PeaTaskMeta {
       final TaskInformation taskInformation,
       final String key) {
 
-    final var value = meta(taskInformation).get(key);
+    final var value = taskInformation.getMeta().get(key);
     return (value == null) || value.isBlank()
         ? null
         : value;
@@ -126,15 +125,6 @@ public final class PeaTaskMeta {
               key);
       return null;
     }
-
-  }
-
-  private static Map<String, String> meta(
-      final TaskInformation taskInformation) {
-
-    return taskInformation.getMeta() == null
-        ? Map.of()
-        : taskInformation.getMeta();
 
   }
 

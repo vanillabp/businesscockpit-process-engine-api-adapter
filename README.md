@@ -52,7 +52,7 @@ on. The prefix is what keeps a jar of this repository apart from the jar of the 
 Process-Engine-API adapter it plugs into.
 
 [`DECISIONS.md`](./DECISIONS.md) holds the decisions the code points at, and
-[`GAPS.md`](./GAPS.md) the ten questions the cockpit asks a workflow engine which this one cannot
+[`GAPS.md`](./GAPS.md) the questions the cockpit asks a workflow engine which this one cannot
 answer yet. The wiki says the same in the words of somebody using the cockpit.
 
 ## How the probe shaped the design
@@ -75,6 +75,11 @@ cockpit does - is implemented and tested through that port, and the adapter's fu
 it without touching anything else. What that costs today is said in `GAPS.md` and at every
 startup.
 
+The port is meant to disappear. Once the Process-Engine-API adapter offers the seam, this
+repository withdraws both the port and the bean of it, and the wiki drops its instruction to call
+that bean from an application: the adapter's seam is handed every delivery, while an application
+calling the port only ever passes on what it noticed itself.
+
 ## Building
 
 ```bash
@@ -88,11 +93,11 @@ Cockpit.
 ## What CI runs
 
 `build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
-snapshot when a branch is pushed. Both run under one concurrency group, queued and never
-cancelled, because the snapshot artifacts share their coordinates: two runs publishing at the same
-time would overwrite each other, and whoever finished last would decide what the other repositories
-compile against. `release.yaml` is started by hand and publishes to Maven Central from a release
-branch.
+snapshot, and only for a push to `main`: the snapshot coordinates are shared, so what the other
+repositories compile against has to be what `main` holds rather than whichever branch was pushed
+last. Both run under one concurrency group, queued and never cancelled, for the same reason - two
+runs publishing at the same time would overwrite each other. `release.yaml` is started by hand and
+publishes to Maven Central from a release branch.
 
 ## Noteworthy & Contributors
 

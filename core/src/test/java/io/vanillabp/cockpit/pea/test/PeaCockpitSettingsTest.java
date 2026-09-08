@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
+import io.vanillabp.integration.adapter.migration.config.WorkflowModuleAdapterProperties;
 import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
@@ -46,7 +47,6 @@ public class PeaCockpitSettingsTest {
         PeaCockpitSettings.DEFAULT_REMEMBERED_USER_TASKS,
         PeaCockpitSettings
             .rememberedUserTasks(TestModels.configuration(NameClashAvoidance.NONE)));
-    assertEquals(PeaCockpitSettings.DEFAULT_REMEMBERED_USER_TASKS, PeaCockpitSettings.rememberedUserTasks(null));
 
   }
 
@@ -71,6 +71,41 @@ public class PeaCockpitSettingsTest {
             .getMessage()
             .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
         () -> "the message names the key to fix: "
+            + refused.getMessage());
+
+  }
+
+  @Test
+  @DisplayName("A value a workflow module wrote is refused, naming the key which works")
+  public void aValueOfAWorkflowModuleIsRefused() {
+
+    final var properties = TestModels.configuration(NameClashAvoidance.NONE);
+    final var workflowModule = new WorkflowModuleAdapterProperties();
+    workflowModule
+        .setExtensions(
+            Map
+                .of(
+                    ConfigurationKeys.EXTENSION_ID,
+                    Map.of(PeaCockpitSettings.REMEMBERED_USER_TASKS, "25")));
+    properties.setWorkflowModules(Map.of(TestModels.MODULE_ID, workflowModule));
+
+    final var refused = assertThrows(
+        IllegalStateException.class, () -> PeaCockpitSettings.rememberedUserTasks(properties));
+
+    assertTrue(
+        refused
+            .getMessage()
+            .contains(
+                ConfigurationKeys
+                    .workflowModuleKey(
+                        TestModels.MODULE_ID, PeaCockpitSettings.REMEMBERED_USER_TASKS)),
+        () -> "the message names the value which does nothing: "
+            + refused.getMessage());
+    assertTrue(
+        refused
+            .getMessage()
+            .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
+        () -> "the message names the key to move it to: "
             + refused.getMessage());
 
   }

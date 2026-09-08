@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import io.quarkus.arc.Unremovable;
+import io.quarkus.runtime.StartupEvent;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
@@ -22,6 +23,7 @@ import io.vanillabp.pea.PeaBpmnModel;
 import io.vanillabp.pea.PeaProcessingContext;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
@@ -36,6 +38,25 @@ import jakarta.inject.Singleton;
  */
 @ApplicationScoped
 public class PeaCockpitProducer {
+
+  /**
+   * Reads this half's setting while the application starts.
+   * <p>
+   * A CDI producer runs when somebody first asks for what it produces, which for the memory of
+   * the deliveries is the first delivered user task - a working day later, and on the engine's
+   * own thread. So the value is read here as well, where a number nobody can use ends the boot
+   * the way it does on Spring Boot.
+   *
+   * @param startup Quarkus' own signal that the application is starting
+   * @param properties VanillaBP's resolved configuration
+   */
+  void readTheSettingsWhileTheApplicationStarts(
+      @Observes final StartupEvent startup,
+      final MigrationAdapterProperties properties) {
+
+    PeaCockpitSettings.rememberedUserTasks(properties);
+
+  }
 
   /**
    * @return What this application deployed to the Process-Engine-API, shared by the wiring
@@ -147,10 +168,12 @@ public class PeaCockpitProducer {
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions) {
 
+    final var rememberedUserTasks = PeaCockpitSettings.rememberedUserTasks(properties);
     return processEngineApiAdapterIds(properties)
         .stream()
         .<BusinessCockpitBpmsBridge>map(
-            adapterId -> new PeaCockpitBridge(adapterId, models, deliveredUserTasks, versions))
+            adapterId -> new PeaCockpitBridge(
+                adapterId, models, deliveredUserTasks, versions, rememberedUserTasks))
         .toList();
 
   }

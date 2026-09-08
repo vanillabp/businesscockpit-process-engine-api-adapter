@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -61,11 +62,11 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
       final PeaProcessVersions versions,
       final Supplier<BusinessCockpitEventPublisher> publisher) {
 
-    this.models = models;
-    this.deliveredUserTasks = deliveredUserTasks;
-    this.scoping = scoping;
-    this.versions = versions;
-    this.publisher = publisher;
+    this.models = Objects.requireNonNull(models, "models");
+    this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
+    this.scoping = Objects.requireNonNull(scoping, "scoping");
+    this.versions = Objects.requireNonNull(versions, "versions");
+    this.publisher = Objects.requireNonNull(publisher, "publisher");
 
   }
 
@@ -120,7 +121,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   public void userTaskTerminated(
       final PeaUserTaskObservation observation) {
 
-    final var known = deliveredUserTasks.ended(observation.taskId());
+    final var known = deliveredUserTasks.of(observation.taskId());
     if (known.isEmpty()) {
       logger
           .debug(
@@ -136,6 +137,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
             known.get().reference(), endOf(observation), "%s#gone"
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
+    // only now: a report which did not get written leaves the task open here, so the engine
+    // saying a second time that it is gone reports it again rather than being passed over
+    deliveredUserTasks.ended(observation.taskId());
 
   }
 
@@ -150,8 +154,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   private void reportTheWorkflowOnceItsFirstTaskAppeared(
       final UserTaskReference userTask) {
 
-    if (!deliveredUserTasks
-        .workflowReportedForTheFirstTime(userTask.adapterId(), userTask.workflowId())) {
+    if (deliveredUserTasks.workflowWasReported(userTask.adapterId(), userTask.workflowId())) {
       return;
     }
     publisher
@@ -163,6 +166,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
             WorkflowEventKind.CREATED, "%s#created".formatted(userTask.workflowId()), OffsetDateTime
                 .now(),
             EventTransaction.NEW);
+    // only now: a report which did not get written leaves the case unreported, so the next user
+    // task of it is the one which makes it appear
+    deliveredUserTasks.rememberWorkflowWasReported(userTask.adapterId(), userTask.workflowId());
 
   }
 
@@ -243,10 +249,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
     if (tag != null) {
       return tag;
     }
-    return versions == null
-        ? null
-        : versions
-            .versionOf(observation.adapterId(), observation.workflowModuleId(), bpmnProcessId);
+    return versions
+        .versionOf(observation.adapterId(), observation.workflowModuleId(), bpmnProcessId);
 
   }
 
@@ -307,12 +311,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   private String plainProcessIdOf(
       final PeaUserTaskObservation observation) {
 
-    return scoping == null
-        ? observation.bpmnProcessId()
-        : scoping
-            .plainProcessId(
-                observation.workflowModuleId(), observation.bpmnProcessId(), observation
-                    .adapterId());
+    return scoping
+        .plainProcessId(
+            observation.workflowModuleId(), observation.bpmnProcessId(), observation.adapterId());
 
   }
 
@@ -320,12 +321,10 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
       final PeaUserTaskObservation observation,
       final String bpmnProcessId) {
 
-    return scoping == null
-        ? observation.taskDefinition()
-        : scoping
-            .plainTaskDefinition(
-                observation.workflowModuleId(), bpmnProcessId, observation.taskDefinition(), observation
-                    .adapterId());
+    return scoping
+        .plainTaskDefinition(
+            observation.workflowModuleId(), bpmnProcessId, observation.taskDefinition(), observation
+                .adapterId());
 
   }
 

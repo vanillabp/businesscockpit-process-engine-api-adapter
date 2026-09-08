@@ -55,7 +55,7 @@ public class PeaCockpitBridgeTest {
         TestModels.ADAPTER_ID, models, deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7");
+            bpmnProcessId) -> "deployment-7", 10);
 
   }
 
@@ -211,12 +211,21 @@ public class PeaCockpitBridgeTest {
         "another-pea", TestModels.deployed(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7");
+            bpmnProcessId) -> "deployment-7", 10);
 
     assertTrue(
         anotherEngine
             .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
             .isEmpty());
+    assertTrue(
+        anotherEngine
+            .prefilledWorkflowDetails(
+                new WorkflowReference(
+                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1"))
+            .isEmpty(),
+        "a workflow of another engine is not answered with what this one deployed");
+    assertTrue(
+        anotherEngine.prefilledUserTaskDetails(reference("task-1")).isEmpty());
     assertTrue(
         anotherEngine
             .userTasksOfAggregate(
@@ -245,12 +254,17 @@ public class PeaCockpitBridgeTest {
   }
 
   @Test
-  @DisplayName("A business case this node knows nothing about is said out loud once")
+  @DisplayName("A business case this node knows nothing about is said out loud once, whichever read asks")
   public void anUnknownAggregateIsSaidOutLoudOnce(
       final CapturedOutput output) {
 
     bridge.workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "0815");
-    bridge.workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "0815");
+    assertTrue(
+        bridge
+            .userTasksOfAggregate(
+                TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "0815", List.of())
+            .isEmpty(),
+        "the user tasks come from the same memory, so they are unknown as well");
 
     final var said = output.getAll();
     final var aboutThisCase = said
@@ -262,7 +276,7 @@ public class PeaCockpitBridgeTest {
     assertEquals(
         1,
         aboutThisCase,
-        () -> "the log says once what did not happen, and not once per report: "
+        () -> "both reads say the same sentence, and they say it once per business case: "
             + said);
 
   }

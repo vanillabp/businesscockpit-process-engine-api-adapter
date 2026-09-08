@@ -61,8 +61,6 @@ public class PeaDeliveredUserTasks {
 
   }
 
-  private final int capacity;
-
   private final Map<String, DeliveredUserTask> byTaskId;
 
   private final Map<String, Boolean> reportedWorkflows;
@@ -74,18 +72,8 @@ public class PeaDeliveredUserTasks {
   public PeaDeliveredUserTasks(
       final int capacity) {
 
-    this.capacity = capacity;
     this.byTaskId = boundedMap(capacity);
     this.reportedWorkflows = boundedMap(capacity);
-
-  }
-
-  /**
-   * @return How many user tasks this node remembers at once
-   */
-  public int capacity() {
-
-    return capacity;
 
   }
 
@@ -98,7 +86,7 @@ public class PeaDeliveredUserTasks {
       final DeliveredUserTask task) {
 
     synchronized (byTaskId) {
-      byTaskId.put(task.reference().userTaskId(), task);
+      putAsTheNewest(task.reference().userTaskId(), task);
     }
 
   }
@@ -118,27 +106,28 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Notes that a task is gone, answering what was known about it - which is what the report about
-   * its end is built from.
+   * Notes that a task is gone. Called once the end was reported, so that a report which never
+   * left leaves the memory as it was: a task still marked open is reported again when the engine
+   * says so a second time, while one marked ended by a report nobody received would be silently
+   * dropped.
    * <p>
    * What was known stays known until the oldest entry makes room for a newer task. A report
    * written before the task ended is dispatched after it ended, and this BPMS cannot be asked
-   * about a task twice: forgetting it here would drop the report of its creation with it.
+   * about a task twice: forgetting it here would drop the report of its creation with it. It
+   * moves to the newest end of the memory for the same reason - the reports about it are still
+   * on their way.
    *
    * @param userTaskId The engine's own id of the task
-   * @return What was remembered about it, or empty where this node never saw it
    */
-  public Optional<DeliveredUserTask> ended(
+  public void ended(
       final String userTaskId) {
 
     synchronized (byTaskId) {
       final var known = byTaskId.get(userTaskId);
       if (known == null) {
-        return Optional.empty();
+        return;
       }
-      final var ended = known.asEnded();
-      byTaskId.put(userTaskId, ended);
-      return Optional.of(ended);
+      putAsTheNewest(userTaskId, known.asEnded());
     }
 
   }
@@ -172,8 +161,8 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Notes that a workflow was reported to the cockpit, so that it is reported with the first
-   * user task of it rather than with every one.
+   * Whether the cockpit was already told about a workflow, which is what makes it reported with
+   * the first user task of it rather than with every one.
    * <p>
    * Bounded like everything else here, and with the same consequence: a business case which as
    * many other cases have passed by since is reported as created a second time. A node holding
@@ -181,19 +170,32 @@ public class PeaDeliveredUserTasks {
    *
    * @param adapterId The configured adapter id holding the workflow
    * @param workflowId The engine's own id of the workflow
-   * @return Whether this node reported it for the first time
+   * @return Whether this node has reported it
    */
-  public boolean workflowReportedForTheFirstTime(
+  public boolean workflowWasReported(
       final String adapterId,
       final String workflowId) {
 
     synchronized (reportedWorkflows) {
-      return reportedWorkflows
-          .put(
-              adapterId
-                  + " "
-                  + workflowId,
-              Boolean.TRUE) == null;
+      return reportedWorkflows.containsKey(workflowKey(adapterId, workflowId));
+    }
+
+  }
+
+  /**
+   * Notes that the cockpit was told about a workflow. Called once the report was written, so
+   * that a report which never left leaves the memory as it was and the next user task of the
+   * case tries again.
+   *
+   * @param adapterId The configured adapter id holding the workflow
+   * @param workflowId The engine's own id of the workflow
+   */
+  public void rememberWorkflowWasReported(
+      final String adapterId,
+      final String workflowId) {
+
+    synchronized (reportedWorkflows) {
+      reportedWorkflows.put(workflowKey(adapterId, workflowId), Boolean.TRUE);
     }
 
   }
@@ -207,6 +209,31 @@ public class PeaDeliveredUserTasks {
     final var reference = task.reference();
     return reference.workflowModuleId().equals(workflowModuleId) && reference.bpmnProcessId()
         .equals(bpmnProcessId) && reference.workflowAggregateId().equals(workflowAggregateId);
+
+  }
+
+  /**
+   * Puts an entry at the newest end of the memory: the map forgets its eldest entry, and an
+   * update of something it already holds keeps that entry's place unless it is put in again. A
+   * task the engine delivers a second time is as young as one delivered for the first time, so
+   * it must not be the next one to go.
+   */
+  private void putAsTheNewest(
+      final String userTaskId,
+      final DeliveredUserTask task) {
+
+    byTaskId.remove(userTaskId);
+    byTaskId.put(userTaskId, task);
+
+  }
+
+  private static String workflowKey(
+      final String adapterId,
+      final String workflowId) {
+
+    return adapterId
+        + " "
+        + workflowId;
 
   }
 

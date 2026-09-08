@@ -3,6 +3,8 @@ package io.vanillabp.cockpit.pea.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,10 +42,54 @@ public class PeaDeliveredUserTasksTest {
     remembered.remember(userTask("task-2"));
     remembered.remember(userTask("task-3"));
 
-    assertEquals(2, remembered.capacity());
     assertTrue(remembered.of("task-1").isEmpty(), "the oldest one made room");
     assertTrue(remembered.of("task-2").isPresent());
     assertTrue(remembered.of("task-3").isPresent());
+
+  }
+
+  @Test
+  @DisplayName("A task the engine delivered again is as young as one delivered for the first time")
+  public void aRedeliveredUserTaskIsAsYoungAsANewOne() {
+
+    final var remembered = new PeaDeliveredUserTasks(2);
+
+    remembered.remember(userTask("task-1"));
+    remembered.remember(userTask("task-2"));
+    remembered.remember(userTask("task-1"));
+    remembered.remember(userTask("task-3"));
+
+    assertTrue(
+        remembered.of("task-1").isPresent(),
+        "a task somebody is still working on outlives the one nothing happened to");
+    assertTrue(remembered.of("task-2").isEmpty(), "the one nobody touched since made room");
+    assertTrue(remembered.of("task-3").isPresent());
+
+  }
+
+  @Test
+  @DisplayName("A task which ended waits for the reports about it before it is forgotten")
+  public void anEndedUserTaskIsNotTheNextToGo() {
+
+    final var remembered = new PeaDeliveredUserTasks(2);
+
+    remembered.remember(userTask("task-1"));
+    remembered.remember(userTask("task-2"));
+    remembered.ended("task-1");
+    remembered.remember(userTask("task-3"));
+
+    assertTrue(
+        remembered.of("task-1").isPresent(),
+        "the report of its end was just written and is read from here while it is dispatched");
+    assertTrue(remembered.of("task-2").isEmpty());
+    assertEquals(
+        List.of("task-3"),
+        remembered
+            .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .stream()
+            .map(task -> task.reference().userTaskId())
+            .toList(),
+        "a task which is gone is none of its business case's open tasks");
 
   }
 
@@ -53,11 +99,16 @@ public class PeaDeliveredUserTasksTest {
 
     final var remembered = new PeaDeliveredUserTasks(2);
 
-    assertTrue(remembered.workflowReportedForTheFirstTime(TestModels.ADAPTER_ID, "instance-1"));
+    assertTrue(!remembered.workflowWasReported(TestModels.ADAPTER_ID, "instance-1"));
+
+    remembered.rememberWorkflowWasReported(TestModels.ADAPTER_ID, "instance-1");
+
     assertTrue(
-        !remembered.workflowReportedForTheFirstTime(TestModels.ADAPTER_ID, "instance-1"),
+        remembered.workflowWasReported(TestModels.ADAPTER_ID, "instance-1"),
         "a workflow which was reported is not reported again");
-    assertTrue(remembered.workflowReportedForTheFirstTime("another-pea", "instance-1"));
+    assertTrue(
+        !remembered.workflowWasReported("another-pea", "instance-1"),
+        "another engine's workflow of the same id is another case");
 
   }
 

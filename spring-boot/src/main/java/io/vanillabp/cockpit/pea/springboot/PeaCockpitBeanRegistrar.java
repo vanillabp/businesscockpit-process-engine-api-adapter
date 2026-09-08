@@ -10,6 +10,7 @@ import org.springframework.core.env.Environment;
 
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
+import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaWorkflowModels;
@@ -44,7 +45,10 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
                             supplierContext -> new PeaCockpitBridge(
                                 adapterId, supplierContext.bean(PeaWorkflowModels.class), supplierContext
                                     .bean(PeaDeliveredUserTasks.class), supplierContext
-                                        .bean(PeaProcessVersions.class)))));
+                                        .bean(PeaProcessVersions.class), PeaCockpitSettings
+                                            .rememberedUserTasks(
+                                                supplierContext
+                                                    .bean(MigrationAdapterProperties.class))))));
 
   }
 

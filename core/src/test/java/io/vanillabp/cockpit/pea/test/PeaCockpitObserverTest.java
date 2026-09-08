@@ -2,6 +2,7 @@ package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -313,6 +314,52 @@ public class PeaCockpitObserverTest {
 
     assertEquals("4711", publisher.userTasks().getFirst().workflowId());
     assertEquals("4711", publisher.workflows().getFirst().workflowId());
+
+  }
+
+  @Test
+  @DisplayName("A business case whose report was refused is reported again with the next task of it")
+  public void aWorkflowIsReportedAgainWhenItsReportWasRefused() {
+
+    publisher.refuseWorkflowEvents();
+    assertThrows(
+        IllegalStateException.class,
+        () -> observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of())));
+    publisher.takeEventsAgain();
+
+    observer.userTaskDelivered(delivery("task-2", TaskInformation.CREATE, Map.of()));
+
+    assertEquals(
+        List.of(WorkflowEventKind.CREATED),
+        publisher.workflowKinds(),
+        "the case was noted as reported only after the report was written, so the next task of it reported it");
+
+  }
+
+  @Test
+  @DisplayName("A task whose end could not be reported is still open, so a second end reports it")
+  public void aTerminationIsReportedAgainWhenItsReportWasRefused() {
+
+    observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
+    publisher.userTaskKinds().clear();
+    publisher.refuseUserTaskEvents();
+
+    assertThrows(
+        IllegalStateException.class, () -> aTerminatedUserTask("task-1", TaskInformation.COMPLETE));
+
+    assertEquals(
+        List.of("task-1"),
+        deliveredUserTasks
+            .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .stream()
+            .map(task -> task.reference().userTaskId())
+            .toList(),
+        "a report which was never written leaves the task as it was, one of its case's open tasks");
+
+    publisher.takeEventsAgain();
+    aTerminatedUserTask("task-1", TaskInformation.COMPLETE);
+
+    assertEquals(List.of(UserTaskEventKind.COMPLETED), publisher.userTaskKinds());
 
   }
 

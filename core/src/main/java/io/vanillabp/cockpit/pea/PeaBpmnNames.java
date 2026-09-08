@@ -90,7 +90,11 @@ public final class PeaBpmnNames {
       final String bpmnProcessId) throws Exception {
 
     final var userTaskNames = new LinkedHashMap<String, String>();
-    final var processNames = new LinkedHashMap<String, String>();
+    String processName = null;
+    // one file may hold several processes - a collaboration does - and two of them may name the
+    // same element id differently, so what is collected belongs to the process being asked about
+    // rather than to the file. Processes do not nest, so the last one opened is the enclosing one
+    var readingTheProcessAskedFor = false;
     while (reader.hasNext()) {
       if (reader.next() != XMLStreamConstants.START_ELEMENT) {
         continue;
@@ -99,12 +103,15 @@ public final class PeaBpmnNames {
       final var id = reader.getAttributeValue(null, "id");
       final var name = reader.getAttributeValue(null, "name");
       if ("process".equals(element) && (id != null)) {
-        processNames.put(id, name);
-      } else if ("userTask".equals(element) && (id != null) && (name != null)) {
+        readingTheProcessAskedFor = id.equals(bpmnProcessId);
+        if (readingTheProcessAskedFor) {
+          processName = name;
+        }
+      } else if (readingTheProcessAskedFor && "userTask".equals(element) && (id != null) && (name != null)) {
         userTaskNames.put(id, name);
       }
     }
-    return new Names(processNames.get(bpmnProcessId), Map.copyOf(userTaskNames));
+    return new Names(processName, Map.copyOf(userTaskNames));
 
   }
 

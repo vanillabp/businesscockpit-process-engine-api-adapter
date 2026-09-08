@@ -20,29 +20,25 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
 
 /**
- * Why this extension does not open a task subscription of its own, held as a test rather than as
- * a sentence in a document.
+ * That the in-memory engine of the VanillaBP Process-Engine-API adapter still hands a delivered
+ * user task to ONE subscription, the way the Process-Engine-API's own reference engine adapter
+ * does.
  * <p>
- * The obvious way for an extension to watch user tasks would be to subscribe for the same task
- * definitions the VanillaBP Process-Engine-API adapter subscribes for. The Process-Engine-API
- * hands a task to ONE subscription, though: the engine picks the first subscription matching a
- * task and remembers it as the one active for it, so a second subscriber either sees nothing or
- * takes the task away from the workflow application - and which of the two it is depends on the
- * order two subscriptions happened to be registered in.
- * <p>
- * The engine here is the in-memory one the adapter ships. Its reference engine adapter for an
- * embedded Camunda 7 does the same thing (<code>EmbeddedPullUserTaskDelivery.refresh</code>
- * picks <code>subscriptions.firstOrNull { it.matches(task) }</code> and then
- * <code>activateSubscriptionForTask</code>), which is what makes this a property of the API
- * rather than of a fake. Entry 1 of the repository's <code>GAPS.md</code> says what follows for
- * the cockpit.
+ * The whole design of this half rests on that: an extension cannot subscribe next to the workflow
+ * application, because it would either see nothing or take the task away from it, which is why
+ * there is a port waiting for a seam in the adapter instead (decision 5 in the repository's
+ * DECISIONS.md). The engine used here is a test double of the adapter, and a test double which
+ * quietly grew a second seat would leave that design resting on nothing - so what this test
+ * guards is the double's fidelity, not the API. Entry 1 of the repository's
+ * <code>GAPS.md</code> holds the evidence from the reference adapter and what follows for the
+ * cockpit.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaSubscriptionProbeTest {
 
   @Test
-  @DisplayName("A delivered user task reaches one subscription, so an extension cannot listen next to the adapter")
-  public void aDeliveredUserTaskReachesOneSubscription() throws Exception {
+  @DisplayName("The adapter's in-memory engine still delivers a user task to one subscription only")
+  public void theInMemoryEngineDeliversToOneSubscriptionOnly() throws Exception {
 
     final var engine = new InMemoryProcessEngine();
     final var deliveredToTheApplication = new LinkedList<String>();

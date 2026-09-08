@@ -7,8 +7,10 @@ workflow engine and this API has no answer for yet, written down as the basis of
 with the Process-Engine-API team.
 
 Each entry says what the cockpit needs, what the API offers today, where that can be read, what
-it costs somebody looking at the cockpit, and what would close it. The first two need no change to
-the Process-Engine-API at all: they are work in
+it costs somebody looking at the cockpit, and what would close it. A number is handed out once and
+never reused: an entry which is closed keeps its number and says so, because a conversation about
+"gap 7" outlives the file. The first two need no change to the Process-Engine-API at all: they are
+work in
 [vanillabp/process-engine-api-adapter](https://github.com/vanillabp/process-engine-api-adapter),
 and their headings say so.
 
@@ -25,11 +27,13 @@ subscription. The reference engine adapter for an embedded Camunda 7 picks
 `subscriptions.firstOrNull { it.matches(task) }` and records it with
 `activateSubscriptionForTask`
 (`dev.bpm-crafters.process-engine-adapters:process-engine-adapter-camunda-platform-c7-embedded-core`,
-`EmbeddedPullUserTaskDelivery.refresh`), and the in-memory engine of the VanillaBP adapter does
-the same (`process-engine-api-adapter/mock/src/main/java/io/vanillabp/pea/mock/InMemoryProcessEngine.java:462-472`).
+`EmbeddedPullUserTaskDelivery.refresh:59` and `:87`), and the in-memory engine of the VanillaBP
+adapter does the same
+(`process-engine-api-adapter/mock/src/main/java/io/vanillabp/pea/mock/InMemoryProcessEngine.java:462-472`).
 A second subscription for the same task definition therefore either sees nothing or takes the
 task away from the workflow application, decided by the order the two were registered in.
-`PeaSubscriptionProbeTest` of this repository holds that.
+`businesscockpit-process-engine-api-adapter/core/src/test/java/io/vanillabp/cockpit/pea/test/PeaSubscriptionProbeTest.java`
+holds the in-memory engine to it.
 
 **What it costs:** without a seam in the VanillaBP adapter, this extension registers workflow
 modules at the cockpit server and reports nothing else. Every user task is invisible.
@@ -52,20 +56,34 @@ public record PeaUserTaskObservation(
 ```
 
 `PeaDeploymentService` collects the observers as a hook bean list and hands them to the handlers
-it builds at `PeaDeploymentService.java:806-830`. `PeaUserTaskHandler.accept`
-(`core/src/main/java/io/vanillabp/pea/wiring/PeaUserTaskHandler.java:88`) calls
-`userTaskDelivered` for every delivery - before its own routing check, because the cockpit shows
-a user task whether or not the application declared a `@WorkflowTask` method for it - and the
-termination handler registered at `PeaDeploymentService.java:821` calls `userTaskTerminated`.
-Both need the values the handler resolves anyway: the workflow module, the BPMN process and the
-aggregate id read from the payload.
+it builds at
+`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:807-816`.
+`PeaUserTaskHandler.accept`
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/wiring/PeaUserTaskHandler.java:88`)
+calls `userTaskDelivered` for every delivery - before its own routing check at `:96-105`, because
+the cockpit shows a user task whether or not the application declared a `@WorkflowTask` method for
+it - and the termination handler registered at
+`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:821`
+calls `userTaskTerminated`.
+
+The workflow module and the BPMN process are resolved before that check, but the aggregate id is
+not: the handler asks for the name of the aggregate's id variable and reads it out of the payload
+at `PeaUserTaskHandler.java:106-108`, after the check. So the seam means moving that lookup in
+front of the observer call - it needs nothing the check produces, only the workflow module and the
+BPMN process. Where it answers nothing, because the application declares no workflow aggregate for
+that process or the subscription did not ask for the variable, the observation carries no aggregate
+id, and this extension passes the task over with a DEBUG line naming it: a business case the
+cockpit cannot address is a report it cannot place.
 
 An observer which throws must not break the task: the adapter's user-task handler already treats
 a failing notification that way, and an observer is one more of them.
 
 This extension is written against exactly that interface, under
-`io.vanillabp.cockpit.pea.PeaUserTaskObserver`, so the adapter's seam replaces the port and
-nothing else changes.
+`businesscockpit-process-engine-api-adapter/core/src/main/java/io/vanillabp/cockpit/pea/PeaUserTaskObserver.java`,
+so the adapter's seam replaces the port and nothing else changes. Once it exists, that port and
+the bean of it are withdrawn here, together with the wiki's instruction to call it from an
+application: the adapter's seam sees every delivery, the port only what an application noticed
+itself.
 
 ## 2. A terminated task carries neither its outcome nor its identifiers (adapter first, then the API)
 
@@ -74,8 +92,8 @@ business case it belonged to.
 
 **The API offers** `TaskTerminationHandler`, which has carried a full `TaskInformation` since
 version 1.5. The VanillaBP adapter registers the older `Consumer<String>` overload instead
-(`PeaDeploymentService.java:821` and `:869`), so even the meta map is discarded before the
-adapter sees it. What the reason says is only half an outcome: the reference C7
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:821`
+and `:869`), so even the meta map is discarded before the adapter sees it. What the reason says is only half an outcome: the reference C7
 adapter names `complete` when a task was finished through `UserTaskCompletionApi`
 (`C7UserTaskCompletionApiImpl.completeTask`) and `delete` for everything else it notices, so a
 task somebody finished in a task list arrives as `delete` like a cancelled one
@@ -104,7 +122,9 @@ the reference C7 adapter fills `assignee`, `candidateUsers`, `candidateGroups`, 
 next to the `CommonRestrictions` keys (`TaskInformationExtensions.kt`), and `TaskInformation`
 even offers `getMetaValueAsOffsetDate` and `getMetaValueAsStringSet` for reading exactly those.
 
-**What it costs:** this extension reads that same set (`PeaTaskMeta`) and shows one detail less
+**What it costs:** this extension reads that same set
+(`businesscockpit-process-engine-api-adapter/core/src/main/java/io/vanillabp/cockpit/pea/PeaTaskMeta.java`)
+and shows one detail less
 per key an engine leaves out. On an engine which fills none of them, a cockpit user sees a task
 with a name from the BPMN and nothing else.
 
@@ -118,8 +138,9 @@ contract rather than by imitation.
 `@TaskParam` parameters.
 
 **The API offers** `SubscribeForTaskCmd.payloadDescription`, which the VanillaBP adapter fills
-from what the application's `@WorkflowTask` methods need (`PeaDeploymentService.fetchVariablesOf`,
-`:191` and `:806`). The cockpit's own annotations are not part of that derivation, and a second
+from what the application's `@WorkflowTask` methods need
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:191`,
+called at `:806`). The cockpit's own annotations are not part of that derivation, and a second
 subscription cannot ask for more (entry 1).
 
 **What it costs:** a `@TaskParam` of a details provider receives `null` unless the same variable
@@ -135,7 +156,9 @@ asks the engine for everything.
 correctly and to serve the right BPMN diagram for it.
 
 **The API offers** no repository API at all. The VanillaBP adapter therefore composes a
-definition id of its own (`PeaDeployedProcesses.definitionId`, `<workflowModuleId>|<bpmnProcessId>`)
+definition id of its own
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeployedProcesses.java`,
+`definitionId`, `<workflowModuleId>|<bpmnProcessId>`)
 and keeps what the current application version deployed, with the deployment key as the only
 version-like value. `TaskInformation.meta` may carry a `processDefinitionVersionTag` where the
 engine fills it.
@@ -154,8 +177,9 @@ list of a cockpit is a list of cases, not of tasks.
 
 **The API offers** nothing about a process instance: no start or end notification, no instance
 query, no history. The VanillaBP adapter answers `WorkflowAwareness.ACTIVE` unconditionally
-(`PeaProcessService.java:726`), reports `canLocateWorkflows()` as `false` (`:743`) and serves a
-workflow history without any elements (`:337`).
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/processservice/PeaProcessService.java:726`),
+reports `canLocateWorkflows()` as `false` (`:743`) and serves a workflow history without any
+elements (`:337`).
 
 **What it costs:** this extension reports a case CREATED with the first user task delivered for it
 (decision 6 in `DECISIONS.md`). A workflow without user tasks never appears in the cockpit at all,
@@ -192,9 +216,10 @@ shows a form for.
 **The API offers** `SubscribeForTaskCmd.taskDescriptionKey` with a javadoc which leaves it to the
 engine ("may refer to BPMN 2.0 attribute `implementation` or `operation[@implementationRef]` or
 any engine-specific attribute"; a task's `id` as a fallback). The VanillaBP adapter subscribes
-user tasks by the `zeebe:formDefinition` external reference (`PeaDeploymentService.java:819-821`),
-while the reference C7 adapter matches a subscription against `task.taskDefinitionKey` - the BPMN
-element id - or the task id.
+user tasks by the `zeebe:formDefinition` external reference
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:819-821`,
+read out of the BPMN at `:433-434`), while the reference C7 adapter matches a subscription against
+`task.taskDefinitionKey` - the BPMN element id - or the task id.
 
 **What it costs:** on an engine which matches by element id, the adapter's user-task subscriptions
 match nothing, so neither the application's notifications nor the cockpit's reports happen. Where
@@ -210,9 +235,11 @@ attribute it matches on.
 adapter id holding each workflow, and it addresses a BPMS by that id.
 
 **The API offers** no tenant or namespace concept, so the VanillaBP adapter rejects the
-`by-adapter` name-clash avoidance at startup (`PeaDeploymentService.deployResources`, through
-`NameClashAvoidanceSupport.validateNativeIsolationSupported`) and refuses a second adapter id of
-type `process-engine-api` (`PeaDeploymentService.validateDistinctAdapterInstances`).
+`by-adapter` name-clash avoidance at startup
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java`,
+`deployResources`, through `NameClashAvoidanceSupport.validateNativeIsolationSupported`) and
+refuses a second adapter id of type `process-engine-api` (same file,
+`validateDistinctAdapterInstances`).
 
 **What it costs:** a workflow module runs its Process-Engine-API workflows on one engine, and a
 migration from one Process-Engine-API engine to another cannot be shown in the cockpit. A

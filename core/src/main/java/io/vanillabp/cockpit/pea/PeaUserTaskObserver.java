@@ -18,6 +18,11 @@ package io.vanillabp.cockpit.pea;
  * the seam, {@link PeaCockpitObserver} implements the adapter's interface instead of this one and
  * nothing else about the extension changes. Why the extension waits for that rather than
  * subscribing itself is decision 5 in the repository's DECISIONS.md.
+ * <p>
+ * This interface is meant to disappear. Once the VanillaBP Process-Engine-API adapter offers the
+ * seam, this type and the bean of it go, and so does the wiki's instruction to call it from an
+ * application: an application calling the adapter's own seam gets every delivery, while one
+ * calling this port only ever gets what it noticed itself.
  */
 public interface PeaUserTaskObserver {
 
