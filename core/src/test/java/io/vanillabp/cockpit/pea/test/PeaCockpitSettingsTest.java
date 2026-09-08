@@ -67,6 +67,31 @@ public class PeaCockpitSettingsTest {
   }
 
   @Test
+  @DisplayName("A value a workflow module wrote is refused, naming the key which works")
+  public void aValueOfAWorkflowModuleIsRefused() {
+
+    final var refused = assertThrows(
+        IllegalStateException.class,
+        () -> PeaCockpitSettings
+            .refuseWhatAWorkflowModuleConfigured(
+                java.util.List
+                    .of(
+                        "vanillabp.workflow-modules.taxi-ride.cockpit.process-engine-api.remembered-user-tasks")));
+
+    assertTrue(
+        refused.getMessage().contains("vanillabp.workflow-modules.taxi-ride.cockpit"),
+        () -> "the message names the value which does nothing: "
+            + refused.getMessage());
+    assertTrue(
+        refused
+            .getMessage()
+            .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
+        () -> "the message names the key to move it to: "
+            + refused.getMessage());
+
+  }
+
+  @Test
   @DisplayName("A node which remembers nothing reports nothing, so zero is refused")
   public void zeroIsRefused() {
 

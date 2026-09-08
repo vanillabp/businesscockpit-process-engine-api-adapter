@@ -1,10 +1,15 @@
 package io.vanillabp.cockpit.pea.springboot;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
 
 import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
@@ -69,12 +74,17 @@ public class PeaCockpitAutoConfiguration {
    * task arrives: a number nobody can use is then a message on the first boot.
    *
    * @param settings What the application wrote below the cockpit's own sections
+   * @param environment Where the keys of the application are read from, to find one which this
+   *          half reads globally and somebody wrote per workflow module: this platform ignores a
+   *          key nothing binds, so nothing else would say it
    * @return The memory
    */
   @Bean
   public PeaDeliveredUserTasks businessCockpitPeaDeliveredUserTasks(
-      final CockpitSettings settings) {
+      final CockpitSettings settings,
+      final ConfigurableEnvironment environment) {
 
+    PeaCockpitSettings.refuseWhatAWorkflowModuleConfigured(propertyNamesOf(environment));
     return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(settings));
 
   }
@@ -113,6 +123,26 @@ public class PeaCockpitAutoConfiguration {
 
     return new PeaCockpitObserver(
         models, deliveredUserTasks, scoping, versions, publisher::getObject);
+
+  }
+
+
+  /**
+   * @param environment The application's environment
+   * @return Every property name it can enumerate
+   */
+  private static Iterable<String> propertyNamesOf(
+      final ConfigurableEnvironment environment) {
+
+    final var names = new LinkedHashSet<String>();
+    environment
+        .getPropertySources()
+        .forEach(source -> {
+          if (source instanceof final EnumerablePropertySource<?> enumerable) {
+            names.addAll(List.of(enumerable.getPropertyNames()));
+          }
+        });
+    return names;
 
   }
 

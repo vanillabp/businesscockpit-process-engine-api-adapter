@@ -1,5 +1,7 @@
 package io.vanillabp.cockpit.pea;
 
+import java.util.ArrayList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +87,46 @@ public final class PeaCockpitSettings {
               .formatted(key, remembered, DEFAULT_REMEMBERED_USER_TASKS));
     }
     return remembered;
+
+  }
+
+  /**
+   * Ends the boot where a workflow module wrote this half's key into its own section.
+   * <p>
+   * The memory it sizes is one per node and shared by every workflow module, so a value per
+   * module promises a division which does not exist. Quarkus refuses such a key by itself,
+   * because nothing declares it; on Spring Boot a key nothing declares is ignored, and this is
+   * what says it there instead of leaving a developer with a setting which does nothing.
+   *
+   * @param propertyNames The property names of the application
+   * @throws IllegalStateException If one of them is this key below a workflow module; the
+   *           message names it and the key which works
+   */
+  public static void refuseWhatAWorkflowModuleConfigured(
+      final Iterable<String> propertyNames) {
+
+    final var ofAWorkflowModule = new ArrayList<String>();
+    for (final var propertyName : propertyNames) {
+      if (propertyName.startsWith("vanillabp.workflow-modules.") && propertyName.endsWith("."
+          + ConfigurationKeys.COCKPIT_SECTION
+          + "."
+          + REMEMBERED_USER_TASKS)) {
+        ofAWorkflowModule.add(propertyName);
+      }
+    }
+    if (ofAWorkflowModule.isEmpty()) {
+      return;
+    }
+    throw new IllegalStateException(
+        """
+            The Business Cockpit's Process-Engine-API half was configured per workflow module (%s), \
+            and it reads this setting globally only: it says how many delivered user tasks one node \
+            remembers, and that memory is one per node and shared by every workflow module. Move the \
+            value to '%s' or remove it, which leaves it at %d."""
+            .formatted(
+                String.join(", ", ofAWorkflowModule),
+                ConfigurationKeys.globalKey(REMEMBERED_USER_TASKS),
+                DEFAULT_REMEMBERED_USER_TASKS));
 
   }
 

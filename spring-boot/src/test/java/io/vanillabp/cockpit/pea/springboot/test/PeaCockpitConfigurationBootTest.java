@@ -75,4 +75,29 @@ public class PeaCockpitConfigurationBootTest {
 
   }
 
+  @Test
+  @DisplayName("A value written per workflow module ends the boot, naming the key which works")
+  public void aValueOfAWorkflowModuleEndsTheBoot() {
+
+    final var refused = assertThrows(
+        Exception.class,
+        () -> boot(
+            "spring.datasource.url=jdbc:h2:mem:pea-cockpit-per-module",
+            "vanillabp.cockpit.rest.base-url=%s".formatted(CockpitServer.baseUrl()),
+            "vanillabp.workflow-modules.pea-cockpit.cockpit.%s=25"
+                .formatted(PeaCockpitSettings.REMEMBERED_USER_TASKS)));
+
+    final var messages = messagesOf(refused);
+    assertTrue(
+        messages.contains("vanillabp.workflow-modules.pea-cockpit.cockpit"),
+        () -> "the boot ends naming the value which does nothing: "
+            + messages);
+    assertTrue(
+        messages
+            .contains(ConfigurationKeys.globalKey(PeaCockpitSettings.REMEMBERED_USER_TASKS)),
+        () -> "the boot ends naming the key to move it to: "
+            + messages);
+
+  }
+
 }
