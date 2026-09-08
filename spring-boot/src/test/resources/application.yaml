@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:pea-cockpit;DB_CLOSE_DELAY=-1
+  jpa:
+    hibernate:
+      ddl-auto: create
+vanillabp:
+  outbox:
+    poll-interval: PT0.2S
+    attempt-frequency: PT0.2S
+  adapters:
+    pea:
+      type: process-engine-api
+      name-clash-avoidance: none
+  prioritized-adapters:
+    - pea
+  extensions:
+    business-cockpit:
+      rest:
+        base-url: replaced-by-the-test
+  workflow-modules:
+    pea-cockpit:
+      adapters:
+        pea:
+          resources-location: classpath*:pea-cockpit/processes
+      extensions:
+        business-cockpit:
+          workflow-module-uri: http://localhost:8081/pea-cockpit
+          ui-uri-type: WEBPACK_MF_REACT
+          ui-uri-path: /remoteEntry.js
+          i18n-languages: en
+          bpmn-description-language: en

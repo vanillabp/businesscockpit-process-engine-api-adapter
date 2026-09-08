@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="TaxiRideDefinitions" targetNamespace="http://vanillabp.io/businesscockpit/process-engine-api">
+  <bpmn:process id="TaxiRide" name="A taxi ride" isExecutable="true">
+    <bpmn:startEvent id="Start">
+      <bpmn:outgoing>ToApprove</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="ToApprove" sourceRef="Start" targetRef="Approve" />
+    <bpmn:userTask id="Approve" name="Approve the ride">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="approve-the-ride" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToApprove</bpmn:incoming>
+      <bpmn:outgoing>ToEnd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToEnd" sourceRef="Approve" targetRef="End" />
+    <bpmn:endEvent id="End">
+      <bpmn:incoming>ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+</bpmn:definitions>
