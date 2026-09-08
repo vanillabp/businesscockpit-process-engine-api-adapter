@@ -9,6 +9,7 @@ import io.vanillabp.integration.adapter.migration.config.AdapterConfigProperties
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
 import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.PeaBpmnModel;
 
@@ -58,11 +59,24 @@ public final class TestModels {
   }
 
   /**
-   * @return What the extension remembers of a deployed workflow module
+   * @return What the extension remembers of a deployed workflow module, with a registry which
+   *         knows no BPMN name - the state the Process-Engine-API adapter leaves it in, so the
+   *         names come from this extension's own pass over the file
    */
   public static PeaWorkflowModels deployed() {
 
-    final var models = new PeaWorkflowModels();
+    return deployed(TestExtensionHandlers.withoutAnyBpmnName());
+
+  }
+
+  /**
+   * @param handlers VanillaBP's registry, which answers the name a modeller wrote on an element
+   * @return What the extension remembers of a deployed workflow module
+   */
+  public static PeaWorkflowModels deployed(
+      final ExtensionHandlers handlers) {
+
+    final var models = new PeaWorkflowModels(handlers);
     models.register(MODULE_ID, model());
     return models;
 

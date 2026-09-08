@@ -9,105 +9,55 @@ with the Process-Engine-API team.
 Each entry says what the cockpit needs, what the API offers today, where that can be read, what
 it costs somebody looking at the cockpit, and what would close it. A number is handed out once and
 never reused: an entry which is closed keeps its number and says so, because a conversation about
-"gap 7" outlives the file. The first two need no change to the Process-Engine-API at all: they are
-work in
-[vanillabp/process-engine-api-adapter](https://github.com/vanillabp/process-engine-api-adapter),
-and their headings say so.
+"gap 7" outlives the file. The first two needed no change to the Process-Engine-API at all - they
+were work in
+[vanillabp/process-engine-api-adapter](https://github.com/vanillabp/process-engine-api-adapter) -
+and that work is done: entry 1 is closed and entry 2 is closed as far as the adapter reaches.
 
 The file which says the same thing from the adapter's side is that repository's own `GAPS.md`;
 this one adds what a cockpit needs on top of what a workflow application needs.
 
-## 1. Nothing hands a delivered user task to a second observer (VanillaBP adapter work)
+## 1. Nothing hands a delivered user task to a second observer - CLOSED by the adapter
 
-**The cockpit needs** to learn that a user task appeared, changed and ended. It has no engine of
-its own: it watches the one the workflow application runs on.
+**Closed** in `io.vanillabp:process-engine-api-adapter`, package `io.vanillabp.pea.observation`.
 
-**The API offers** one channel, `TaskSubscriptionApi`, and it delivers a task to exactly ONE
-subscription. The reference engine adapter for an embedded Camunda 7 picks
-`subscriptions.firstOrNull { it.matches(task) }` and records it with
-`activateSubscriptionForTask`
-(`dev.bpm-crafters.process-engine-adapters:process-engine-adapter-camunda-platform-c7-embedded-core`,
-`EmbeddedPullUserTaskDelivery.refresh:59` and `:87`), and the in-memory engine of the VanillaBP
-adapter does the same
-(`process-engine-api-adapter/mock/src/main/java/io/vanillabp/pea/mock/InMemoryProcessEngine.java:462-472`).
-A second subscription for the same task definition therefore either sees nothing or takes the
-task away from the workflow application, decided by the order the two were registered in.
-`businesscockpit-process-engine-api-adapter/core/src/test/java/io/vanillabp/cockpit/pea/test/PeaSubscriptionProbeTest.java`
-holds the in-memory engine to it.
+**The cockpit needed** to learn that a user task appeared, changed and ended. It has no engine of
+its own: it watches the one the workflow application runs on. The API offers one channel,
+`TaskSubscriptionApi`, and it delivers a task to exactly ONE subscription, so a second
+subscription for the same task definition either sees nothing or takes the task away from the
+workflow application - which `PeaSubscriptionProbeTest` still holds the in-memory engine to.
 
-**What it costs:** without a seam in the VanillaBP adapter, this extension registers workflow
-modules at the cockpit server and reports nothing else. Every user task is invisible.
+**What closed it:** the adapter calls `PeaUserTaskObserver` from its own user-task subscription.
+`PeaUserTaskObservation` carries the adapter id, the workflow module, the BPMN process, the task
+definition, the workflow aggregate's id, the engine's `TaskInformation` and the payload the
+subscription asked for; the identifiers are the PLAIN ones, translated back through name-clash
+avoidance by the adapter. Every delivery reaches an observer, including one no `@WorkflowTask`
+method of the application claims, and an observer which throws costs neither the task nor the
+observers behind it.
 
-**What would close it:** an observer the adapter hands its deliveries to, applied per adapter id
-the way the Camunda 7 adapter applies its `Camunda7EngineCustomizer`. Concretely, in
-`io.vanillabp:process-engine-api-adapter`:
+This extension implements that interface in `PeaCockpitObserver` and contributes it as a bean on
+both platforms; the adapter collects the beans by type. The port this repository carried in the
+meantime is gone, and so is the startup message which asked an application to feed it.
 
-```java
-package io.vanillabp.pea.observation;
+## 2. A terminated task carries neither its outcome nor its identifiers - CLOSED for the outcome, open at the API for what "finished" means
 
-public interface PeaUserTaskObserver {
-    void userTaskDelivered(PeaUserTaskObservation observation);
-    void userTaskTerminated(PeaUserTaskObservation observation);
-}
+**Closed in the adapter**, which now registers the `TaskTerminationHandler` overload carrying the
+engine's full `TaskInformation`, so the reason reaches this extension: `delete` is reported as
+cancelled and everything else as completed (decision 4 in this repository's `DECISIONS.md`). The
+termination names no BPMN process and no workflow aggregate, which costs nothing - what a
+terminated task was is what its delivery said, and this extension remembers that until the report
+is dispatched.
 
-public record PeaUserTaskObservation(
-        String adapterId, String workflowModuleId, String bpmnProcessId, String taskDefinition,
-        String workflowAggregateId, TaskInformation taskInformation, Map<String, Object> payload) { }
-```
+**Still open at the Process-Engine-API.** What the reason says is only half an outcome: the
+reference C7 adapter names `complete` when a task was finished through `UserTaskCompletionApi`
+and `delete` for everything else it notices, so a task somebody finished in a task list arrives as
+`delete` like a cancelled one.
 
-`PeaDeploymentService` collects the observers as a hook bean list and hands them to the handlers
-it builds at
-`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:807-816`.
-`PeaUserTaskHandler.accept`
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/wiring/PeaUserTaskHandler.java:88`)
-calls `userTaskDelivered` for every delivery - before its own routing check at `:96-105`, because
-the cockpit shows a user task whether or not the application declared a `@WorkflowTask` method for
-it - and the termination handler registered at
-`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:821`
-calls `userTaskTerminated`.
+**What it costs:** a task finished outside the API is reported as cancelled, which reads as work
+somebody stopped.
 
-The workflow module and the BPMN process are resolved before that check, but the aggregate id is
-not: the handler asks for the name of the aggregate's id variable and reads it out of the payload
-at `PeaUserTaskHandler.java:106-108`, after the check. So the seam means moving that lookup in
-front of the observer call - it needs nothing the check produces, only the workflow module and the
-BPMN process. Where it answers nothing, because the application declares no workflow aggregate for
-that process or the subscription did not ask for the variable, the observation carries no aggregate
-id, and this extension passes the task over with a DEBUG line naming it: a business case the
-cockpit cannot address is a report it cannot place.
-
-An observer which throws must not break the task: the adapter's user-task handler already treats
-a failing notification that way, and an observer is one more of them.
-
-This extension is written against exactly that interface, under
-`businesscockpit-process-engine-api-adapter/core/src/main/java/io/vanillabp/cockpit/pea/PeaUserTaskObserver.java`,
-so the adapter's seam replaces the port and nothing else changes. Once it exists, that port and
-the bean of it are withdrawn here, together with the wiki's instruction to call it from an
-application: the adapter's seam sees every delivery, the port only what an application noticed
-itself.
-
-## 2. A terminated task carries neither its outcome nor its identifiers (adapter first, then the API)
-
-**The cockpit needs** to know whether a task which is gone was finished or withdrawn, and which
-business case it belonged to.
-
-**The API offers** `TaskTerminationHandler`, which has carried a full `TaskInformation` since
-version 1.5. The VanillaBP adapter registers the older `Consumer<String>` overload instead
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:821`
-and `:869`), so even the meta map is discarded before the adapter sees it. What the reason says is only half an outcome: the reference C7
-adapter names `complete` when a task was finished through `UserTaskCompletionApi`
-(`C7UserTaskCompletionApiImpl.completeTask`) and `delete` for everything else it notices, so a
-task somebody finished in a task list arrives as `delete` like a cancelled one
-(`EmbeddedPullUserTaskDelivery.refresh`, the deactivation branch).
-
-**What it costs:** no reason reaches this extension at all today, so every user task which ends is
-reported as completed - see decision 4 in this repository's `DECISIONS.md`. With the overload
-registered, `delete` becomes cancelled and a task finished outside the API is then the case which
-is reported wrongly. And the termination names no aggregate, so a task the reporting node no
-longer holds cannot be reported at all.
-
-**What would close it:** the adapter registering the `TaskTerminationHandler` overload, and the
-API defining an outcome its engine adapters fill - finished against withdrawn, decided by what
-happened to the task rather than by which API noticed it.
+**What would close it:** the API defining an outcome its engine adapters fill - finished against
+withdrawn, decided by what happened to the task rather than by which API noticed it.
 
 ## 3. The meta map of a delivered task has no vocabulary
 

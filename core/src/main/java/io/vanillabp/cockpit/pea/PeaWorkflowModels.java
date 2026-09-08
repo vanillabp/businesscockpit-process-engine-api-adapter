@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.PeaBpmnModel;
 
 /**
@@ -19,6 +20,13 @@ import io.vanillabp.pea.PeaBpmnModel;
  * <p>
  * A process which is not in here belongs to no workflow module of this application, and a task
  * of it is passed over rather than reported under a module it does not belong to.
+ * <p>
+ * The name a modeller wrote on a user task is VanillaBP's answer
+ * ({@link ExtensionHandlers#bpmnTaskNameOf}): the adapter reads the model anyway and hands what
+ * it read to the wiring validation. Reading it a second time is what this class used to do, and
+ * the reason a second reading is still here is the process name, which no adapter hands over
+ * yet - the same pass then answers a user task the Process-Engine-API adapter passes no name
+ * for.
  */
 public class PeaWorkflowModels {
 
@@ -55,6 +63,19 @@ public class PeaWorkflowModels {
 
   private final Map<String, Process> byModuleAndProcess = new ConcurrentHashMap<>();
 
+  private final ExtensionHandlers handlers;
+
+  /**
+   * @param handlers VanillaBP's registry of what the application declared, which answers the
+   *          name a modeller wrote on a BPMN element
+   */
+  public PeaWorkflowModels(
+      final ExtensionHandlers handlers) {
+
+    this.handlers = handlers;
+
+  }
+
   /**
    * Remembers one BPMN process VanillaBP is deploying to the Process-Engine-API. Called while
    * the deployment pipeline runs and therefore before any subscription of that module opens.
@@ -87,7 +108,7 @@ public class PeaWorkflowModels {
 
   }
 
-  private static Process processOf(
+  private Process processOf(
       final String workflowModuleId,
       final PeaBpmnModel model) {
 
@@ -98,9 +119,8 @@ public class PeaWorkflowModels {
         .userTasks()
         .forEach(userTask -> {
           final var element = new UserTaskElement(
-              userTask.activityId(), userTask.taskDefinition(), names
-                  .userTaskNames()
-                  .get(userTask.activityId()));
+              userTask.activityId(), userTask.taskDefinition(), taskNameOf(
+                  workflowModuleId, model.bpmnProcessId(), userTask.activityId(), names));
           byElementId.put(element.bpmnTaskId(), element);
           if (element.taskDefinition() != null) {
             byTaskDefinition.putIfAbsent(element.taskDefinition(), element);
@@ -109,6 +129,27 @@ public class PeaWorkflowModels {
     return new Process(
         workflowModuleId, model.bpmnProcessId(), names.processName(), Map.copyOf(byElementId), Map
             .copyOf(byTaskDefinition));
+
+  }
+
+  /**
+   * The name of one user task: what the adapter read out of the model and handed to the wiring
+   * validation, and what this extension's own pass over the same bytes found where the adapter
+   * passed none.
+   * <p>
+   * The second half is a stopgap. The Process-Engine-API adapter builds its user-task specs
+   * without a name, so today every name comes from the pass; the day it fills them, this
+   * extension reads them from VanillaBP and the pass answers the process name alone.
+   */
+  private String taskNameOf(
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String activityId,
+      final PeaBpmnNames.Names names) {
+
+    return handlers
+        .bpmnTaskNameOf(workflowModuleId, bpmnProcessId, activityId)
+        .orElseGet(() -> names.userTaskNames().get(activityId));
 
   }
 

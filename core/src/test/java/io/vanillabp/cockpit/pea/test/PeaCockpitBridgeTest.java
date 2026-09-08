@@ -18,12 +18,10 @@ import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
-import io.vanillabp.cockpit.pea.PeaUserTaskObservation;
-import io.vanillabp.integration.adapter.migration.scoping.NameClashAvoidanceService;
-import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
 import io.vanillabp.integration.test.utils.CapturedOutput;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
+import io.vanillabp.pea.observation.PeaUserTaskObservation;
 
 /**
  * What the cockpit reads back about a task or a business case, and what this BPMS has to answer
@@ -46,11 +44,10 @@ public class PeaCockpitBridgeTest {
     final var models = TestModels.deployed();
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
     observer = new PeaCockpitObserver(
-        models, deliveredUserTasks, new NameClashAvoidanceService(
-            TestModels.configuration(NameClashAvoidance.NONE)), (
-                adapterId,
-                workflowModuleId,
-                bpmnProcessId) -> "deployment-7", RecordingPublisher::new);
+        models, deliveredUserTasks, (
+            adapterId,
+            workflowModuleId,
+            bpmnProcessId) -> "deployment-7", RecordingPublisher::new);
     bridge = new PeaCockpitBridge(
         TestModels.ADAPTER_ID, models, deliveredUserTasks, (
             adapterId,

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,22 +12,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import dev.bpmcrafters.processengineapi.CommonRestrictions;
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
-import io.vanillabp.cockpit.pea.PeaTaskMeta;
-import io.vanillabp.cockpit.pea.PeaUserTaskObservation;
-import io.vanillabp.cockpit.pea.PeaUserTaskObserver;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
+import io.vanillabp.pea.mock.InMemoryProcessEngine;
 import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
  * The Process-Engine-API half of the Business Cockpit inside a booted Quarkus application: the
- * extension is enabled, a delivered user task reaches the cockpit server with the details the
- * application provides, and the bridge answers what the cockpit reads back.
+ * extension is enabled, the engine delivers a user task to the ADAPTER's own subscription, the
+ * adapter hands it to the observer bean this extension contributes, and what the application
+ * enriched reaches the cockpit server. The bridge then answers what the cockpit reads back.
  * <p>
  * It runs the same way through as the Spring Boot test of this repository, and it exists because
  * a platform-neutral half being right says nothing about a platform's glue ever calling it.
@@ -65,7 +62,7 @@ public class PeaCockpitTest {
   TestAggregatePersistence aggregates;
 
   @Inject
-  PeaUserTaskObserver observer;
+  InMemoryProcessEngine engine;
 
   @Inject
   List<BusinessCockpitBpmsBridge> bridges;
@@ -90,30 +87,30 @@ public class PeaCockpitTest {
 
   }
 
+  /**
+   * The identifier the cockpit shows a business case under. This engine names no process
+   * instance, so it is the workflow aggregate's id - decision 6 in the repository's
+   * DECISIONS.md.
+   */
   private static String workflowIdOf(
       final TestAggregate aggregate) {
 
-    return "instance-of-%s".formatted(aggregate.getId());
+    return String.valueOf(aggregate.getId());
 
   }
 
   /**
-   * What the Process-Engine-API adapter would hand over: the identifiers it resolved while
-   * routing the delivery, and the engine's own words about the task.
+   * Makes the engine deliver a user task to the adapter's own subscription, the way a
+   * Process-Engine-API engine does when a workflow reaches one.
    */
-  private static PeaUserTaskObservation aDeliveredUserTask(
+  private void aDeliveredUserTask(
       final TestAggregate aggregate,
-      final String taskId,
-      final String reason) {
+      final String taskId) {
 
-    final var meta = new LinkedHashMap<String, String>();
-    meta.put(CommonRestrictions.PROCESS_INSTANCE_ID, workflowIdOf(aggregate));
-    meta.put(PeaTaskMeta.BPMN_TASK_ID, TestWorkflowService.BPMN_TASK_ID);
-    meta.put(PeaTaskMeta.ASSIGNEE, "james");
-    return new PeaUserTaskObservation(
-        ADAPTER_ID, MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, TestWorkflowService.TASK_DEFINITION, String
-            .valueOf(
-                aggregate.getId()), new TaskInformation(taskId, meta).withReason(reason), Map.of("passenger", "Anna"));
+    engine
+        .deliverTask(
+            taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
+                .of("id", String.valueOf(aggregate.getId())));
 
   }
 
@@ -124,42 +121,20 @@ public class PeaCockpitTest {
     CockpitServer.forgetRequests();
 
     final var aggregate = aStartedWorkflow("Anna");
-    observer.userTaskDelivered(aDeliveredUserTask(aggregate, "task-1", TaskInformation.CREATE));
+    aDeliveredUserTask(aggregate, "task-1");
 
     final var workflow = CockpitServer.awaitRequest("/workflow/created");
     assertTrue(workflow.body().contains("\"customer\":\"Anna\""), workflow.body());
 
     final var userTask = CockpitServer.awaitRequest("/usertask/created");
     assertTrue(userTask.body().contains("\"customer\":\"Anna\""), userTask.body());
-    assertTrue(userTask.body().contains("\"passenger\":\"Anna\""), userTask.body());
-    assertTrue(userTask.body().contains("\"assignee\":\"james\""), userTask.body());
+    // the payload is what the SUBSCRIPTION asked for, and no @WorkflowTask method of this
+    // application claims the user task, so nothing named a second variable - GAPS.md, entry 4
+    assertTrue(userTask.body().contains("\"passenger\":\"null\""), userTask.body());
     assertTrue(userTask.body().contains("Approve the ride"), userTask.body());
 
     assertEquals(
         TestWorkflowService.APPROVE_NOTE, aggregates.byId(aggregate.getId()).getNote());
-
-  }
-
-  @Test
-  @DisplayName("A task the engine delivers again because it changed is reported as an update")
-  public void aRedeliveredUserTaskIsReportedAsAnUpdate() throws Exception {
-
-    CockpitServer.forgetRequests();
-
-    final var aggregate = aStartedWorkflow("Rita");
-    observer.userTaskDelivered(aDeliveredUserTask(aggregate, "task-4", TaskInformation.CREATE));
-    final var created = CockpitServer.awaitRequest("/usertask/created");
-    assertTrue(
-        created
-            .body()
-            .contains("\"taskDefinition\":\"%s\"".formatted(TestWorkflowService.TASK_DEFINITION)),
-        created.body());
-
-    observer.userTaskDelivered(aDeliveredUserTask(aggregate, "task-4", TaskInformation.ASSIGN));
-
-    final var updated = CockpitServer.awaitRequest("/usertask/task-4/updated");
-    assertTrue(updated.body().contains("\"assignee\":\"james\""), updated.body());
-    assertTrue(updated.body().contains("\"candidateGroups\":[\"drivers\"]"), updated.body());
 
   }
 
@@ -170,7 +145,7 @@ public class PeaCockpitTest {
     CockpitServer.forgetRequests();
 
     final var aggregate = aStartedWorkflow("Bert");
-    observer.userTaskDelivered(aDeliveredUserTask(aggregate, "task-2", TaskInformation.CREATE));
+    aDeliveredUserTask(aggregate, "task-2");
     CockpitServer.awaitRequest("/usertask/created");
 
     assertTrue(
@@ -179,11 +154,10 @@ public class PeaCockpitTest {
             .getUserTask(aggregates.byId(aggregate.getId()), "task-2")
             .isPresent());
 
-    observer
-        .userTaskTerminated(
-            new PeaUserTaskObservation(
-                ADAPTER_ID, MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, TestWorkflowService.TASK_DEFINITION, null, new TaskInformation(
-                    "task-2", Map.of()).withReason(TaskInformation.COMPLETE), Map.of()));
+    engine
+        .terminateTask(
+            "task-2", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
+            TaskInformation.COMPLETE);
 
     assertNotNull(CockpitServer.awaitRequest("/usertask/task-2/completed"));
     assertTrue(
@@ -200,7 +174,7 @@ public class PeaCockpitTest {
   public void aggregateChangedUpdatesTheWorkflow() throws Exception {
 
     final var aggregate = aStartedWorkflow("Cleo");
-    observer.userTaskDelivered(aDeliveredUserTask(aggregate, "task-3", TaskInformation.CREATE));
+    aDeliveredUserTask(aggregate, "task-3");
     CockpitServer.awaitRequest("/workflow/created");
     CockpitServer.forgetRequests();
 

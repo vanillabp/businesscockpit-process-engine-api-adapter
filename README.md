@@ -20,13 +20,11 @@ It registers a workflow module at the cockpit server, it turns a delivered user 
 report the cockpit shows, it enriches that report with what the application's
 `@UserTaskDetailsProvider` returns, and it answers what `BusinessCockpitService` reads back.
 
-One thing is missing, and it is not in this repository: nothing hands it a delivered user task
-yet. The Process-Engine-API gives a task to exactly one subscription, so this extension must not
-subscribe next to the VanillaBP Process-Engine-API adapter - it would take the task away from the
-workflow application - and that adapter does not pass its deliveries on. Entry 1 of
-[`GAPS.md`](./GAPS.md) describes the seam it would need, this repository is written against
-exactly that interface, and the application says so at startup rather than leaving somebody with
-an empty cockpit and no explanation.
+What hands it a delivered user task is the VanillaBP Process-Engine-API adapter. That API gives a
+task to exactly one subscription, so this extension must not subscribe next to the adapter - it
+would take the task away from the workflow application - and the adapter therefore calls
+`io.vanillabp.pea.observation.PeaUserTaskObserver` from its own subscription. This repository
+contributes a bean of it on both platforms, and the adapter finds it by its type.
 
 This adapter has no Version 1 predecessor. The Business Cockpit supported Camunda 7 and Camunda 8
 in Version 1, and the Process-Engine-API integration is new with Version 2, so there is nothing to
@@ -68,17 +66,17 @@ reference adapter for an embedded Camunda 7 picks the first matching subscriptio
 as the active one for that task, which makes this a property of the API rather than of the
 in-memory engine the test uses.
 
-So the design is the second way, with the seam described rather than written: the extension owns a
-port, `PeaUserTaskObserver`, produced as a bean on both platforms. Everything behind it - the
-translation of an engine's identifiers, the memory of a delivery, the event kinds, the reads the
-cockpit does - is implemented and tested through that port, and the adapter's future seam replaces
-it without touching anything else. What that costs today is said in `GAPS.md` and at every
-startup.
+So the design is the second way, and the seam exists:
+`io.vanillabp.pea.observation.PeaUserTaskObserver` in the VanillaBP Process-Engine-API adapter,
+called from the subscription the adapter already opens. Everything behind it - the memory of a
+delivery, the event kinds, the reads the cockpit does - is implemented and tested through
+`PeaCockpitObserver`, which implements that interface.
 
-The port is meant to disappear. Once the Process-Engine-API adapter offers the seam, this
-repository withdraws both the port and the bean of it, and the wiki drops its instruction to call
-that bean from an application: the adapter's seam is handed every delivery, while an application
-calling the port only ever passes on what it noticed itself.
+While the seam was missing this repository carried a port of the same shape and asked an
+application to call it. Both are gone: the adapter is told about every delivery, while an
+application calling a port of the cockpit only ever passed on what it noticed itself. The
+identifiers arrive plain, too - the adapter translates what an engine reports back through
+name-clash avoidance before it builds an observation.
 
 ## Building
 

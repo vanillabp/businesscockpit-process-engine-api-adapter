@@ -1,8 +1,6 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -22,19 +20,23 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaTaskMeta;
-import io.vanillabp.cockpit.pea.PeaUserTaskObservation;
-import io.vanillabp.integration.adapter.migration.scoping.NameClashAvoidanceService;
-import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
+import io.vanillabp.cockpit.pea.PeaWorkflowModels;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
+import io.vanillabp.pea.observation.PeaUserTaskObservation;
 
 /**
  * What a delivered user task turns into, and what it does not turn into.
  * <p>
- * The integration tests of this repository run the same way through a booted application. What
- * they cannot provoke is the other half: a task of a process this application never deployed, a
- * delivery which names no workflow aggregate, the end of a task this node never saw. Those are
- * the cases where reporting nothing is the right answer, and a test which cannot tell "reported
- * nothing" from "was never asked" would not notice them.
+ * The integration tests of this repository run the same way through a booted application, driven
+ * by the adapter's own delivery. What they cannot provoke is the other half: a task of a process
+ * this application never deployed, a delivery which names no workflow aggregate or no BPMN
+ * process at all, the end of a task this node never saw. Those are the cases where reporting
+ * nothing is the right answer, and a test which cannot tell "reported nothing" from "was never
+ * asked" would not notice them.
+ * <p>
+ * What an engine calls an identifier is not among them any more. The adapter translates the
+ * scoped ids of a workflow module deployed with a prefix back before it builds an observation,
+ * and holds itself to that.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitObserverTest {
@@ -50,19 +52,18 @@ public class PeaCockpitObserverTest {
 
     publisher = new RecordingPublisher();
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
-    observer = observerOf(NameClashAvoidance.NONE);
+    observer = observerOf(TestModels.deployed());
 
   }
 
   private PeaCockpitObserver observerOf(
-      final NameClashAvoidance nameClashAvoidance) {
+      final PeaWorkflowModels models) {
 
     return new PeaCockpitObserver(
-        TestModels.deployed(), deliveredUserTasks, new NameClashAvoidanceService(
-            TestModels.configuration(nameClashAvoidance)), (
-                adapterId,
-                workflowModuleId,
-                bpmnProcessId) -> "deployment-7", () -> publisher);
+        models, deliveredUserTasks, (
+            adapterId,
+            workflowModuleId,
+            bpmnProcessId) -> "deployment-7", () -> publisher);
 
   }
 
@@ -278,101 +279,56 @@ public class PeaCockpitObserverTest {
   }
 
   @Test
-  @DisplayName("Identifiers of a workflow module deployed with a prefix are reported without it")
-  public void scopedIdentifiersAreTranslatedBack() {
-
-    observer = observerOf(NameClashAvoidance.USE_PREFIX);
+  @DisplayName("A delivery whose BPMN process the adapter could not tell is passed over")
+  public void aDeliveryWithoutABpmnProcessIsPassedOver() {
 
     observer
         .userTaskDelivered(
             new PeaUserTaskObservation(
-                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.MODULE_ID
-                    + "__"
-                    + TestModels.BPMN_PROCESS_ID, TestModels.MODULE_ID
-                        + "__"
-                        + TestModels.BPMN_PROCESS_ID
-                        + "__"
-                        + TestModels.USER_TASK_FORM, "4711", new TaskInformation("task-1", Map.of()), Map.of()));
-
-    assertEquals(1, publisher.userTasks().size());
-    final var reported = publisher.userTasks().getFirst();
-    assertEquals(TestModels.BPMN_PROCESS_ID, reported.bpmnProcessId());
-    assertEquals(TestModels.USER_TASK_FORM, reported.taskDefinition());
-    assertEquals(TestModels.USER_TASK_ELEMENT, reported.bpmnTaskId());
-
-  }
-
-  @Test
-  @DisplayName("A workflow the engine does not identify is reported under the aggregate it belongs to")
-  public void aWorkflowWithoutAnIdentityIsReportedUnderItsAggregate() {
-
-    observer
-        .userTaskDelivered(
-            new PeaUserTaskObservation(
-                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, null, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
                     "task-1", Map.of()), Map.of()));
 
-    assertEquals("4711", publisher.userTasks().getFirst().workflowId());
-    assertEquals("4711", publisher.workflows().getFirst().workflowId());
+    assertTrue(publisher.userTasks().isEmpty());
+    assertTrue(publisher.workflows().isEmpty());
 
   }
 
   @Test
-  @DisplayName("A business case whose report was refused is reported again with the next task of it")
-  public void aWorkflowIsReportedAgainWhenItsReportWasRefused() {
-
-    publisher.refuseWorkflowEvents();
-    assertThrows(
-        IllegalStateException.class,
-        () -> observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of())));
-    publisher.takeEventsAgain();
-
-    observer.userTaskDelivered(delivery("task-2", TaskInformation.CREATE, Map.of()));
-
-    assertEquals(
-        List.of(WorkflowEventKind.CREATED),
-        publisher.workflowKinds(),
-        "the case was noted as reported only after the report was written, so the next task of it reported it");
-
-  }
-
-  @Test
-  @DisplayName("A task whose end could not be reported is still open, so a second end reports it")
-  public void aTerminationIsReportedAgainWhenItsReportWasRefused() {
+  @DisplayName("The end of a task is reported although the termination names no BPMN process")
+  public void aTerminationWithoutABpmnProcessIsReported() {
 
     observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
     publisher.userTaskKinds().clear();
-    publisher.refuseUserTaskEvents();
 
-    assertThrows(
-        IllegalStateException.class, () -> aTerminatedUserTask("task-1", TaskInformation.COMPLETE));
-
-    assertEquals(
-        List.of("task-1"),
-        deliveredUserTasks
-            .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
-            .stream()
-            .map(task -> task.reference().userTaskId())
-            .toList(),
-        "a report which was never written leaves the task as it was, one of its case's open tasks");
-
-    publisher.takeEventsAgain();
-    aTerminatedUserTask("task-1", TaskInformation.COMPLETE);
+    observer
+        .userTaskTerminated(
+            new PeaUserTaskObservation(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, null, TestModels.USER_TASK_FORM, null, new TaskInformation(
+                    "task-1", Map.of()).withReason(TaskInformation.COMPLETE), Map.of()));
 
     assertEquals(List.of(UserTaskEventKind.COMPLETED), publisher.userTaskKinds());
+    assertEquals(
+        TestModels.BPMN_PROCESS_ID,
+        publisher.userTasks().getFirst().bpmnProcessId(),
+        "what the terminated task was is what its delivery said");
 
   }
 
   @Test
-  @DisplayName("A due date which is not a timestamp costs the date and not the task")
-  public void anUnreadableDateIsDropped() {
+  @DisplayName("The name of a user task is the one VanillaBP read off the deployed model")
+  public void theTaskNameComesFromTheRegistry() {
 
-    observer
-        .userTaskDelivered(
-            delivery("task-1", TaskInformation.CREATE, Map.of(PeaTaskMeta.DUE_DATE, "tomorrow")));
+    observer = observerOf(
+        TestModels
+            .deployed(
+                new TestExtensionHandlers(
+                    Map.of(TestModels.USER_TASK_ELEMENT, "Approve it, please"))));
 
-    assertEquals(1, publisher.userTasks().size());
-    assertNull(deliveredUserTasks.of("task-1").orElseThrow().details().dueDate());
+    observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
+
+    assertEquals(
+        "Approve it, please",
+        deliveredUserTasks.of("task-1").orElseThrow().details().bpmnTaskName());
 
   }
 

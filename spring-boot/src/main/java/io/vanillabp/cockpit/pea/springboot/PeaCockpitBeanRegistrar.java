@@ -1,11 +1,7 @@
 package io.vanillabp.cockpit.pea.springboot;
 
-import java.util.TreeSet;
-
 import org.springframework.beans.factory.BeanRegistrar;
 import org.springframework.beans.factory.BeanRegistry;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 
 import io.vanillabp.cockpit.extension.config.CockpitSettings;
@@ -15,7 +11,7 @@ import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaWorkflowModels;
-import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
+import io.vanillabp.integration.adapter.AdapterBeanRegistrarSupport;
 import io.vanillabp.pea.PeaAdapter;
 
 /**
@@ -27,6 +23,13 @@ import io.vanillabp.pea.PeaAdapter;
  * many there are is decided by the configuration, which is why the beans are registered
  * programmatically; they are element beans and never a bean of type <code>List</code>, because
  * that is how the cockpit's neutral half collects them on Spring Boot.
+ * <p>
+ * WHICH adapter ids those are is the platform's answer
+ * ({@code AdapterBeanRegistrarSupport#forEachConfiguredAdapterId}), the same one the
+ * Process-Engine-API adapter registers its own beans for. Filtering the configured types is not
+ * that answer: an id named in <code>prioritized-adapters</code> needs no section of its own, and
+ * an application which configured nothing at all - which on this BPMS is the everyday case, since
+ * it takes a single adapter dependency - has the id the classpath derives.
  */
 public class PeaCockpitBeanRegistrar implements BeanRegistrar {
 
@@ -35,8 +38,10 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
       final BeanRegistry registry,
       final Environment environment) {
 
-    processEngineApiAdapterIds(environment)
-        .forEach(
+    AdapterBeanRegistrarSupport
+        .forEachConfiguredAdapterId(
+            environment,
+            PeaAdapter.ADAPTER_TYPE,
             adapterId -> registry
                 .registerBean(
                     "BusinessCockpit_ProcessEngineApi_Bridge_%s".formatted(adapterId),
@@ -49,33 +54,6 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
                                         .bean(PeaProcessVersions.class), PeaCockpitSettings
                                             .rememberedUserTasks(
                                                 supplierContext.bean(CockpitSettings.class))))));
-
-  }
-
-  /**
-   * The adapter ids always come from the platform's own configuration rather than from the
-   * adapter's overlay map, the same rule the adapter itself follows: an environment variable can
-   * materialize an overlay entry for an adapter nobody configured.
-   */
-  private static Iterable<String> processEngineApiAdapterIds(
-      final Environment environment) {
-
-    final var properties = Binder
-        .get(environment)
-        .bind(MigrationAdapterProperties.PREFIX, Bindable.of(MigrationAdapterProperties.class))
-        .orElseGet(MigrationAdapterProperties::new);
-
-    final var adapterIds = new TreeSet<String>();
-    properties
-        .adapterTypes()
-        .forEach((
-            adapterId,
-            adapterType) -> {
-          if (PeaAdapter.ADAPTER_TYPE.equals(adapterType)) {
-            adapterIds.add(adapterId);
-          }
-        });
-    return adapterIds;
 
   }
 

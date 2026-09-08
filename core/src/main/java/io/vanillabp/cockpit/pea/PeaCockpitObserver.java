@@ -17,7 +17,8 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks.DeliveredUserTask;
 import io.vanillabp.cockpit.pea.PeaWorkflowModels.UserTaskElement;
-import io.vanillabp.integration.adapter.spi.NameClashAvoidanceSupport;
+import io.vanillabp.pea.observation.PeaUserTaskObservation;
+import io.vanillabp.pea.observation.PeaUserTaskObserver;
 
 /**
  * What a delivered user task means to the Business Cockpit.
@@ -30,6 +31,13 @@ import io.vanillabp.integration.adapter.spi.NameClashAvoidanceSupport;
  * The entry gets a transaction of its own: the Process-Engine-API delivers on a thread of the
  * engine's own with no transaction of the application to join. What that costs is decision 2 in
  * the repository's DECISIONS.md.
+ * <p>
+ * The adapter hands over PLAIN identifiers - it translates what an engine reports back through
+ * name-clash avoidance before it builds an observation - so nothing here spells an id a second
+ * time. Two of them may be missing, and both are the adapter saying so rather than guessing: a
+ * delivery whose BPMN process cannot be told is passed over with a line naming the task, and a
+ * termination names no process at all, which costs nothing because what a terminated task was is
+ * remembered from its delivery.
  */
 public class PeaCockpitObserver implements PeaUserTaskObserver {
 
@@ -39,8 +47,6 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   private final PeaDeliveredUserTasks deliveredUserTasks;
 
-  private final NameClashAvoidanceSupport scoping;
-
   private final PeaProcessVersions versions;
 
   private final Supplier<BusinessCockpitEventPublisher> publisher;
@@ -48,8 +54,6 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   /**
    * @param models What this application deployed
    * @param deliveredUserTasks Where a delivery is remembered for the dispatch which follows it
-   * @param scoping VanillaBP's name-clash avoidance, which translates an engine's identifiers
-   *          back into the ones the application wrote
    * @param versions What the adapter recorded about the deployed processes
    * @param publisher Where an observed event is handed to, asked for on the first event rather
    *          than up front: this object is built while the application is still wiring itself
@@ -58,13 +62,11 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   public PeaCockpitObserver(
       final PeaWorkflowModels models,
       final PeaDeliveredUserTasks deliveredUserTasks,
-      final NameClashAvoidanceSupport scoping,
       final PeaProcessVersions versions,
       final Supplier<BusinessCockpitEventPublisher> publisher) {
 
     this.models = Objects.requireNonNull(models, "models");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
-    this.scoping = Objects.requireNonNull(scoping, "scoping");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.publisher = Objects.requireNonNull(publisher, "publisher");
 
@@ -74,7 +76,17 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   public void userTaskDelivered(
       final PeaUserTaskObservation observation) {
 
-    final var bpmnProcessId = plainProcessIdOf(observation);
+    final var bpmnProcessId = observation.bpmnProcessId();
+    if (bpmnProcessId == null) {
+      // the adapter could not tell which of the processes behind this subscription the task
+      // belongs to, so there is no workflow to report it under
+      logger
+          .debug(
+              "Process-Engine-API[{}]: not reporting user task '{}': the delivery named no BPMN process",
+              observation.adapterId(),
+              observation.taskId());
+      return;
+    }
     final var process = models.of(observation.workflowModuleId(), bpmnProcessId);
     if (process.isEmpty()) {
       logger
@@ -95,11 +107,11 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
       return;
     }
 
-    final var element = elementOf(process.get(), observation, bpmnProcessId);
+    final var element = elementOf(process.get(), observation);
     final var reference = new UserTaskReference(
         observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, observation
             .workflowAggregateId(), workflowIdOf(observation), observation.taskId(), taskDefinitionOf(
-                observation, bpmnProcessId, element), element == null
+                observation, element), element == null
                     ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
                     : element.bpmnTaskId());
     deliveredUserTasks
@@ -275,10 +287,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * Which user task of the process was delivered. The engine's meta map names the BPMN element
    * where it is generous, and the subscription's own key answers where it is not.
    */
-  private UserTaskElement elementOf(
+  private static UserTaskElement elementOf(
       final PeaWorkflowModels.Process process,
-      final PeaUserTaskObservation observation,
-      final String bpmnProcessId) {
+      final PeaUserTaskObservation observation) {
 
     final var bpmnTaskId = PeaTaskMeta
         .text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID);
@@ -287,44 +298,17 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
     }
     return process
         .userTasksByTaskDefinition()
-        .get(plainTaskDefinitionOf(observation, bpmnProcessId));
+        .get(observation.taskDefinition());
 
   }
 
-  private String taskDefinitionOf(
+  private static String taskDefinitionOf(
       final PeaUserTaskObservation observation,
-      final String bpmnProcessId,
       final UserTaskElement element) {
 
     return element == null
-        ? plainTaskDefinitionOf(observation, bpmnProcessId)
+        ? observation.taskDefinition()
         : element.taskDefinition();
-
-  }
-
-  /**
-   * The identifiers an engine reports are the ones the workflow module was deployed with, which
-   * under <code>use-prefix</code> are not the ones the application wrote. Translating them back
-   * is the adapter's rule, so it is asked of VanillaBP's own helper - see decision 1 in the
-   * repository's DECISIONS.md.
-   */
-  private String plainProcessIdOf(
-      final PeaUserTaskObservation observation) {
-
-    return scoping
-        .plainProcessId(
-            observation.workflowModuleId(), observation.bpmnProcessId(), observation.adapterId());
-
-  }
-
-  private String plainTaskDefinitionOf(
-      final PeaUserTaskObservation observation,
-      final String bpmnProcessId) {
-
-    return scoping
-        .plainTaskDefinition(
-            observation.workflowModuleId(), bpmnProcessId, observation.taskDefinition(), observation
-                .adapterId());
 
   }
 
