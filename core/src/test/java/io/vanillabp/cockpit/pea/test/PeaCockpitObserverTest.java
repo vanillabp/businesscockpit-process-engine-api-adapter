@@ -1,6 +1,8 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -138,6 +140,13 @@ public class PeaCockpitObserverTest {
 
   }
 
+  /**
+   * A repeated delivery is what the cockpit shows as a change of a task, and it is asserted here
+   * rather than through a booted application: the in-memory engine the adapter ships delivers a
+   * task without a reason and with a meta map of one entry, so it cannot say that a task was
+   * assigned or updated. Prompt 230 WP2 carries that change to the mock; until then the
+   * end-to-end tests assert that a repeated delivery reaches the cockpit at all.
+   */
   @Test
   @DisplayName("A task delivered again because it changed is reported as an update")
   public void aRedeliveredUserTaskIsAnUpdate() {
@@ -329,6 +338,80 @@ public class PeaCockpitObserverTest {
     assertEquals(
         "Approve it, please",
         deliveredUserTasks.of("task-1").orElseThrow().details().bpmnTaskName());
+
+  }
+
+  @Test
+  @DisplayName("A workflow the engine does not identify is reported under the aggregate it belongs to")
+  public void aWorkflowWithoutAnIdentityIsReportedUnderItsAggregate() {
+
+    observer
+        .userTaskDelivered(
+            new PeaUserTaskObservation(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+                    "task-1", Map.of()), Map.of()));
+
+    assertEquals("4711", publisher.userTasks().getFirst().workflowId());
+    assertEquals("4711", publisher.workflows().getFirst().workflowId());
+
+  }
+
+  @Test
+  @DisplayName("A business case whose report was refused is reported again with the next task of it")
+  public void aWorkflowIsReportedAgainWhenItsReportWasRefused() {
+
+    publisher.refuseWorkflowEvents();
+    assertThrows(
+        IllegalStateException.class,
+        () -> observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of())));
+    publisher.takeEventsAgain();
+
+    observer.userTaskDelivered(delivery("task-2", TaskInformation.CREATE, Map.of()));
+
+    assertEquals(
+        List.of(WorkflowEventKind.CREATED),
+        publisher.workflowKinds(),
+        "the case was noted as reported only after the report was written, so the next task of it reported it");
+
+  }
+
+  @Test
+  @DisplayName("A task whose end could not be reported is still open, so a second end reports it")
+  public void aTerminationIsReportedAgainWhenItsReportWasRefused() {
+
+    observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
+    publisher.userTaskKinds().clear();
+    publisher.refuseUserTaskEvents();
+
+    assertThrows(
+        IllegalStateException.class, () -> aTerminatedUserTask("task-1", TaskInformation.COMPLETE));
+
+    assertEquals(
+        List.of("task-1"),
+        deliveredUserTasks
+            .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .stream()
+            .map(task -> task.reference().userTaskId())
+            .toList(),
+        "a report which was never written leaves the task as it was, one of its case's open tasks");
+
+    publisher.takeEventsAgain();
+    aTerminatedUserTask("task-1", TaskInformation.COMPLETE);
+
+    assertEquals(List.of(UserTaskEventKind.COMPLETED), publisher.userTaskKinds());
+
+  }
+
+  @Test
+  @DisplayName("A due date which is not a timestamp costs the date and not the task")
+  public void anUnreadableDateIsDropped() {
+
+    observer
+        .userTaskDelivered(
+            delivery("task-1", TaskInformation.CREATE, Map.of(PeaTaskMeta.DUE_DATE, "tomorrow")));
+
+    assertEquals(1, publisher.userTasks().size());
+    assertNull(deliveredUserTasks.of("task-1").orElseThrow().details().dueDate());
 
   }
 

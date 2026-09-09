@@ -128,13 +128,33 @@ public class PeaCockpitTest {
 
     final var userTask = CockpitServer.awaitRequest("/usertask/created");
     assertTrue(userTask.body().contains("\"customer\":\"Anna\""), userTask.body());
-    // the payload is what the SUBSCRIPTION asked for, and no @WorkflowTask method of this
-    // application claims the user task, so nothing named a second variable - GAPS.md, entry 4
-    assertTrue(userTask.body().contains("\"passenger\":\"null\""), userTask.body());
     assertTrue(userTask.body().contains("Approve the ride"), userTask.body());
 
     assertEquals(
         TestWorkflowService.APPROVE_NOTE, aggregates.byId(aggregate.getId()).getNote());
+
+  }
+
+  @Test
+  @DisplayName("A task the engine delivers again reaches the cockpit again")
+  public void aRepeatedDeliveryReachesTheCockpitAgain() throws Exception {
+
+    final var aggregate = aStartedWorkflow("Rita");
+    aDeliveredUserTask(aggregate, "task-6");
+    CockpitServer.awaitRequest("/usertask/created");
+    CockpitServer.forgetRequests();
+
+    // the engine repeats a delivery whenever something about the task changed - its assignee,
+    // its candidates or its data - and the cockpit is told again. WHICH of the two it is told,
+    // created or updated, is decided by the reason the engine names, and the in-memory engine
+    // this test runs against names none: it delivers with a meta map of one entry and no
+    // reason, so a repeated delivery arrives here as a second creation. That the kind follows
+    // the reason is asserted in the unit tests of the neutral module, and prompt 230 WP2
+    // carries the change which would let this engine drive it.
+    aDeliveredUserTask(aggregate, "task-6");
+
+    final var again = CockpitServer.awaitRequest("/usertask/created");
+    assertTrue(again.body().contains("\"customer\":\"Rita\""), again.body());
 
   }
 

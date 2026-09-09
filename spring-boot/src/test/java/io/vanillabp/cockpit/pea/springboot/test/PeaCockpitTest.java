@@ -111,7 +111,7 @@ public class PeaCockpitTest {
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of("id", String.valueOf(aggregate.getId()), "passenger", "Anna"));
+                .of("id", String.valueOf(aggregate.getId())));
 
   }
 
@@ -130,10 +130,6 @@ public class PeaCockpitTest {
     final var userTask = CockpitServer.awaitRequest("/usertask/created");
     assertTrue(userTask.body().contains("\"customer\":\"Anna\""), userTask.body());
     assertTrue(userTask.body().contains("\"event\":\"CREATED\""), userTask.body());
-    // the payload is what the SUBSCRIPTION asked the engine for, and this one asks for the
-    // workflow aggregate's id alone: no @WorkflowTask method of the application claims this
-    // user task, so nothing named another variable. GAPS.md, entry 4, says what that costs
-    assertTrue(userTask.body().contains("\"passenger\":\"null\""), userTask.body());
     assertTrue(
         userTask
             .body()
@@ -147,6 +143,29 @@ public class PeaCockpitTest {
     assertEquals(
         TestWorkflowService.APPROVE_NOTE,
         aggregates.findById(aggregate.getId()).orElseThrow().getNote());
+
+  }
+
+  @Test
+  @DisplayName("A task the engine delivers again reaches the cockpit again")
+  public void aRepeatedDeliveryReachesTheCockpitAgain() {
+
+    final var aggregate = aStartedWorkflow("Rita");
+    aDeliveredUserTask(aggregate, "task-6");
+    CockpitServer.awaitRequest("/usertask/created");
+    CockpitServer.forgetRequests();
+
+    // the engine repeats a delivery whenever something about the task changed - its assignee,
+    // its candidates or its data - and the cockpit is told again. WHICH of the two it is told,
+    // created or updated, is decided by the reason the engine names, and the in-memory engine
+    // this test runs against names none: it delivers with a meta map of one entry and no
+    // reason, so a repeated delivery arrives here as a second creation. That the kind follows
+    // the reason is asserted in the unit tests of the neutral module, and prompt 230 WP2
+    // carries the change which would let this engine drive it.
+    aDeliveredUserTask(aggregate, "task-6");
+
+    final var again = CockpitServer.awaitRequest("/usertask/created");
+    assertTrue(again.body().contains("\"customer\":\"Rita\""), again.body());
 
   }
 

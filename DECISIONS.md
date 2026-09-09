@@ -10,19 +10,18 @@ THIS repository only. A decision which the platform shares has its own entry in
 entry in `business-cockpit`; a pointer into another repository is the fragile kind this log exists
 to avoid.
 
-## 1. An engine's identifiers are translated back through VanillaBP's name-clash avoidance - done by the adapter since decision 7
+## 1. An engine's identifiers are translated back through VanillaBP's name-clash avoidance - who does it superseded by decision 7
 
 A workflow module deployed with `use-prefix` runs under identifiers the application never wrote:
 the BPMN process id and the external form reference carry the module's prefix, because the
 adapter rewrote the file before deploying it. A user task the engine delivers therefore arrives
 under the prefixed names, and the cockpit reports the plain ones.
 
-Getting from one to the other is not a string operation, and it is no longer this extension's to
-do: the adapter translates both back through VanillaBP's name-clash avoidance before it builds an
-observation, so what arrives here is already plain, and the adapter holds itself to that. The rule
-has not changed, only its owner. Cutting a known prefix off a string would work until whoever
-builds one changes how, and it would mis-attribute a process id which happens to contain the
-separator.
+Getting from one to the other is not a string operation. The extension asks VanillaBP's own
+name-clash avoidance, the same object the adapter builds its prefixes with, and it asks it for
+every delivery whichever mode the module uses - the helper returns its input unchanged where
+nothing is prefixed. Cutting a known prefix off a string would work until the adapter changes how
+it builds one, and it would mis-attribute a process id which happens to contain the separator.
 
 The BPMN element id of a user task is the one identifier which is never rewritten, which is why
 the extension prefers it wherever the engine reports it.
@@ -56,7 +55,7 @@ delivered to one node is unknown to the others. `vanillabp.cockpit.process-engin
 sizes the map, and the repository's `GAPS.md` says what the Process-Engine-API would have to
 offer for this to become unnecessary.
 
-## 4. A user task which is gone is reported as completed unless the engine says it was withdrawn
+## 4. A user task which is gone is reported as completed unless the engine says it was withdrawn - the missing reason answered by decision 7
 
 The Process-Engine-API tells a subscriber that a task it was given is gone, and the reason it
 names is the only thing distinguishing the two ways that happens. Its reference engine adapter for
@@ -66,13 +65,13 @@ disappeared from the engine some other way - a cancelled process, or somebody fi
 task list.
 
 So `delete` is reported as cancelled and everything else as completed, including a termination
-which names no reason at all. The reason does arrive now - the adapter registers the
-`TaskTerminationHandler` overload which carries the engine's `TaskInformation` - and a termination
-without one is what an engine of an older Process-Engine-API version sends. Completed is the
+which names no reason at all. A termination without a reason is what an engine of an older
+Process-Engine-API version sends and, today, what every engine sends: the VanillaBP adapter
+registers the callback taking only a task id, so the reason never arrives here. Completed is the
 better guess for that case: a task the cockpit shows as cancelled reads as work somebody stopped,
 and most tasks are finished rather than withdrawn.
 
-## 5. The extension does not subscribe for user tasks itself - it is called by the adapter, which is the answer this entry waited for
+## 5. The extension does not subscribe for user tasks itself - superseded by decision 7
 
 The Process-Engine-API hands a delivered task to exactly one subscription: the engine picks the
 first subscription matching a task and remembers it as the one active for that task. An extension
@@ -81,14 +80,12 @@ away from the workflow application, decided by the order the two subscriptions h
 registered in. `PeaSubscriptionProbeTest` holds that against the in-memory engine the adapter
 ships, and the API's own reference engine adapter does the same thing.
 
-So the seam is the adapter's, and it exists: `io.vanillabp.pea.observation.PeaUserTaskObserver`,
-called from the adapter's own user-task subscription for every delivery and every termination.
-This extension contributes a bean of it on both platforms and the adapter finds it by its type.
-
-The port this extension carried while the seam was missing is gone with it, and so is the startup
-message which asked an application to feed it: an application calling the adapter's seam is told
-about every delivery, while one calling a port of the cockpit was only ever told what it noticed
-itself.
+The extension therefore offers a port, `PeaUserTaskObserver`, and waits for the Process-Engine-API
+adapter to compose the cockpit's handler into the subscriptions it already opens. Until it does,
+an application which observes user tasks itself can call the port, the tests of this repository
+drive it the way the adapter would, and the startup says so rather than leaving somebody with an
+empty cockpit and no explanation. The seam is described in this repository's `GAPS.md` and belongs
+to `vanillabp/process-engine-api-adapter`.
 
 ## 6. A business case appears with its first user task, under the aggregate where nothing else identifies it
 
@@ -107,7 +104,7 @@ cockpit server as a case per event. What this costs - a workflow without user ta
 appears, and no case is ever reported as completed - is written down in the repository's
 `GAPS.md`.
 
-## 7. What the adapter says about a delivery is taken as said
+## 7. What the adapter says about a delivery is taken as said, and it is the adapter which says it
 
 The Process-Engine-API adapter resolves six things while it routes a user task to a subscription:
 which of its engines delivered it, which workflow module and BPMN process it belongs to, which
@@ -125,3 +122,11 @@ The name a modeller wrote on a user task is the same kind of answer: `ExtensionH
 `#bpmnTaskNameOf` gives what the adapter read out of the model it deployed. The Process-Engine-API
 adapter does not fill it yet, so this extension's own pass over the same bytes still answers where
 VanillaBP has nothing - the pass exists anyway for the process name, which no adapter hands over.
+
+This entry replaces three earlier ones, which is why they keep their text and say so in their
+headings. Decision 1 wrote the translation of an engine's prefixed identifiers here; the adapter
+does it before it builds an observation. Decision 4 said no reason ever reaches this extension; the
+adapter registers the `TaskTerminationHandler` overload which carries it, and what is left open is
+what the API means by "finished". Decision 5 described a port this extension offered while the
+adapter had no seam; the seam exists, so the port and the startup message asking an application to
+feed it are gone.
