@@ -15,47 +15,68 @@ saw, and hands the result to the cockpit server.
 
 ## Status
 
-There is no implementation here yet. The repository was created ahead of the work so that the
-build and the pipelines are settled before the first line of code is written, and
-what it contains today is that skeleton and nothing else.
+The extension is here, on both platforms, and it works as far as the Process-Engine-API lets it.
+It registers a workflow module at the cockpit server, it turns a delivered user task into the
+report the cockpit shows, it enriches that report with what the application's
+`@UserTaskDetailsProvider` returns, and it answers what `BusinessCockpitService` reads back.
+
+What hands it a delivered user task is the VanillaBP Process-Engine-API adapter. That API gives a
+task to exactly one subscription, so this extension must not subscribe next to the adapter - it
+would take the task away from the workflow application - and the adapter therefore calls
+`io.vanillabp.pea.observation.PeaUserTaskObserver` from its own subscription. This repository
+contributes a bean of it on both platforms, and the adapter finds it by its type.
 
 This adapter has no Version 1 predecessor. The Business Cockpit supported Camunda 7 and Camunda 8
 in Version 1, and the Process-Engine-API integration is new with Version 2, so there is nothing to
-port and nothing here is carried over. It also has no story of its own yet: the extension work
-currently planned covers Camunda 7 and Camunda 8, and this repository is prepared so that the
-Process-Engine-API can follow the same shape when it is scheduled.
+port and no configuration key to translate.
 
-It builds on the extension SPI of `adapter-platform-integration`, on the VanillaBP
-Process-Engine-API adapter, and on the cockpit's `extensions-commons` module. The last of those
-does not exist yet, so no module here could hold a class that compiles.
+## What is here
 
-## What is here today
+The module layout every VanillaBP adapter repository uses:
 
-The parent POM, which builds green and publishes itself as a snapshot, the three GitHub Actions
-workflows, the formatting rules every VanillaBP repository shares, and the license
-and notice files. The POM already manages the versions of everything the extension will depend on,
-so adding the first module is adding a module rather than assembling a build.
+- `core` - everything which needs neither Spring nor Quarkus. The wiring service which joins
+  VanillaBP's deployment pipeline and remembers what was deployed, the observer which turns a
+  delivered user task into a cockpit event, the memory of what a delivery said, and the bridge
+  which answers what the cockpit reads about a task or a business case.
+- `spring-boot` and `quarkus/runtime` plus `quarkus/deployment` - the glue which registers those
+  beans with each platform, and one bridge per configured `process-engine-api` adapter id.
+- `test-coverage-report` - the per-platform coverage measurement and the gate which breaks the
+  build below it.
 
-Deliberately absent, and not as an empty placeholder:
-
-- The `core`, `spring-boot`, `quarkus/runtime` and `quarkus/deployment` modules. Every class each of
-  them would hold needs the cockpit's `extensions-commons` artifact, so an empty module would only
-  publish an empty jar under coordinates somebody might resolve.
-- The `test-coverage-report` module with its coverage gate. It measures modules, and there are
-  none.
-- A `DECISIONS.md` with decisions in it. The log exists and explains its own rules, and it stays
-  empty until code points at an entry.
-
-## What arrives with the extension
-
-The module layout is the one every VanillaBP adapter repository uses: `core` for everything that
-needs neither Spring nor Quarkus, `spring-boot` and `quarkus/runtime` plus `quarkus/deployment` for
-the glue that registers the extension with each platform, and `test-coverage-report` for the
-per-platform coverage measurement. The artifacts keep the repository name as their prefix, so
+The artifacts keep the repository name as their prefix, so
 `businesscockpit-process-engine-api-adapter` is the core and
 `businesscockpit-process-engine-api-adapter-spring-boot` is what a Spring Boot application depends
 on. The prefix is what keeps a jar of this repository apart from the jar of the VanillaBP
 Process-Engine-API adapter it plugs into.
+
+[`DECISIONS.md`](./DECISIONS.md) holds the decisions the code points at, and
+[`GAPS.md`](./GAPS.md) the questions the cockpit asks a workflow engine which this one cannot
+answer yet. The wiki says the same in the words of somebody using the cockpit.
+
+## How the probe shaped the design
+
+The first question was whether this extension can watch user tasks at all, and it was answered
+before anything was designed. Two ways were open: subscribing for the same task definitions the
+VanillaBP adapter subscribes for, or a seam in that adapter.
+
+The first one does not work, and `PeaSubscriptionProbeTest` in `core` is that answer as a test: a
+task the engine delivers reaches one subscription, so a second subscriber sees nothing - or takes
+the task, depending on which of the two was registered first. The Process-Engine-API's own
+reference adapter for an embedded Camunda 7 picks the first matching subscription and records it
+as the active one for that task, which makes this a property of the API rather than of the
+in-memory engine the test uses.
+
+So the design is the second way, and the seam exists:
+`io.vanillabp.pea.observation.PeaUserTaskObserver` in the VanillaBP Process-Engine-API adapter,
+called from the subscription the adapter already opens. Everything behind it - the memory of a
+delivery, the event kinds, the reads the cockpit does - is implemented and tested through
+`PeaCockpitObserver`, which implements that interface.
+
+While the seam was missing this repository carried a port of the same shape and asked an
+application to call it. Both are gone: the adapter is told about every delivery, while an
+application calling a port of the cockpit only ever passed on what it noticed itself. The
+identifiers arrive plain, too - the adapter translates what an engine reports back through
+name-clash avoidance before it builds an observation.
 
 ## Building
 
@@ -70,11 +91,11 @@ Cockpit.
 ## What CI runs
 
 `build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
-snapshot when a branch is pushed. Both run under one concurrency group, queued and never
-cancelled, because the snapshot artifacts share their coordinates: two runs publishing at the same
-time would overwrite each other, and whoever finished last would decide what the other repositories
-compile against. `release.yaml` is started by hand and publishes to Maven Central from a release
-branch.
+snapshot, and only for a push to `main`: the snapshot coordinates are shared, so what the other
+repositories compile against has to be what `main` holds rather than whichever branch was pushed
+last. Both run under one concurrency group, queued and never cancelled, for the same reason - two
+runs publishing at the same time would overwrite each other. `release.yaml` is started by hand and
+publishes to Maven Central from a release branch.
 
 ## Noteworthy & Contributors
 

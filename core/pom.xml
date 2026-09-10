@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.vanillabp.businesscockpit</groupId>
+    <artifactId>businesscockpit-process-engine-api-adapter-parent</artifactId>
+    <version>0.9.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>businesscockpit-process-engine-api-adapter</artifactId>
+  <name>VanillaBP Business Cockpit adapter for the Process-Engine-API - Core</name>
+  <description>Everything the Business Cockpit extension does with the Process-Engine-API and without knowing a platform: the observer turning a delivered user task into a cockpit event, the record of the tasks a node has seen, and the bridge answering what the cockpit reads about a task or a workflow.</description>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>VanillaBP</id>
+      <organization>Phactum Softwareentwicklung GmbH</organization>
+      <organizationUrl>https://www.phactum.at</organizationUrl>
+    </developer>
+  </developers>
+
+  <!-- No platform integration is a dependency here, deliberately: this module compiles
+       against the extension SPI, the platform-neutral half of the cockpit extension, the
+       CORE artifact of the VanillaBP Process-Engine-API adapter and the Process-Engine-API
+       itself, and against nothing which exists only on Spring Boot or only on Quarkus. -->
+
+  <dependencies>
+    <dependency>
+      <groupId>io.vanillabp.businesscockpit</groupId>
+      <artifactId>extensions-commons</artifactId>
+    </dependency>
+    <dependency>
+      <!-- names the processing context this extension is wired with, and keeps the record of
+        what was deployed which this module reads the BPMN of. It brings the Process-Engine-API
+        and the VanillaBP SPI artifacts along. -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>process-engine-api-adapter</artifactId>
+    </dependency>
+    <dependency>
+      <!-- the task information an engine delivers; it arrives transitively as well, and is
+        declared because this module reads it -->
+      <groupId>dev.bpm-crafters.process-engine-api</groupId>
+      <artifactId>process-engine-api</artifactId>
+    </dependency>
+    <dependency>
+      <!-- arrives transitively as well; declared because this module implements it -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>vanillabp-extension-spi</artifactId>
+    </dependency>
+    <dependency>
+      <!-- the adapter SPI, for the name-clash avoidance an adapter is handed: this module asks
+        it what a workflow module's engine calls a process rather than cutting a prefix off a
+        string -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>vanillabp-adapter-spi</artifactId>
+    </dependency>
+    <dependency>
+      <!-- VanillaBP's resolved configuration: this module reads its own setting out of the two
+        locations the core reserves for an extension, and validates it there rather than in each
+        platform module -->
+      <groupId>io.vanillabp.adapter</groupId>
+      <artifactId>migration-adapter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- brings the output suppression every VanillaBP test class registers -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>test-utils</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- the in-memory engine of the adapter: what the Process-Engine-API delivers to whom is
+        a claim about an engine, and a test which asserts it needs one -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>process-engine-api-mock</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
