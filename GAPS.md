@@ -208,10 +208,11 @@ after the transaction the event was observed in committed.
 dispatch from what the delivery said, in memory.
 
 **What it costs:** a node which restarts between the delivery and the dispatch of the entry
-reports the user task without its details - the report is dropped and the log says so - and the
-cockpit then misses that task until the engine delivers it again. The same holds for a report
-whose entry is dispatched on another node, and for a task which so many newer ones have pushed
-out of the memory that nothing is left of it. Sizing the memory
+cannot say what the task looked like. A report of a creation or a change is dropped then and the
+log says so, so the cockpit misses that task until the engine delivers it again. An end is still
+reported, because a report about the end of a task carries no details of its own. The same holds
+for a report whose entry is dispatched on another node, and for a task which so many newer ones
+have pushed out of the memory that nothing is left of it. Sizing the memory
 (`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change
 that, it only decides how many tasks a node holds at once.
 
