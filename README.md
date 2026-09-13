@@ -93,9 +93,11 @@ Cockpit.
 `build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
 snapshot, and only for a push to `main`: the snapshot coordinates are shared, so what the other
 repositories compile against has to be what `main` holds rather than whichever branch was pushed
-last. Both run under one concurrency group, queued and never cancelled, for the same reason - two
+last. The build runs in a group per pull request and the publish in a group of its own, so a
+publish never waits for a build, and a publish which is already running is never cancelled - two
 runs publishing at the same time would overwrite each other. `release.yaml` is started by hand and
-publishes to Maven Central from a release branch.
+publishes to Maven Central from a release branch. It deploys no snapshot, so it can run beside a
+publish.
 
 ## Noteworthy & Contributors
 
