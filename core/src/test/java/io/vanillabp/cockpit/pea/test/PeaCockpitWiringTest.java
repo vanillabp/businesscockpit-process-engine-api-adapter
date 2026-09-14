@@ -21,7 +21,7 @@ import io.vanillabp.pea.PeaProcessingContext;
 public class PeaCockpitWiringTest {
 
   @Test
-  @DisplayName("The extension joins a Process-Engine-API deployment and runs last")
+  @DisplayName("The extension joins a Process-Engine-API deployment and carries the cockpit's order")
   public void theExtensionJoinsAProcessEngineApiDeployment() {
 
     final var wiring = new PeaCockpitWiring(TestModels.deployed());
