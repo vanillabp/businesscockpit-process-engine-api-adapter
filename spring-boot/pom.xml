@@ -87,6 +87,13 @@
       <artifactId>test-utils</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <!-- the cockpit server the tests report to, shared with the other extension
+        repositories so that all of them assert the same way -->
+      <groupId>io.vanillabp.businesscockpit</groupId>
+      <artifactId>extensions-commons-test-support</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

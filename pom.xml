@@ -121,6 +121,13 @@
         <version>${business-cockpit.version}</version>
       </dependency>
       <dependency>
+        <!-- the cockpit server every extension repository's tests report to, published
+             because a test classpath cannot read another repository's test classes -->
+        <groupId>io.vanillabp.businesscockpit</groupId>
+        <artifactId>extensions-commons-test-support</artifactId>
+        <version>${business-cockpit.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.vanillabp</groupId>
         <artifactId>process-engine-api-adapter</artifactId>
         <version>${process-engine-api-adapter.version}</version>

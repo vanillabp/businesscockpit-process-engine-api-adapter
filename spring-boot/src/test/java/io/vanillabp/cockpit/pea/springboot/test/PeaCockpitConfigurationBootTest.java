@@ -12,6 +12,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 
 import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
+import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
