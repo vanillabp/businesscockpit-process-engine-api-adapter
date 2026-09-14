@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
+import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
@@ -48,10 +49,7 @@ public class PeaCockpitTest {
                   "workflow-module-descriptor/workflow-module", "META-INF/workflow-module")
               .addClass(TestAggregate.class)
               .addClass(TestAggregatePersistence.class)
-              .addClass(TestWorkflowService.class)
-              // the test class runs in the application's class loader, so the server it asks
-              // about what arrived has to be reachable from there as well
-              .addClass(CockpitServer.class))
+              .addClass(TestWorkflowService.class))
       .overrideRuntimeConfigKey(
           "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl());
 

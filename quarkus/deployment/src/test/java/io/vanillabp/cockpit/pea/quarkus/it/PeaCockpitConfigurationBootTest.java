@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
+import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
@@ -32,8 +33,7 @@ public class PeaCockpitConfigurationBootTest {
                   "workflow-module-descriptor/workflow-module", "META-INF/workflow-module")
               .addClass(TestAggregate.class)
               .addClass(TestAggregatePersistence.class)
-              .addClass(TestWorkflowService.class)
-              .addClass(CockpitServer.class))
+              .addClass(TestWorkflowService.class))
       .overrideRuntimeConfigKey(
           "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl())
       .overrideRuntimeConfigKey(

@@ -10,9 +10,9 @@ import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
-import io.vanillabp.cockpit.pea.PeaWorkflowModels;
 import io.vanillabp.integration.adapter.AdapterBeanRegistrarSupport;
 import io.vanillabp.pea.PeaAdapter;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
  * Registers one Business Cockpit bridge per configured Process-Engine-API adapter id.
@@ -49,7 +49,7 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
                     spec -> spec
                         .supplier(
                             supplierContext -> new PeaCockpitBridge(
-                                adapterId, supplierContext.bean(PeaWorkflowModels.class), supplierContext
+                                adapterId, supplierContext.bean(PeaDeployedProcessesRegistry.class), supplierContext
                                     .bean(PeaDeliveredUserTasks.class), supplierContext
                                         .bean(PeaProcessVersions.class), PeaCockpitSettings
                                             .rememberedUserTasks(

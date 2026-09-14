@@ -72,11 +72,11 @@ the reference C7 adapter fills `assignee`, `candidateUsers`, `candidateGroups`, 
 next to the `CommonRestrictions` keys (`TaskInformationExtensions.kt`), and `TaskInformation`
 even offers `getMetaValueAsOffsetDate` and `getMetaValueAsStringSet` for reading exactly those.
 
-**What it costs:** this extension reads that same set
-(`businesscockpit-process-engine-api-adapter/core/src/main/java/io/vanillabp/cockpit/pea/PeaTaskMeta.java`)
-and shows one detail less
-per key an engine leaves out. On an engine which fills none of them, a cockpit user sees a task
-with a name from the BPMN and nothing else.
+**What it costs:** this extension reads that same set, under the names the VanillaBP adapter
+writes
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/wiring/PeaTaskMeta.java`), and
+shows one detail less per key an engine leaves out. On an engine which fills none of them, a
+cockpit user sees a task with a name from the BPMN and nothing else.
 
 **What would close it:** the same list of keys in `TaskInformation`'s companion, as constants
 next to `REASON` and `RETRIES`, so that an engine adapter fills what a task list needs by
@@ -89,8 +89,8 @@ contract rather than by imitation.
 
 **The API offers** `SubscribeForTaskCmd.payloadDescription`, which the VanillaBP adapter fills
 from what the application's `@WorkflowTask` methods need
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:191`,
-called at `:806`). The cockpit's own annotations are not part of that derivation, and a second
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:306`,
+called at `:1223`). The cockpit's own annotations are not part of that derivation, and a second
 subscription cannot ask for more (entry 1).
 
 **What it costs:** a `@TaskParam` of a details provider receives `null` unless the same variable
@@ -127,9 +127,9 @@ list of a cockpit is a list of cases, not of tasks.
 
 **The API offers** nothing about a process instance: no start or end notification, no instance
 query, no history. The VanillaBP adapter answers `WorkflowAwareness.ACTIVE` unconditionally
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/processservice/PeaProcessService.java:726`),
-reports `canLocateWorkflows()` as `false` (`:743`) and serves a workflow history without any
-elements (`:337`).
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/processservice/PeaProcessService.java:810`),
+reports `canLocateWorkflows()` as `false` (`:827`) and serves a workflow history without any
+elements (`:383`).
 
 **What it costs:** this extension reports a case CREATED with the first user task delivered for it
 (decision 6 in `DECISIONS.md`). A workflow without user tasks never appears in the cockpit at all,
@@ -154,6 +154,14 @@ it in memory too.
 saw - after a restart, or on the node which did not get the delivery - is not reported to the
 cockpit, and the log says so once per case. `getUserTask` answers empty in the same situation.
 
+VanillaBP itself knows a little more. The platform's task delivery log answers
+`TaskDeliveryLog#openTasksOfAggregate` with the deliveries of a business case which are still
+open, and it answers after a restart and on any node, because it reads a table of the
+application's own database. That is not the query this entry asks for. The log holds deliveries,
+so it names a user task only where a `@WorkflowTask` method of the application ran for it, and a
+task nobody wrote a method for never got recorded. What it holds about one is the delivery, not
+the identifiers the cockpit addresses a task by.
+
 **What would close it:** a query for user tasks by a restriction the API already knows
 (`businessKey`, `processInstanceId`), which is the cheapest read a task list needs anyway.
 
@@ -167,8 +175,8 @@ shows a form for.
 engine ("may refer to BPMN 2.0 attribute `implementation` or `operation[@implementationRef]` or
 any engine-specific attribute"; a task's `id` as a fallback). The VanillaBP adapter subscribes
 user tasks by the `zeebe:formDefinition` external reference
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:819-821`,
-read out of the BPMN at `:433-434`), while the reference C7 adapter matches a subscription against
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:1238-1239`,
+read out of the BPMN at `:601-605`), while the reference C7 adapter matches a subscription against
 `task.taskDefinitionKey` - the BPMN element id - or the task id.
 
 **What it costs:** on an engine which matches by element id, the adapter's user-task subscriptions
@@ -207,12 +215,18 @@ after the transaction the event was observed in committed.
 **The API offers** nothing to read it from (entries 6 and 7), so this extension answers the
 dispatch from what the delivery said, in memory.
 
-**What it costs:** a node which restarts between the delivery and the dispatch of the entry
-cannot say what the task looked like. A report of a creation or a change is dropped then and the
-log says so, so the cockpit misses that task until the engine delivers it again. An end is still
-reported, because a report about the end of a task carries no details of its own. The same holds
-for a report whose entry is dispatched on another node, and for a task which so many newer ones
-have pushed out of the memory that nothing is left of it. Sizing the memory
+**What it costs:** what a restart takes is what the task SHOWS, not that it exists. The outbox
+entry is a row in the application's database and survives it, and so does the platform's record
+of the delivery (entry 7). What is gone is everything the delivery said about the task: its name,
+who it is assigned to, who may claim it, its dates and its variables. That lived in the memory of
+the node the engine delivered to and nowhere else.
+
+A node which restarts in between therefore cannot say what the task looked like. A report of a
+creation or a change is dropped then and the log says so, so the cockpit misses that task until
+the engine delivers it again. An end is still reported, because a report about the end of a task
+carries no details of its own. The same holds for a report whose entry is dispatched on another
+node, and for a task which so many newer ones have pushed out of the memory that nothing is left
+of it. Sizing the memory
 (`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change
 that, it only decides how many tasks a node holds at once.
 

@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
+import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;

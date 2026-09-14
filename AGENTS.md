@@ -8,10 +8,13 @@ work and why, and how to build.
 
 ## This is an extension, not a BPMS adapter
 
-An extension joins the deployment pipeline of the VanillaBP core and implements
-`ExtensionWiringService` from `io.vanillabp:vanillabp-extension-spi`. The adapter SPI is what a
-BPMS adapter implements, and it has no business in this repository. The pipeline both of them run
-in, and the order they run in, is described once for everybody in
+An extension is a set of beans the VanillaBP core collects by their type, contributed by a
+dependency which is neither the application nor a BPMS adapter. An extension which needs a say
+while a workflow module is deployed takes one by implementing `ExtensionWiringService` from
+`io.vanillabp:vanillabp-extension-spi`; this one needs none, because the Process-Engine-API
+adapter keeps a record of what it deployed and this extension reads that record. The adapter SPI
+is what a BPMS adapter implements, and it has no business in this repository. The pipeline a BPMS
+adapter and an extension run in, and the order they run in, is described once for everybody in
 [`ADAPTER-AUTHORS.md`](https://github.com/vanillabp/adapter-platform-integration/blob/main/migration-adapter/ADAPTER-AUTHORS.md)
 of the platform repository.
 
@@ -27,8 +30,9 @@ word fits depends on where you stand.
 
 Somebody using the Business Cockpit adds one dependency and sees their user tasks in the cockpit.
 From there this is a cockpit adapter, sitting next to the BPMS adapter which runs their workflows.
-The VanillaBP core sees something else: a bean which joins its deployment pipeline through
-`vanillabp-extension-spi`, and a bean like that is what the core calls an extension.
+The VanillaBP core sees something else: beans of a dependency which is neither the application
+nor a BPMS adapter, collected by their type, and beans like that are what the core calls an
+extension.
 
 So the end-user documentation says adapter and never extension. The documentation in this repository
 says extension where the core's own term is meant, and adapter where it is about what a user adds to
