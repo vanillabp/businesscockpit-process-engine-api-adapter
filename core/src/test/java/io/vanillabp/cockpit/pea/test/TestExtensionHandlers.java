@@ -1,7 +1,6 @@
 package io.vanillabp.cockpit.pea.test;
 
 import java.lang.annotation.Annotation;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,7 +53,7 @@ public class TestExtensionHandlers implements ExtensionHandlers {
       final Class<? extends Annotation> annotationType,
       final String workflowModuleId,
       final String bpmnProcessId,
-      final Collection<String> lookupKeys) {
+      final List<String> lookupKeys) {
 
     return false;
 
