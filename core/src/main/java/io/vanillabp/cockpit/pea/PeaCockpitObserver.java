@@ -21,6 +21,7 @@ import io.vanillabp.pea.deployment.PeaDeployedProcesses.DeployedProcess;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.observation.PeaUserTaskObserver;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
  * What a delivered user task means to the Business Cockpit.
@@ -40,6 +41,11 @@ import io.vanillabp.pea.observation.PeaUserTaskObserver;
  * delivery whose BPMN process cannot be told is passed over with a line naming the task, and a
  * termination names no process at all, which costs nothing because what a terminated task was is
  * remembered from its delivery.
+ * <p>
+ * What a delivery says beyond those identifiers is read under the key names the adapter itself
+ * writes ({@link PeaTaskMeta}). The Process-Engine-API defines no vocabulary for the meta map of
+ * a delivered task, so one spelling on both sides is what keeps the cockpit from showing a detail
+ * as missing which the engine did fill.
  */
 public class PeaCockpitObserver implements PeaUserTaskObserver {
 

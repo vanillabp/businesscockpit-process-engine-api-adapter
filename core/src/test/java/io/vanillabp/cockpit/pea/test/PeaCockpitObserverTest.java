@@ -21,10 +21,10 @@ import io.vanillabp.cockpit.extension.spi.UserTaskEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
-import io.vanillabp.cockpit.pea.PeaTaskMeta;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
  * What a delivered user task turns into, and what it does not turn into.
