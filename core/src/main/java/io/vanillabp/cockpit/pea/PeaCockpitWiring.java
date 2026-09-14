@@ -18,8 +18,10 @@ import io.vanillabp.pea.PeaProcessingContext;
  * than through anything written into the BPMN, so there is nothing for the cockpit to add to a
  * file its author wrote.
  * <p>
- * The order is the Business Cockpit's own, the last one, so whatever an adapter or another
- * extension does to a model has happened by the time this runs.
+ * The order is the Business Cockpit's own, and {@link BusinessCockpitWiringService#ORDER} says
+ * what that number means. The models this class keeps are models the Process-Engine-API
+ * adapter has already wired, and that comes from the pipeline calling the adapter before
+ * any extension rather than from the number.
  */
 public class PeaCockpitWiring implements ExtensionWiringService<PeaBpmnModel, PeaProcessingContext> {
 
