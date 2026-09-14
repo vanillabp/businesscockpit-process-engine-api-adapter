@@ -104,7 +104,7 @@ cockpit server as a case per event. What this costs - a workflow without user ta
 appears, and no case is ever reported as completed - is written down in the repository's
 `GAPS.md`.
 
-## 7. What the adapter says about a delivery is taken as said, and it is the adapter which says it
+## 7. What the adapter says about a delivery is taken as said, and it is the adapter which says it - the BPMN names superseded by decision 8
 
 The Process-Engine-API adapter resolves six things while it routes a user task to a subscription:
 which of its engines delivered it, which workflow module and BPMN process it belongs to, which
@@ -130,3 +130,23 @@ adapter registers the `TaskTerminationHandler` overload which carries it, and wh
 what the API means by "finished". Decision 5 described a port this extension offered while the
 adapter had no seam; the seam exists, so the port and the startup message asking an application to
 feed it are gone.
+
+## 8. The names a modeller wrote are read out of what the adapter deployed, not out of the file a second time
+
+A process name and a user task name are answers of the same kind as the rest of a delivery: the
+adapter read them out of the model it deployed, so this extension asks rather than reading the
+file again. `PeaDeployedProcesses` answers both, a process by its name and a user task as a
+`BpmnTaskSpec` carrying the name beside its element id and its form reference.
+
+Decision 7 said the adapter did not fill the names yet, which is why this extension kept a pass
+of its own over the same bytes. It fills them now, so the pass is gone, and with it the reason
+it had to read plain identifiers out of a file while the engine knew scoped ones.
+
+Reading the file twice cost more than the work. The two passes could disagree about what a file
+holds, and a file this extension could not read left a workflow module running with its titles
+missing, a half state nobody could see from the outside. Now a file the adapter cannot read
+fails the deployment, which is where that belongs.
+
+With the pass this extension also gives up its place in VanillaBP's deployment pipeline in this
+repository. It registers no `ExtensionWiringService` any more; what it needs to know is recorded
+by the adapter while it deploys and read when a delivery or a cockpit question arrives.
