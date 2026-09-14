@@ -22,8 +22,8 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaTaskMeta;
-import io.vanillabp.cockpit.pea.PeaWorkflowModels;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
 
 /**
@@ -59,13 +59,13 @@ public class PeaCockpitObserverTest {
   }
 
   private PeaCockpitObserver observerOf(
-      final PeaWorkflowModels models) {
+      final PeaDeployedProcessesRegistry deployedProcesses) {
 
     return new PeaCockpitObserver(
-        models, deliveredUserTasks, (
+        deployedProcesses, deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7", () -> publisher);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
 
   }
 
@@ -116,12 +116,12 @@ public class PeaCockpitObserverTest {
         "the engine delivers on a thread of its own, so every entry gets a transaction of its own");
 
     final var details = deliveredUserTasks.of("task-1").orElseThrow().details();
-    assertEquals("A taxi ride", details.bpmnProcessName());
-    assertEquals("Approve the ride", details.bpmnTaskName());
+    assertEquals(TestModels.PROCESS_NAME, details.bpmnProcessName());
+    assertEquals(TestModels.USER_TASK_NAME, details.bpmnTaskName());
     assertEquals("james", details.assignee());
     assertEquals(List.of("drivers", "dispatch"), details.candidateGroups());
     assertEquals("2026-09-09T12:00Z", String.valueOf(details.dueDate()));
-    assertEquals("deployment-7", details.bpmnProcessVersion());
+    assertEquals(TestModels.DEPLOYMENT_KEY, details.bpmnProcessVersion());
     assertEquals("4711", details.businessId());
     assertEquals(Map.of("customer", "Bond"), details.variables());
 
@@ -324,20 +324,63 @@ public class PeaCockpitObserverTest {
   }
 
   @Test
-  @DisplayName("The name of a user task is the one VanillaBP read off the deployed model")
-  public void theTaskNameComesFromTheRegistry() {
+  @DisplayName("The name of a user task is the one the adapter read off the model it deployed")
+  public void theTaskNameComesFromTheDeployedModel() {
 
-    observer = observerOf(
-        TestModels
-            .deployed(
-                new TestExtensionHandlers(
-                    Map.of(TestModels.USER_TASK_ELEMENT, "Approve it, please"))));
+    observer = observerOf(TestModels.deployed(TestModels.model("Approve it, please")));
 
     observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
 
     assertEquals(
         "Approve it, please",
         deliveredUserTasks.of("task-1").orElseThrow().details().bpmnTaskName());
+
+  }
+
+  @Test
+  @DisplayName("A user task the engine names itself is shown under the engine's name")
+  public void theEngineOutranksTheDeployedModel() {
+
+    observer
+        .userTaskDelivered(
+            delivery(
+                "task-1", TaskInformation.CREATE, Map
+                    .of(PeaTaskMeta.TASK_NAME, "Approve the ride, renamed")));
+
+    assertEquals(
+        "Approve the ride, renamed",
+        deliveredUserTasks.of("task-1").orElseThrow().details().bpmnTaskName(),
+        "what the engine says a task is called is newer than what was deployed");
+
+  }
+
+  @Test
+  @DisplayName("A user task nobody named is reported without a name rather than without a task")
+  public void anUnnamedUserTaskIsStillReported() {
+
+    observer = observerOf(TestModels.deployed(TestModels.model(null)));
+
+    observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
+
+    assertEquals(1, publisher.userTasks().size());
+    assertNull(deliveredUserTasks.of("task-1").orElseThrow().details().bpmnTaskName());
+
+  }
+
+  @Test
+  @DisplayName("A task of an engine which deployed nothing is passed over")
+  public void aTaskOfAnotherEngineIsPassedOver() {
+
+    observer
+        .userTaskDelivered(
+            new PeaUserTaskObservation(
+                "another-pea", TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+                    "task-1", Map.of()), Map.of()));
+
+    assertTrue(
+        publisher.userTasks().isEmpty(),
+        "what one engine deployed says nothing about what another one runs");
+    assertTrue(publisher.workflows().isEmpty());
 
   }
 

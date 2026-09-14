@@ -34,10 +34,11 @@ port and no configuration key to translate.
 
 The module layout every VanillaBP adapter repository uses:
 
-- `core` - everything which needs neither Spring nor Quarkus. The wiring service which joins
-  VanillaBP's deployment pipeline and remembers what was deployed, the observer which turns a
+- `core` - everything which needs neither Spring nor Quarkus. The observer which turns a
   delivered user task into a cockpit event, the memory of what a delivery said, and the bridge
-  which answers what the cockpit reads about a task or a business case.
+  which answers what the cockpit reads about a task or a business case. What was deployed is
+  read from the Process-Engine-API adapter's own record of it, so nothing here takes a place in
+  VanillaBP's deployment pipeline.
 - `spring-boot` and `quarkus/runtime` plus `quarkus/deployment` - the glue which registers those
   beans with each platform, and one bridge per configured `process-engine-api` adapter id.
 - `test-coverage-report` - the per-platform coverage measurement and the gate which breaks the

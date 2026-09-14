@@ -41,18 +41,18 @@ public class PeaCockpitBridgeTest {
   @BeforeEach
   public void anApplicationWithOneDeployedProcess() {
 
-    final var models = TestModels.deployed();
+    final var deployedProcesses = TestModels.deployed();
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
     observer = new PeaCockpitObserver(
-        models, deliveredUserTasks, (
+        deployedProcesses, deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7", RecordingPublisher::new);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
     bridge = new PeaCockpitBridge(
-        TestModels.ADAPTER_ID, models, deliveredUserTasks, (
+        TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7", 10);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
 
   }
 
@@ -92,8 +92,8 @@ public class PeaCockpitBridgeTest {
 
     final var details = bridge.prefilledUserTaskDetails(reference("task-1"));
     assertTrue(details.isPresent());
-    assertEquals("Approve the ride", details.get().bpmnTaskName());
-    assertEquals("A taxi ride", details.get().bpmnProcessName());
+    assertEquals(TestModels.USER_TASK_NAME, details.get().bpmnTaskName());
+    assertEquals(TestModels.PROCESS_NAME, details.get().bpmnProcessName());
 
   }
 
@@ -115,8 +115,8 @@ public class PeaCockpitBridgeTest {
                 TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1"));
 
     assertTrue(details.isPresent());
-    assertEquals("A taxi ride", details.get().bpmnProcessName());
-    assertEquals("deployment-7", details.get().bpmnProcessVersion());
+    assertEquals(TestModels.PROCESS_NAME, details.get().bpmnProcessName());
+    assertEquals(TestModels.DEPLOYMENT_KEY, details.get().bpmnProcessVersion());
     assertEquals("4711", details.get().businessId());
 
   }
@@ -208,7 +208,7 @@ public class PeaCockpitBridgeTest {
         "another-pea", TestModels.deployed(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> "deployment-7", 10);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
 
     assertTrue(
         anotherEngine

@@ -11,12 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
-import io.vanillabp.cockpit.pea.PeaWorkflowModels;
 import io.vanillabp.cockpit.pea.quarkus.PeaCockpitProducer;
 import io.vanillabp.integration.adapter.migration.config.AdapterConfigProperties;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
  * Which Process-Engine-API adapter ids get a bridge.
@@ -36,7 +36,7 @@ public class PeaBridgesPerAdapterIdTest {
     return new PeaCockpitProducer()
         .businessCockpitPeaBridges(
             properties, new CockpitSettings(null, null, null, null, null, null, Map.of()),
-            new PeaWorkflowModels(null), new PeaDeliveredUserTasks(10), (
+            new PeaDeployedProcessesRegistry(), new PeaDeliveredUserTasks(10), (
                 adapterId,
                 workflowModuleId,
                 bpmnProcessId) -> null)

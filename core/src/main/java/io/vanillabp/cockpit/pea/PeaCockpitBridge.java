@@ -17,6 +17,7 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 import io.vanillabp.cockpit.extension.spi.WorkflowDetailsPrefill;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.pea.PeaAdapter;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
  * What the Business Cockpit asks one configured Process-Engine-API adapter, and what this BPMS
@@ -35,7 +36,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   private final String adapterId;
 
-  private final PeaWorkflowModels models;
+  private final PeaDeployedProcessesRegistry deployedProcesses;
 
   private final PeaDeliveredUserTasks deliveredUserTasks;
 
@@ -50,7 +51,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   /**
    * @param adapterId The configured adapter id this bridge serves
-   * @param models What this application deployed
+   * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks What this node has seen
    * @param versions What the adapter recorded about the deployed processes
    * @param rememberedAggregates How many business cases this bridge keeps apart while saying
@@ -60,13 +61,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    */
   public PeaCockpitBridge(
       final String adapterId,
-      final PeaWorkflowModels models,
+      final PeaDeployedProcessesRegistry deployedProcesses,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
       final int rememberedAggregates) {
 
     this.adapterId = Objects.requireNonNull(adapterId, "adapterId");
-    this.models = Objects.requireNonNull(models, "models");
+    this.deployedProcesses = Objects.requireNonNull(deployedProcesses, "deployedProcesses");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.aggregatesReportedAsUnknown = Collections
@@ -121,8 +122,11 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
     if (!adapterId.equals(workflow.adapterId())) {
       return Optional.empty();
     }
-    return models
-        .of(workflow.workflowModuleId(), workflow.bpmnProcessId())
+    return Optional
+        .ofNullable(
+            deployedProcesses
+                .forAdapter(adapterId)
+                .deployedVersionOf(workflow.workflowModuleId(), workflow.bpmnProcessId()))
         .map(
             process -> new WorkflowDetailsPrefill(
                 versions
@@ -130,7 +134,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
                 // the business key is the aggregate's id here: the Process-Engine-API's start
                 // command carries no business key of its own, so there is no second identifier
                 // the cockpit could show
-                workflow.workflowAggregateId(), process.name(), null));
+                workflow.workflowAggregateId(), process.processName(), null));
 
   }
 

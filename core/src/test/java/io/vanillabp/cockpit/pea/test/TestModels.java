@@ -2,20 +2,14 @@ package io.vanillabp.cockpit.pea.test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
-import io.vanillabp.cockpit.pea.PeaWorkflowModels;
-import io.vanillabp.integration.adapter.migration.config.AdapterConfigProperties;
-import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
-import io.vanillabp.integration.adapter.spi.NameClashAvoidance;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
-import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
-import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.PeaBpmnModel;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
- * The workflow module the tests of this module deploy: one BPMN process with one user task, and
- * the configuration an application needs to run it on the Process-Engine-API.
+ * The workflow module the tests of this module deploy: one BPMN process with one user task, as
+ * the Process-Engine-API adapter recorded it while deploying.
  */
 public final class TestModels {
 
@@ -25,13 +19,21 @@ public final class TestModels {
 
   public static final String BPMN_PROCESS_ID = "ARide";
 
+  public static final String PROCESS_NAME = "A taxi ride";
+
   public static final String USER_TASK_ELEMENT = "approve";
 
   public static final String USER_TASK_FORM = "approve-the-ride";
 
+  public static final String USER_TASK_NAME = "Approve the ride";
+
+  /** What the engine answered when the adapter deployed the file, the only version there is. */
+  public static final String DEPLOYMENT_KEY = "deployment-7";
+
   /**
-   * A BPMN file as a modeller would leave it: the names are what the cockpit falls back to when
-   * an application writes no title of its own.
+   * The BPMN file as a modeller would leave it. The adapter deploys these bytes and reads the two
+   * names out of them on the way, so what the model carries below is what the cockpit shows and
+   * nothing here opens the file again.
    */
   public static final String BPMN = """
       <?xml version="1.0" encoding="UTF-8"?>
@@ -48,53 +50,48 @@ public final class TestModels {
   }
 
   /**
-   * @return The model the adapter's deployment pipeline would hand to the extension
+   * @return The model the adapter's deployment pipeline read
    */
   public static PeaBpmnModel model() {
 
+    return model(USER_TASK_NAME);
+
+  }
+
+  /**
+   * @param userTaskName The name the modeller wrote on the user task, or <code>null</code> for a
+   *          task nobody named
+   * @return The model the adapter's deployment pipeline read
+   */
+  public static PeaBpmnModel model(
+      final String userTaskName) {
+
     return new PeaBpmnModel(
-        "a-ride.bpmn", BPMN.getBytes(StandardCharsets.UTF_8), BPMN_PROCESS_ID, List.of(), List
-            .of(BpmnTaskSpec.userTask(USER_TASK_ELEMENT, USER_TASK_FORM)));
+        "a-ride.bpmn", BPMN.getBytes(StandardCharsets.UTF_8), BPMN_PROCESS_ID, PROCESS_NAME, List
+            .of(), List.of(BpmnTaskSpec.userTask(USER_TASK_ELEMENT, USER_TASK_FORM, userTaskName)));
 
   }
 
   /**
-   * @return What the extension remembers of a deployed workflow module, with a registry which
-   *         knows no BPMN name - the state the Process-Engine-API adapter leaves it in, so the
-   *         names come from this extension's own pass over the file
+   * @return What the adapter recorded while it deployed the module, under the one adapter id
+   *         these tests configure
    */
-  public static PeaWorkflowModels deployed() {
+  public static PeaDeployedProcessesRegistry deployed() {
 
-    return deployed(TestExtensionHandlers.withoutAnyBpmnName());
+    return deployed(model());
 
   }
 
   /**
-   * @param handlers VanillaBP's registry, which answers the name a modeller wrote on an element
-   * @return What the extension remembers of a deployed workflow module
+   * @param model The model the adapter deployed
+   * @return What the adapter recorded while it deployed it
    */
-  public static PeaWorkflowModels deployed(
-      final ExtensionHandlers handlers) {
+  public static PeaDeployedProcessesRegistry deployed(
+      final PeaBpmnModel model) {
 
-    final var models = new PeaWorkflowModels(handlers);
-    models.register(MODULE_ID, model());
-    return models;
-
-  }
-
-  /**
-   * @param nameClashAvoidance How the workflow module's identifiers are kept apart
-   * @return The configuration of an application running one Process-Engine-API adapter
-   */
-  public static MigrationAdapterProperties configuration(
-      final NameClashAvoidance nameClashAvoidance) {
-
-    final var adapter = new AdapterConfigProperties();
-    adapter.setType(PeaAdapter.ADAPTER_TYPE);
-    adapter.setNameClashAvoidance(nameClashAvoidance);
-    final var properties = new MigrationAdapterProperties();
-    properties.setAdapters(Map.of(ADAPTER_ID, adapter));
-    return properties;
+    final var deployedProcesses = new PeaDeployedProcessesRegistry();
+    deployedProcesses.forAdapter(ADAPTER_ID).record(MODULE_ID, model, DEPLOYMENT_KEY);
+    return deployedProcesses;
 
   }
 

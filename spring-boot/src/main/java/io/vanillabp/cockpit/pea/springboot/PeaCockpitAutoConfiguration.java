@@ -15,15 +15,9 @@ import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
-import io.vanillabp.cockpit.pea.PeaCockpitWiring;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
-import io.vanillabp.cockpit.pea.PeaWorkflowModels;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
-import io.vanillabp.integration.extension.spi.ExtensionWiringService;
-import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
-import io.vanillabp.pea.PeaBpmnModel;
-import io.vanillabp.pea.PeaProcessingContext;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
@@ -41,34 +35,6 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 @ConditionalOnBean(MigrationAdapterProperties.class)
 @Import(PeaCockpitBeanRegistrar.class)
 public class PeaCockpitAutoConfiguration {
-
-  /**
-   * @param handlers VanillaBP's registry, which answers the name a modeller wrote on a BPMN
-   *          element
-   * @return What this application deployed to the Process-Engine-API, shared by the wiring
-   *         service filling it and by everything which needs a name or a BPMN element the engine
-   *         does not report
-   */
-  @Bean
-  public PeaWorkflowModels businessCockpitPeaWorkflowModels(
-      final ExtensionHandlers handlers) {
-
-    return new PeaWorkflowModels(handlers);
-
-  }
-
-  /**
-   * @param models The deployed models
-   * @return This extension's place in VanillaBP's deployment pipeline, taken for a workflow
-   *         module which runs on the Process-Engine-API and for no other
-   */
-  @Bean
-  public ExtensionWiringService<PeaBpmnModel, PeaProcessingContext> businessCockpitPeaWiringService(
-      final PeaWorkflowModels models) {
-
-    return new PeaCockpitWiring(models);
-
-  }
 
   /**
    * The memory of what a delivered user task said, sized by the application.
@@ -109,7 +75,8 @@ public class PeaCockpitAutoConfiguration {
    * finds it by its type and calls it from its own subscription, which is the only place a
    * second pair of eyes can watch a delivery on this BPMS.
    *
-   * @param models The deployed models
+   * @param registry What the Process-Engine-API adapter recorded while deploying, which is where
+   *          the name of a process and the BPMN element behind a form reference come from
    * @param deliveredUserTasks The memory of what a delivery said
    * @param versions The versions of the deployed processes
    * @param publisher Where an observed event is reported. It is resolved on the first event
@@ -119,13 +86,13 @@ public class PeaCockpitAutoConfiguration {
    */
   @Bean
   public PeaCockpitObserver businessCockpitPeaUserTaskObserver(
-      final PeaWorkflowModels models,
+      final PeaDeployedProcessesRegistry registry,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
       final ObjectProvider<BusinessCockpitEventPublisher> publisher) {
 
     return new PeaCockpitObserver(
-        models, deliveredUserTasks, versions, publisher::getObject);
+        registry, deliveredUserTasks, versions, publisher::getObject);
 
   }
 

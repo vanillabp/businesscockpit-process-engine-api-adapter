@@ -16,7 +16,9 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks.DeliveredUserTask;
-import io.vanillabp.cockpit.pea.PeaWorkflowModels.UserTaskElement;
+import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.pea.deployment.PeaDeployedProcesses.DeployedProcess;
+import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.observation.PeaUserTaskObserver;
 
@@ -43,7 +45,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   private static final Logger logger = LoggerFactory.getLogger(PeaCockpitObserver.class);
 
-  private final PeaWorkflowModels models;
+  private final PeaDeployedProcessesRegistry deployedProcesses;
 
   private final PeaDeliveredUserTasks deliveredUserTasks;
 
@@ -52,7 +54,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   private final Supplier<BusinessCockpitEventPublisher> publisher;
 
   /**
-   * @param models What this application deployed
+   * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks Where a delivery is remembered for the dispatch which follows it
    * @param versions What the adapter recorded about the deployed processes
    * @param publisher Where an observed event is handed to, asked for on the first event rather
@@ -60,12 +62,12 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    *          together
    */
   public PeaCockpitObserver(
-      final PeaWorkflowModels models,
+      final PeaDeployedProcessesRegistry deployedProcesses,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
       final Supplier<BusinessCockpitEventPublisher> publisher) {
 
-    this.models = Objects.requireNonNull(models, "models");
+    this.deployedProcesses = Objects.requireNonNull(deployedProcesses, "deployedProcesses");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.publisher = Objects.requireNonNull(publisher, "publisher");
@@ -87,8 +89,13 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
               observation.taskId());
       return;
     }
-    final var process = models.of(observation.workflowModuleId(), bpmnProcessId);
-    if (process.isEmpty()) {
+    // the engine which delivered the task is the one whose deployment is asked: two configured
+    // adapter ids may run the same workflow module on engines of their own, and a task of one of
+    // them says nothing about what the other deployed
+    final var process = deployedProcesses
+        .forAdapter(observation.adapterId())
+        .deployedVersionOf(observation.workflowModuleId(), bpmnProcessId);
+    if (process == null) {
       logger
           .debug(
               "Process-Engine-API[{}]: not reporting user task '{}': BPMN process '{}' belongs to no workflow module of this application",
@@ -107,17 +114,17 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
       return;
     }
 
-    final var element = elementOf(process.get(), observation);
+    final var element = elementOf(process, observation);
     final var reference = new UserTaskReference(
         observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, observation
             .workflowAggregateId(), workflowIdOf(observation), observation.taskId(), taskDefinitionOf(
                 observation, element), element == null
                     ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
-                    : element.bpmnTaskId());
+                    : element.activityId());
     deliveredUserTasks
         .remember(
             new DeliveredUserTask(
-                reference, detailsOf(observation, process.get(), element, versionOf(
+                reference, detailsOf(observation, process, element, versionOf(
                     observation, bpmnProcessId))));
 
     reportTheWorkflowOnceItsFirstTaskAppeared(reference);
@@ -190,15 +197,15 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    */
   private UserTaskDetailsPrefill detailsOf(
       final PeaUserTaskObservation observation,
-      final PeaWorkflowModels.Process process,
-      final UserTaskElement element,
+      final DeployedProcess process,
+      final BpmnTaskSpec element,
       final String bpmnProcessVersion) {
 
     final var taskInformation = observation.taskInformation();
     return UserTaskDetailsPrefill
         .builder()
         .bpmnProcessVersion(bpmnProcessVersion)
-        .bpmnProcessName(process.name())
+        .bpmnProcessName(process.processName())
         // the aggregate's id is the business key of this BPMS: the Process-Engine-API's start
         // command carries no second identifier a case could be looked up by
         .businessId(observation.workflowAggregateId())
@@ -222,7 +229,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    */
   private static String taskNameOf(
       final TaskInformation taskInformation,
-      final UserTaskElement element) {
+      final BpmnTaskSpec element) {
 
     final var reportedByTheEngine = PeaTaskMeta.text(taskInformation, PeaTaskMeta.TASK_NAME);
     if (reportedByTheEngine != null) {
@@ -286,25 +293,37 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   /**
    * Which user task of the process was delivered. The engine's meta map names the BPMN element
    * where it is generous, and the subscription's own key answers where it is not.
+   * <p>
+   * A form reference is not unique inside a process - two user tasks may show the same form - so
+   * the adapter answers all of them and the first one wins. That is the rule this extension has
+   * always followed, and there is nothing in a delivery to choose a better one by: what
+   * distinguishes the two tasks is the BPMN element id, which is the key that was missing.
    */
-  private static UserTaskElement elementOf(
-      final PeaWorkflowModels.Process process,
+  private static BpmnTaskSpec elementOf(
+      final DeployedProcess process,
       final PeaUserTaskObservation observation) {
 
     final var bpmnTaskId = PeaTaskMeta
         .text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID);
-    if ((bpmnTaskId != null) && process.userTasksByElementId().containsKey(bpmnTaskId)) {
-      return process.userTasksByElementId().get(bpmnTaskId);
+    if (bpmnTaskId != null) {
+      final var namedByTheEngine = process.userTaskByElementId(bpmnTaskId);
+      if (namedByTheEngine != null) {
+        return namedByTheEngine;
+      }
     }
-    return process
-        .userTasksByTaskDefinition()
-        .get(observation.taskDefinition());
+    if (observation.taskDefinition() == null) {
+      return null;
+    }
+    final var showingTheSameForm = process.userTasksByFormReference(observation.taskDefinition());
+    return showingTheSameForm.isEmpty()
+        ? null
+        : showingTheSameForm.getFirst();
 
   }
 
   private static String taskDefinitionOf(
       final PeaUserTaskObservation observation,
-      final UserTaskElement element) {
+      final BpmnTaskSpec element) {
 
     return element == null
         ? observation.taskDefinition()
