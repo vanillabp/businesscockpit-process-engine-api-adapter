@@ -30,16 +30,16 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * The Business Cockpit on the Process-Engine-API, from the delivery of a user task to the
  * request the cockpit server receives.
  * <p>
- * Nothing on that way is faked but the cockpit server and the engine: the workflow is started
- * through VanillaBP, the engine delivers a user task to the ADAPTER's own subscription, the
- * adapter hands the delivery to the observer bean this extension contributes, the entry is
- * written into the application's outbox, dispatched afterwards, enriched by the application's
+ * Nothing on that way is faked but the cockpit server and the engine. The workflow is started
+ * through VanillaBP. The engine delivers a user task to the ADAPTER's own subscription, and the
+ * adapter hands the delivery to the observer bean this extension contributes. The entry is
+ * written into the application's outbox, dispatched afterwards and enriched by the application's
  * details provider, and what arrives at the server is asserted.
  * <p>
  * What the engine says about a task is what an in-memory engine says, which is little: no
- * assignee, no process instance id, no reason. That is deliberate here - what the cockpit makes
- * of a generous meta map is asserted in the unit tests of the neutral module, and what only a
- * booted application shows is that a delivery reaches this extension at all.
+ * assignee, no process instance id, no reason. That is deliberate here. What the cockpit makes of
+ * a generous meta map is asserted in the unit tests of the neutral module, and what only a booted
+ * application shows is that a delivery reaches this extension at all.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -241,13 +241,13 @@ public class PeaCockpitTest {
     CockpitServer.awaitRequest("/usertask/created");
     CockpitServer.forgetRequests();
 
-    // the engine repeats a delivery whenever something about the task changed - its assignee,
-    // its candidates or its data - and the cockpit is told again. WHICH of the two it is told,
-    // created or updated, is decided by the reason the engine names, and the in-memory engine
-    // this test runs against names none: it delivers with a meta map of one entry and no
-    // reason, so a repeated delivery arrives here as a second creation. That the kind follows
-    // the reason is asserted in the unit tests of the neutral module, and prompt 230 WP2
-    // carries the change which would let this engine drive it.
+    // the engine repeats a delivery whenever something about the task changed: its assignee, its
+    // candidates or its data. The cockpit is told again. WHICH of the two it is told, created or
+    // updated, is decided by the reason the engine names. The in-memory engine this test runs
+    // against names none. It delivers with a meta map of one entry and no reason, so a repeated
+    // delivery arrives here as a second creation. That the kind follows the reason is asserted in
+    // the unit tests of the neutral module, and prompt 230 WP2 carries the change which would let
+    // this engine drive it.
     aDeliveredUserTask(aggregate, "task-6");
 
     final var again = CockpitServer.awaitRequest("/usertask/created");
@@ -290,8 +290,8 @@ public class PeaCockpitTest {
 
     // the report carries what the application wrote, not what the case said before it. The
     // report of the user task may still be dispatching while this runs, and its details provider
-    // holds the case over this transaction - the version attribute of TestAggregate is what
-    // keeps that dispatch from writing the older reading back
+    // holds the case over this transaction. The version attribute of TestAggregate is what keeps
+    // that dispatch from writing the older reading back
     awaitReportCarrying(
         "/workflow/%s/updated".formatted(workflowIdOf(aggregate)),
         "\"customer\":\"Dora the second\"",

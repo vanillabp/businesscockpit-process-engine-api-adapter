@@ -9,7 +9,7 @@ import io.vanillabp.cockpit.pea.quarkus.PeaCockpitProducer;
 /**
  * What the Process-Engine-API half of the Business Cockpit extension has to say at build time.
  * <p>
- * It produces no VanillaBP build item: an extension announces itself by the beans it produces,
+ * It produces no VanillaBP build item. An extension announces itself by the beans it produces,
  * unlike a BPMS adapter.
  */
 class PeaCockpitProcessor {

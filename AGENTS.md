@@ -58,6 +58,57 @@ Adding an entry has the same rule. A decision earns a number when several places
 copying the explanation to each of them would rot; anything smaller is a comment where it belongs,
 and anything larger is documentation.
 
+## How we write
+
+Most people who read this repository read English as a second language, and so does the
+maintainer. Long sentences, rare words and stacked nouns slow them down. Write so that
+nobody has to read a sentence twice.
+
+Short main sentences, one thought each. One subordinate clause is enough. Active voice.
+The common word instead of the rare one: `use` instead of `leverage`, `about` instead of
+`regarding`, `so` instead of `consequently`, `has` instead of `possesses`. A technical term
+stays a technical term, but say what it means the first time it turns up, and write an
+abbreviation out once. If a sentence trips you up when you read it aloud, rewrite it.
+
+This holds for every English text here: the README files, `DECISIONS.md`, this file, the
+Javadoc and comments which explain something, and the texts of commits and pull requests.
+It holds for the [wiki](https://github.com/vanillabp/businesscockpit-process-engine-api-adapter/wiki)
+as well, because the wiki clone has no `AGENTS.md` of its own.
+
+Nothing a program reads is renamed for the sake of language. Class and method names,
+configuration keys, artifact coordinates and the headlines of decision log entries stay as
+they are, because code, tests and other repositories point at them.
+
+Before and after, from this repository:
+
+Decision 4 in `DECISIONS.md`, where one sentence carried two thoughts and a rare word:
+
+> The Process-Engine-API tells a subscriber that a task it was given is gone, and the reason it
+> names is the only thing distinguishing the two ways that happens.
+>
+> The Process-Engine-API tells a subscriber that a task it was given is gone. The reason it names
+> is the only thing which tells the two ways that happens apart.
+
+`README.md`, where a colon and a dash held three clauses together:
+
+> The first one does not work, and `PeaSubscriptionProbeTest` in `core` is that answer as a test: a
+> task the engine delivers reaches one subscription, so a second subscriber sees nothing - or takes
+> the task, depending on which of the two was registered first.
+>
+> The first one does not work, and `PeaSubscriptionProbeTest` in `core` is that answer written as a
+> test. A task the engine delivers reaches one subscription, so a second subscriber sees nothing,
+> or takes the task, depending on which of the two was registered first.
+
+Entry 7 in `GAPS.md`, where the subject and its verb stood ten words apart:
+
+> A change reported for a business case whose tasks this node never saw - after a restart, or on
+> the node which did not get the delivery - is not reported to the cockpit, and the log says so
+> once per case.
+>
+> Say a business case reports a change and this node never saw its tasks, after a restart or
+> because another node got the delivery. Then nothing is reported to the cockpit, and the log says
+> so once per case.
+
 ## Before you open a pull request
 
 A number your branch hands out can be taken by the time you open the pull request. Another branch

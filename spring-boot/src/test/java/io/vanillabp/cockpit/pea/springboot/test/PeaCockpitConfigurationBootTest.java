@@ -19,9 +19,9 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 /**
  * That a number nobody can use is read while the application starts.
  * <p>
- * The unit test of the setting shows what the message says; this one shows that somebody reads it
- * at all, which is the difference between a developer learning about the typo on the first boot
- * and a node reporting no user task on a working day.
+ * The unit test of the setting shows what the message says. This one shows that somebody reads the
+ * setting at all. That is the difference between a developer learning about the typo on the first
+ * boot and a node reporting no user task on a working day.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

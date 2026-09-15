@@ -18,8 +18,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
- * The application under test: a taxi ride whose user task the cockpit is to show, the Quarkus
- * twin of the Spring Boot module's test application.
+ * The application under test. It is a taxi ride whose user task the cockpit is to show, and it is
+ * the Quarkus twin of the Spring Boot module's test application.
  */
 @ApplicationScoped
 @WorkflowService(

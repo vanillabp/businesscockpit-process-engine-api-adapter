@@ -32,7 +32,7 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * The integration tests of this repository run the same way through a booted application, driven
  * by the adapter's own delivery. What they cannot provoke is the other half: a task of a process
  * this application never deployed, a delivery which names no workflow aggregate or no BPMN
- * process at all, the end of a task this node never saw. Those are the cases where reporting
+ * process at all, or the end of a task this node never saw. Those are the cases where reporting
  * nothing is the right answer, and a test which cannot tell "reported nothing" from "was never
  * asked" would not notice them.
  * <p>

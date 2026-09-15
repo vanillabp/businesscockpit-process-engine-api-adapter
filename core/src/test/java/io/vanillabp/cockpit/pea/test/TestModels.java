@@ -8,8 +8,8 @@ import io.vanillabp.pea.PeaBpmnModel;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
- * The workflow module the tests of this module deploy: one BPMN process with one user task, as
- * the Process-Engine-API adapter recorded it while deploying.
+ * The workflow module the tests of this module deploy. It is one BPMN process with one user task,
+ * recorded the way the Process-Engine-API adapter records it while deploying.
  */
 public final class TestModels {
 

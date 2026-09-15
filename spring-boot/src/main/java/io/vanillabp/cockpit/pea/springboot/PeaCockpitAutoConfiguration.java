@@ -23,9 +23,9 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 /**
  * Registers the Process-Engine-API half of the Business Cockpit extension on Spring Boot.
  * <p>
- * Nothing here decides anything: what the extension does with this BPMS is decided in the
- * platform-neutral module of this repository, and this class does what only Spring can do - find
- * the beans and put the extension's own where VanillaBP and the cockpit's neutral half collect
+ * Nothing here decides anything. What the extension does with this BPMS is decided in the
+ * platform-neutral module of this repository. This class does what only Spring can do: find the
+ * beans, and put the extension's own beans where VanillaBP and the cockpit's neutral half collect
  * them.
  * <p>
  * It runs after VanillaBP's own auto-configuration, named rather than referenced, because an
@@ -40,11 +40,11 @@ public class PeaCockpitAutoConfiguration {
    * The memory of what a delivered user task said, sized by the application.
    * <p>
    * The configured value is read here, while the application starts, rather than when the first
-   * task arrives: a number nobody can use is then a message on the first boot.
+   * task arrives. A number nobody can use is then a message on the first boot.
    *
    * @param settings What the application wrote below the cockpit's own sections
    * @param environment Where the keys of the application are read from, to find one which this
-   *          half reads globally and somebody wrote per workflow module: this platform ignores a
+   *          half reads globally and somebody wrote per workflow module. This platform ignores a
    *          key nothing binds, so nothing else would say it
    * @return The memory
    */

@@ -19,9 +19,9 @@ import io.vanillabp.spi.service.TaskParam;
 import io.vanillabp.spi.service.WorkflowService;
 
 /**
- * The application under test: a taxi ride whose user task the cockpit is to show, with a details
- * provider which enriches what the engine delivered and writes into the aggregate while doing
- * so.
+ * The application under test. It is a taxi ride whose user task the cockpit is to show, with a
+ * details provider which enriches what the engine delivered and writes into the aggregate while
+ * doing so.
  */
 @Service
 @WorkflowService(
