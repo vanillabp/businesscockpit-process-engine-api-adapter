@@ -24,11 +24,11 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * can answer.
  * <p>
  * Every other BPMS half of the cockpit answers these questions by reading the engine: a task
- * query, a history query, a search for the instances of a business key. The Process-Engine-API
- * has none of them - it is a delivery API, not a query API - so the answers come from what the
- * subscriptions of this node delivered, which is everything this BPMS ever says about a task.
- * The consequences are written down one by one in the repository's <code>GAPS.md</code>, and the
- * wiki says them in the words of somebody using the cockpit.
+ * query, a history query, a search for the instances of a business key. The Process-Engine-API has
+ * none of them, because it is a delivery API and not a query API. So the answers come from what
+ * the subscriptions of this node delivered, which is everything this BPMS ever says about a task.
+ * What that costs is written down one by one in the repository's <code>GAPS.md</code>, and the
+ * wiki says it in the words of somebody using the cockpit.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -43,9 +43,10 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
   private final PeaProcessVersions versions;
 
   /**
-   * The business cases already reported as unknown. Bounded like everything this half keeps in
-   * memory: the sentence is said once per case, until as many other cases have pushed it out, and
-   * an application reporting cases this BPMS cannot find must not pay for that with heap.
+   * The business cases already reported as unknown. It is bounded like everything this half keeps
+   * in memory. The sentence is said once per case, until enough other cases have pushed that case
+   * out, and an application which reports cases this BPMS cannot find must not pay for it with
+   * heap.
    */
   private final Set<String> aggregatesReportedAsUnknown;
 
@@ -54,10 +55,10 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks What this node has seen
    * @param versions What the adapter recorded about the deployed processes
-   * @param rememberedAggregates How many business cases this bridge keeps apart while saying
-   *          that it knows nothing about them - the number which sizes the memory of the
-   *          deliveries themselves, because a case is unknown exactly as long as none of its
-   *          tasks is in there
+   * @param rememberedAggregates How many business cases this bridge keeps apart while saying that
+   *          it knows nothing about them. It is the number which sizes the memory of the
+   *          deliveries themselves, because a case is unknown exactly as long as none of its tasks
+   *          is in there
    */
   public PeaCockpitBridge(
       final String adapterId,
@@ -131,7 +132,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
             process -> new WorkflowDetailsPrefill(
                 versions
                     .versionOf(adapterId, workflow.workflowModuleId(), workflow.bpmnProcessId()),
-                // the business key is the aggregate's id here: the Process-Engine-API's start
+                // the business key is the aggregate's id here. The Process-Engine-API's start
                 // command carries no business key of its own, so there is no second identifier
                 // the cockpit could show
                 workflow.workflowAggregateId(), process.processName(), null));
@@ -209,8 +210,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   /**
    * Whether a remembered task came from the engine this bridge serves. One node remembers the
-   * deliveries of every configured adapter id, and a bridge answers for its own: a task of
-   * another engine reported under this adapter id would send the cockpit to the wrong BPMS.
+   * deliveries of every configured adapter id, and a bridge answers for its own. A task of another
+   * engine reported under this adapter id would send the cockpit to the wrong BPMS.
    */
   private boolean servedByThisAdapter(
       final PeaDeliveredUserTasks.DeliveredUserTask task) {
@@ -223,13 +224,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * Says that an application reported a change of something this BPMS cannot find again.
    * <p>
    * The Process-Engine-API cannot be asked which workflows or which user tasks belong to a
-   * business case: the only ones this half knows are those whose user tasks this node was given,
+   * business case. The only ones this half knows are those whose user tasks this node was given,
    * and after the last of them ended it knows none. Both reads answer from that one memory, so
-   * they are silent together and say the same sentence. Reporting nothing is the honest answer
-   * and an exception would be the wrong one - the application's own work is done and rolling it
-   * back over a cockpit update helps nobody. It is said once per business case, because an
-   * application which reports every change would otherwise fill the log with the same sentence,
-   * and again for a case which as many other ones have pushed out of that memory.
+   * they are silent together and say the same sentence. Reporting nothing is the honest answer,
+   * and an exception would be the wrong one, because the application's own work is done and
+   * rolling it back over a cockpit update helps nobody. The sentence is said once per business
+   * case, because an application which reports every change would otherwise fill the log with it.
+   * It is said again for a case which enough other ones have pushed out of that memory.
    */
   private void sayThatNothingIsKnown(
       final String workflowModuleId,
@@ -250,12 +251,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         .warn(
             """
                 Process-Engine-API[{}]: the change of workflow aggregate '{}' (BPMN process '{}' of \
-                workflow module '{}') was not reported to the Business Cockpit: this node knows \
-                neither a workflow nor a user task of that aggregate. The Process-Engine-API offers \
-                no way to search for the workflows or the user tasks of a business case, so both are \
-                known while one of its user tasks was delivered to this node and never afterwards - \
-                see GAPS.md of businesscockpit-process-engine-api-adapter. Nothing about this case \
-                reaches the cockpit until the engine delivers a user task of it to this node again.""",
+                workflow module '{}') was not reported to the Business Cockpit, because this node \
+                knows neither a workflow nor a user task of that aggregate. The Process-Engine-API \
+                offers no way to search for the workflows or the user tasks of a business case. Both \
+                are known while one of its user tasks is in the memory of this node, and never \
+                afterwards; see GAPS.md of businesscockpit-process-engine-api-adapter. Nothing about \
+                this case reaches the cockpit until the engine delivers a user task of it to this \
+                node again.""",
             adapterId,
             workflowAggregateId,
             bpmnProcessId,

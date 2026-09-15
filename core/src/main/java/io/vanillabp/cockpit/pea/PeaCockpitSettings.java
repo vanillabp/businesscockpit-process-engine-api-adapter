@@ -12,14 +12,14 @@ import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
  * What the Business Cockpit's Process-Engine-API half reads out of the application's
  * configuration, and what it says when it does not like it.
  * <p>
- * There is one setting, and it exists because this BPMS cannot be asked about a task twice: how
- * many delivered user tasks a node remembers. Everything else about the cockpit is configured
- * once for every BPMS, by the extension's platform-neutral half.
+ * There is one setting: how many delivered user tasks a node remembers. It exists because this
+ * BPMS cannot be asked about a task twice. Everything else about the cockpit is configured once
+ * for every BPMS, by the extension's platform-neutral half.
  * <p>
- * The setting is global rather than per workflow module: the memory it sizes is one per node and
+ * The setting is global rather than per workflow module. The memory it sizes is one per node and
  * shared by every module, so a value per module would promise a division which does not exist.
- * It is read and checked while the application starts, so a value nobody can use is a message on
- * the first boot rather than an exception in the middle of a working day.
+ * The value is read and checked while the application starts. A value nobody can use is then a
+ * message on the first boot rather than an exception in the middle of a working day.
  */
 public final class PeaCockpitSettings {
 
@@ -30,8 +30,8 @@ public final class PeaCockpitSettings {
    * <code>vanillabp.cockpit</code>.
    * <p>
    * The key stands in the extension's own tree rather than in one of this half's, and the
-   * extension declares it for both platforms: a key below <code>vanillabp</code> which no
-   * binding declares ends the boot on Quarkus.
+   * extension declares it for both platforms. It has to: a key below <code>vanillabp</code>
+   * which no binding declares ends the boot on Quarkus.
    */
   public static final String REMEMBERED_USER_TASKS = ConfigurationKeys.REMEMBERED_USER_TASKS;
 
@@ -72,9 +72,10 @@ public final class PeaCockpitSettings {
       throw new IllegalStateException(
           """
               The Business Cockpit's Process-Engine-API half was configured with '%s: %s', which is \
-              not a number. It says how many delivered user tasks one node remembers, because the \
-              Process-Engine-API cannot be asked about a task a second time. Write a positive number \
-              there or remove the key, which leaves it at %d."""
+              not a number. The key says how many delivered user tasks one node remembers, and a \
+              node has to remember them because the Process-Engine-API cannot be asked about a task \
+              a second time. Write a positive number there, or remove the key, which leaves it at \
+              %d."""
               .formatted(key, configured, DEFAULT_REMEMBERED_USER_TASKS), e);
     }
     if (remembered < 1) {
@@ -82,7 +83,7 @@ public final class PeaCockpitSettings {
           """
               The Business Cockpit's Process-Engine-API half was configured with '%s: %d'. A node \
               which remembers no user task reports none, because the Process-Engine-API cannot be \
-              asked about a task a second time. Write a positive number there or remove the key, \
+              asked about a task a second time. Write a positive number there, or remove the key, \
               which leaves it at %d."""
               .formatted(key, remembered, DEFAULT_REMEMBERED_USER_TASKS));
     }
@@ -95,8 +96,8 @@ public final class PeaCockpitSettings {
    * <p>
    * The memory it sizes is one per node and shared by every workflow module, so a value per
    * module promises a division which does not exist. Quarkus refuses such a key by itself,
-   * because nothing declares it; on Spring Boot a key nothing declares is ignored, and this is
-   * what says it there instead of leaving a developer with a setting which does nothing.
+   * because nothing declares it. Spring Boot ignores a key nothing declares, so this check is
+   * what says it there, instead of leaving a developer with a setting which does nothing.
    *
    * @param propertyNames The property names of the application
    * @throws IllegalStateException If one of them is this key below a workflow module; the
@@ -120,9 +121,9 @@ public final class PeaCockpitSettings {
     throw new IllegalStateException(
         """
             The Business Cockpit's Process-Engine-API half was configured per workflow module (%s), \
-            and it reads this setting globally only: it says how many delivered user tasks one node \
-            remembers, and that memory is one per node and shared by every workflow module. Move the \
-            value to '%s' or remove it, which leaves it at %d."""
+            and it reads this setting globally only. The setting says how many delivered user tasks \
+            one node remembers, and that memory is one per node and shared by every workflow module. \
+            Move the value to '%s', or remove it, which leaves it at %d."""
             .formatted(
                 String.join(", ", ofAWorkflowModule),
                 ConfigurationKeys.globalKey(REMEMBERED_USER_TASKS),

@@ -12,18 +12,18 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 /**
  * The user tasks this node has seen, and what the engine said about them.
  * <p>
- * Every other BPMS half of the Business Cockpit reads the current state of a task when the
- * report is dispatched, a moment after the event was observed. On the Process-Engine-API there
- * is nothing to read from: no task query, no single-task get, no history. What is known about a
- * task is what arrived with its delivery, so it is kept until the task is gone.
+ * Every other BPMS half of the Business Cockpit reads the current state of a task when the report
+ * is dispatched, a moment after the event was seen. On the Process-Engine-API there is nothing to
+ * read from: no task query, no single-task get, no history. What is known about a task is what
+ * arrived with its delivery, so that is kept until the task is gone.
  * <p>
- * Kept in memory, per node, and bounded: an outbox entry is dispatched on the node which wrote
- * it and within seconds, so the memory of a delivery only has to outlive that. What that costs
- * is stated rather than hidden - a node which restarts between a delivery and its dispatch
- * reports the task without its details, and a task delivered to another node is unknown here.
- * Persisting it instead would make the extension keep a second copy of the engine's state, which
- * is exactly what an application's own database is for. This is decision 3 in the repository's
- * DECISIONS.md.
+ * It is kept in memory, per node, and bounded. An outbox entry is dispatched on the node which
+ * wrote it and within seconds, so the memory of a delivery only has to outlive that. What it
+ * costs is said out loud rather than hidden. A node which restarts between a delivery and its
+ * dispatch reports the task without its details, and a task delivered to another node is unknown
+ * here. Persisting it instead would make the extension keep a second copy of the engine's state,
+ * which is exactly what an application's own database is for. This is decision 3 in the
+ * repository's DECISIONS.md.
  */
 public class PeaDeliveredUserTasks {
 
@@ -33,8 +33,9 @@ public class PeaDeliveredUserTasks {
    * @param reference How the cockpit addresses the task
    * @param details What the engine said about it
    * @param ended Whether the engine has taken the task away again. Such a task is no longer one
-   *          of its business case's open tasks, and it is still answered to the dispatch of the
-   *          reports about it: those are written before the task ended and read afterwards
+   *          of the open tasks of its business case. It is still answered to the dispatch of the
+   *          reports about it, because those were written before the task ended and are read
+   *          afterwards
    */
   public record DeliveredUserTask(
                                   UserTaskReference reference,
@@ -106,16 +107,16 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Notes that a task is gone. Called once the end was reported, so that a report which never
-   * left leaves the memory as it was: a task still marked open is reported again when the engine
-   * says so a second time, while one marked ended by a report nobody received would be silently
-   * dropped.
+   * Notes that a task is gone. It is called once the end was reported, so that a report which
+   * never left leaves the memory as it was. A task still marked open is reported again when the
+   * engine says a second time that it is gone, while one marked ended by a report nobody received
+   * would be dropped without a word.
    * <p>
    * What was known stays known until the oldest entry makes room for a newer task. A report
    * written before the task ended is dispatched after it ended, and this BPMS cannot be asked
-   * about a task twice: forgetting it here would drop the report of its creation with it. It
-   * moves to the newest end of the memory for the same reason - the reports about it are still
-   * on their way.
+   * about a task twice, so forgetting the task here would drop the report of its creation with
+   * it. The task moves to the newest end of the memory for the same reason: the reports about it
+   * are still on their way.
    *
    * @param userTaskId The engine's own id of the task
    */
@@ -133,9 +134,9 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * The OPEN tasks of one workflow aggregate this node knows about - what the cockpit asks for
-   * when an application reports that an aggregate changed. A task the engine has taken away is
-   * not one of them any more.
+   * The OPEN tasks of one workflow aggregate this node knows about. This is what the cockpit asks
+   * for when an application reports that an aggregate changed. A task the engine has taken away
+   * is not one of them any more.
    *
    * @param workflowModuleId The workflow module
    * @param bpmnProcessId The plain BPMN process id
@@ -161,12 +162,12 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Whether the cockpit was already told about a workflow, which is what makes it reported with
-   * the first user task of it rather than with every one.
+   * Whether the cockpit was already told about a workflow. That is what makes a workflow reported
+   * with its first user task rather than with every one.
    * <p>
-   * Bounded like everything else here, and with the same consequence: a business case which as
-   * many other cases have passed by since is reported as created a second time. A node holding
-   * thousands of cases at once is the price of not paying for every case it ever saw.
+   * It is bounded like everything else here, and it costs the same. A business case which many
+   * other cases have passed by since is reported as created a second time. Holding thousands of
+   * cases at once is what a node pays instead of paying for every case it ever saw.
    *
    * @param adapterId The configured adapter id holding the workflow
    * @param workflowId The engine's own id of the workflow
@@ -183,8 +184,8 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Notes that the cockpit was told about a workflow. Called once the report was written, so
-   * that a report which never left leaves the memory as it was and the next user task of the
+   * Notes that the cockpit was told about a workflow. It is called once the report was written,
+   * so that a report which never left leaves the memory as it was and the next user task of the
    * case tries again.
    *
    * @param adapterId The configured adapter id holding the workflow
@@ -213,10 +214,10 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Puts an entry at the newest end of the memory: the map forgets its eldest entry, and an
-   * update of something it already holds keeps that entry's place unless it is put in again. A
-   * task the engine delivers a second time is as young as one delivered for the first time, so
-   * it must not be the next one to go.
+   * Puts an entry at the newest end of the memory. The map forgets its eldest entry, and an
+   * update of something it already holds keeps that entry's place unless the entry is put in
+   * again. A task the engine delivers a second time is as young as one delivered for the first
+   * time, so it must not be the next one to go.
    */
   private void putAsTheNewest(
       final String userTaskId,

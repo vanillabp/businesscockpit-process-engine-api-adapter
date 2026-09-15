@@ -24,10 +24,10 @@ import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
 
 /**
- * What the cockpit reads back about a task or a business case, and what this BPMS has to answer
- * with: the deliveries this node was given. The interesting answers are the empty ones - a task
- * nobody delivered here, a business case whose tasks all ended - because they are what an
- * application notices as a cockpit which stopped following.
+ * What the cockpit reads back about a task or a business case. All this BPMS has to answer with
+ * are the deliveries this node was given. The interesting answers are the empty ones: a task
+ * nobody delivered here, or a business case whose tasks all ended. Those are what an application
+ * notices as a cockpit which stopped following.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitBridgeTest {

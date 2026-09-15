@@ -18,18 +18,18 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * Registers one Business Cockpit bridge per configured Process-Engine-API adapter id.
  * <p>
  * The Process-Engine-API adapter refuses a second adapter id of its type today, so there is one
- * of them; the shape stays the one every BPMS half has, because the cockpit addresses a workflow
- * by the BPMS holding it and a migration is exactly the case where that is more than one. How
+ * of them. The shape stays the one every BPMS half has, because the cockpit addresses a workflow
+ * by the BPMS holding it, and a migration is exactly the case where that is more than one. How
  * many there are is decided by the configuration, which is why the beans are registered
- * programmatically; they are element beans and never a bean of type <code>List</code>, because
+ * programmatically. They are element beans and never a bean of type <code>List</code>, because
  * that is how the cockpit's neutral half collects them on Spring Boot.
  * <p>
  * WHICH adapter ids those are is the platform's answer
  * ({@code AdapterBeanRegistrarSupport#forEachConfiguredAdapterId}), the same one the
  * Process-Engine-API adapter registers its own beans for. Filtering the configured types is not
- * that answer: an id named in <code>prioritized-adapters</code> needs no section of its own, and
- * an application which configured nothing at all - which on this BPMS is the everyday case, since
- * it takes a single adapter dependency - has the id the classpath derives.
+ * that answer. An id named in <code>prioritized-adapters</code> needs no section of its own, and
+ * an application which configured nothing at all has the id the classpath derives. On this BPMS
+ * that is the everyday case, because an application takes a single adapter dependency.
  */
 public class PeaCockpitBeanRegistrar implements BeanRegistrar {
 

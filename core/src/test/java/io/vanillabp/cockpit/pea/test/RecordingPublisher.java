@@ -12,13 +12,13 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 
 /**
- * The platform-neutral half of the extension, played by the test: it writes down what it was told
+ * The platform-neutral half of the extension, played by the test. It writes down what it was told
  * instead of writing an outbox entry, so that a test can tell "reported nothing" from "was never
  * asked".
  * <p>
- * It can also refuse to take a report, which is what a cockpit half has to survive: the outbox
- * writes into a database, and a database says no. What the observer remembers about a report it
- * could not write decides whether the case or the task is reported at all.
+ * It can also refuse to take a report, which is something a cockpit half has to survive. The
+ * outbox writes into a database, and a database says no. What the observer remembers about a
+ * report it could not write decides whether the case or the task is reported at all.
  */
 public class RecordingPublisher implements BusinessCockpitEventPublisher {
 

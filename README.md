@@ -6,42 +6,42 @@
 
 This repository holds the [VanillaBP Business Cockpit](https://github.com/vanillabp/business-cockpit)
 integration for the BPMS-agnostic
-[Process-Engine-API](https://github.com/bpm-crafters/process-engine-api), built as an extension of
-[VanillaBP](https://www.vanillabp.io) Version 2. The cockpit shows user tasks and business cases to
-business staff, and to do that it has to learn what happens inside the workflow engine. This
-adapter is the half that runs in the workflow application: it observes the user-task and workflow
-lifecycle through the Process-Engine-API, asks the application for the business details of what it
-saw, and hands the result to the cockpit server.
+[Process-Engine-API](https://github.com/bpm-crafters/process-engine-api). It is built as an
+extension of [VanillaBP](https://www.vanillabp.io) Version 2. The cockpit shows user tasks and
+business cases to business staff, and for that it has to learn what happens inside the workflow
+engine. This adapter is the half which runs in the workflow application. It watches the user tasks
+and the workflows through the Process-Engine-API, asks the application what they are about, and
+hands the answer to the cockpit server.
 
 ## Status
 
 The extension is here, on both platforms, and it works as far as the Process-Engine-API lets it.
-It registers a workflow module at the cockpit server, it turns a delivered user task into the
-report the cockpit shows, it enriches that report with what the application's
-`@UserTaskDetailsProvider` returns, and it answers what `BusinessCockpitService` reads back.
+It registers a workflow module at the cockpit server. It turns a delivered user task into the
+report the cockpit shows, and it adds what the application's `@UserTaskDetailsProvider` returns. It
+also answers what `BusinessCockpitService` reads back.
 
-What hands it a delivered user task is the VanillaBP Process-Engine-API adapter. That API gives a
-task to exactly one subscription, so this extension must not subscribe next to the adapter - it
-would take the task away from the workflow application - and the adapter therefore calls
+The VanillaBP Process-Engine-API adapter is what hands it a delivered user task. That API gives a
+task to exactly one subscription, so this extension must not subscribe next to the adapter: it
+would take the task away from the workflow application. The adapter therefore calls
 `io.vanillabp.pea.observation.PeaUserTaskObserver` from its own subscription. This repository
-contributes a bean of it on both platforms, and the adapter finds it by its type.
+contributes a bean of that type on both platforms, and the adapter finds it by its type.
 
 This adapter has no Version 1 predecessor. The Business Cockpit supported Camunda 7 and Camunda 8
-in Version 1, and the Process-Engine-API integration is new with Version 2, so there is nothing to
+in Version 1, and the Process-Engine-API integration is new with Version 2. So there is nothing to
 port and no configuration key to translate.
 
 ## What is here
 
 The module layout every VanillaBP adapter repository uses:
 
-- `core` - everything which needs neither Spring nor Quarkus. The observer which turns a
+- `core` - everything which needs neither Spring nor Quarkus. That is the observer which turns a
   delivered user task into a cockpit event, the memory of what a delivery said, and the bridge
-  which answers what the cockpit reads about a task or a business case. What was deployed is
-  read from the Process-Engine-API adapter's own record of it, so nothing here takes a place in
+  which answers what the cockpit reads about a task or a business case. What was deployed is read
+  from the Process-Engine-API adapter's own record of it, so nothing here takes a place in
   VanillaBP's deployment pipeline.
 - `spring-boot` and `quarkus/runtime` plus `quarkus/deployment` - the glue which registers those
   beans with each platform, and one bridge per configured `process-engine-api` adapter id.
-- `test-coverage-report` - the per-platform coverage measurement and the gate which breaks the
+- `test-coverage-report` - the coverage measurement per platform and the gate which breaks the
   build below it.
 
 The artifacts keep the repository name as their prefix, so
@@ -50,8 +50,8 @@ The artifacts keep the repository name as their prefix, so
 on. The prefix is what keeps a jar of this repository apart from the jar of the VanillaBP
 Process-Engine-API adapter it plugs into.
 
-[`DECISIONS.md`](./DECISIONS.md) holds the decisions the code points at, and
-[`GAPS.md`](./GAPS.md) the questions the cockpit asks a workflow engine which this one cannot
+[`DECISIONS.md`](./DECISIONS.md) holds the decisions the code points at.
+[`GAPS.md`](./GAPS.md) holds the questions the cockpit asks a workflow engine which this one cannot
 answer yet. The wiki says the same in the words of somebody using the cockpit.
 
 ## How the probe shaped the design
@@ -60,23 +60,23 @@ The first question was whether this extension can watch user tasks at all, and i
 before anything was designed. Two ways were open: subscribing for the same task definitions the
 VanillaBP adapter subscribes for, or a seam in that adapter.
 
-The first one does not work, and `PeaSubscriptionProbeTest` in `core` is that answer as a test: a
-task the engine delivers reaches one subscription, so a second subscriber sees nothing - or takes
-the task, depending on which of the two was registered first. The Process-Engine-API's own
-reference adapter for an embedded Camunda 7 picks the first matching subscription and records it
-as the active one for that task, which makes this a property of the API rather than of the
-in-memory engine the test uses.
+The first one does not work, and `PeaSubscriptionProbeTest` in `core` is that answer written as a
+test. A task the engine delivers reaches one subscription, so a second subscriber sees nothing, or
+takes the task, depending on which of the two was registered first. The Process-Engine-API's own
+reference adapter for an embedded Camunda 7 picks the first matching subscription and records it as
+the active one for that task. So this is a property of the API rather than of the in-memory engine
+the test uses.
 
-So the design is the second way, and the seam exists:
+The design is therefore the second way, and the seam exists:
 `io.vanillabp.pea.observation.PeaUserTaskObserver` in the VanillaBP Process-Engine-API adapter,
-called from the subscription the adapter already opens. Everything behind it - the memory of a
-delivery, the event kinds, the reads the cockpit does - is implemented and tested through
-`PeaCockpitObserver`, which implements that interface.
+called from the subscription the adapter already opens. Everything behind it is implemented and
+tested through `PeaCockpitObserver`, which implements that interface: the memory of a delivery, the
+kinds of event, and the reads the cockpit does.
 
-While the seam was missing this repository carried a port of the same shape and asked an
-application to call it. Both are gone: the adapter is told about every delivery, while an
-application calling a port of the cockpit only ever passed on what it noticed itself. The
-identifiers arrive plain, too - the adapter translates what an engine reports back through
+While the seam was missing, this repository carried a port of the same shape and asked an
+application to call it. Both are gone. The adapter is told about every delivery, while an
+application which called a port of the cockpit only ever passed on what it noticed itself. The
+identifiers arrive plain, too, because the adapter translates what an engine reports back through
 name-clash avoidance before it builds an observation.
 
 ## Building
@@ -85,20 +85,19 @@ name-clash avoidance before it builds an observation.
 mvn install
 ```
 
-Snapshots are published to GitHub Packages by the pipeline described below, and releases go to
-Maven Central under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business
-Cockpit.
+Snapshots go to GitHub Packages through the pipeline described below. Releases go to Maven Central
+under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business Cockpit.
 
 ## What CI runs
 
 `build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
 snapshot, and only for a push to `main`: the snapshot coordinates are shared, so what the other
 repositories compile against has to be what `main` holds rather than whichever branch was pushed
-last. The build runs in a group per pull request and the publish in a group of its own, so a
-publish never waits for a build, and a publish which is already running is never cancelled - two
-runs publishing at the same time would overwrite each other. `release.yaml` is started by hand and
-publishes to Maven Central from a release branch. It deploys no snapshot, so it can run beside a
-publish.
+last. The build runs in a group per pull request and the publish in a group of its own. That way a
+publish never waits for a build, and a publish which is already running is never cancelled, because
+two runs which publish at the same time would overwrite each other. `release.yaml` is started by
+hand and publishes to Maven Central from a release branch. It deploys no snapshot, so it can run
+beside a publish.
 
 ## Noteworthy & Contributors
 

@@ -17,8 +17,8 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
  * The one setting this half has, and what an application is told when it wrote something nobody
- * can use. The value is read while the application starts, so these messages are what a
- * developer reads on the first boot rather than in the middle of a working day.
+ * can use. The value is read while the application starts. So a developer reads these messages on
+ * the first boot rather than in the middle of a working day.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitSettingsTest {

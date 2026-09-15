@@ -24,14 +24,13 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * user task to ONE subscription, the way the Process-Engine-API's own reference engine adapter
  * does.
  * <p>
- * The whole design of this half rests on that: an extension cannot subscribe next to the workflow
- * application, because it would either see nothing or take the task away from it, which is why
- * there is a port waiting for a seam in the adapter instead (decision 5 in the repository's
- * DECISIONS.md). The engine used here is a test double of the adapter, and a test double which
- * quietly grew a second seat would leave that design resting on nothing - so what this test
- * guards is the double's fidelity, not the API. Entry 1 of the repository's
- * <code>GAPS.md</code> holds the evidence from the reference adapter and what follows for the
- * cockpit.
+ * The whole design of this half rests on that. An extension cannot subscribe next to the workflow
+ * application, because it would either see nothing or take the task away. That is why there is a
+ * port waiting for a seam in the adapter instead (decision 5 in the repository's DECISIONS.md).
+ * The engine used here is a test double of the adapter, and a double which quietly grew a second
+ * seat would leave that design resting on nothing. So what this test guards is how true the
+ * double stays, not the API itself. Entry 1 of the repository's <code>GAPS.md</code> holds the
+ * evidence from the reference adapter and what follows for the cockpit.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaSubscriptionProbeTest {

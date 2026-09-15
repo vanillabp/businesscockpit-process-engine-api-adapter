@@ -22,12 +22,12 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
 /**
- * Registers the Process-Engine-API half of the Business Cockpit extension on Quarkus - the twin
- * of the Spring Boot module's auto-configuration, doing the same things with CDI.
+ * Registers the Process-Engine-API half of the Business Cockpit extension on Quarkus. It is the
+ * twin of the Spring Boot module's auto-configuration and does the same things with CDI.
  * <p>
  * The producers are <code>&#64;Singleton</code> rather than
- * <code>&#64;ApplicationScoped</code>: what they produce has no no-argument constructor and is
- * therefore not client-proxyable.
+ * <code>&#64;ApplicationScoped</code>, because what they produce has no no-argument constructor
+ * and is therefore not client-proxyable.
  */
 @ApplicationScoped
 public class PeaCockpitProducer {
@@ -35,10 +35,10 @@ public class PeaCockpitProducer {
   /**
    * Reads this half's setting while the application starts.
    * <p>
-   * A CDI producer runs when somebody first asks for what it produces, which for the memory of
-   * the deliveries is the first delivered user task - a working day later, and on the engine's
-   * own thread. So the value is read here as well, where a number nobody can use ends the boot
-   * the way it does on Spring Boot.
+   * A CDI producer runs when somebody first asks for what it produces. For the memory of the
+   * deliveries that is the first delivered user task, which may be a working day later and comes
+   * in on the engine's own thread. So the value is read here as well, where a number nobody can
+   * use ends the boot the way it does on Spring Boot.
    *
    * @param startup Quarkus' own signal that the application is starting
    * @param settings What the application wrote below the cockpit's own sections
@@ -113,17 +113,17 @@ public class PeaCockpitProducer {
   /**
    * One bridge per configured Process-Engine-API adapter id.
    * <p>
-   * They are produced as one list rather than as one bean each: how many there are is decided by
-   * the configuration, which a producer method cannot express. The cockpit's neutral half
-   * collects both shapes, the same way VanillaBP's own Quarkus integration collects the
+   * They are produced as one list rather than as one bean each, because how many there are is
+   * decided by the configuration, and a producer method cannot express that. The cockpit's neutral
+   * half collects both shapes, the same way VanillaBP's own Quarkus integration collects the
    * deployment services of a BPMS adapter.
    * <p>
    * WHICH adapter ids those are is {@code MigrationAdapterProperties#adapterIdsOfType}, the same
    * answer the Spring Boot half reads through the platform's registrar support. Filtering the
-   * configured types is not that answer: an id named in <code>prioritized-adapters</code> needs
-   * no section of its own, and an application which configured nothing at all - which on this
-   * BPMS is the everyday case, since it takes a single adapter dependency - has the id the
-   * classpath derives.
+   * configured types is not that answer. An id named in <code>prioritized-adapters</code> needs
+   * no section of its own, and an application which configured nothing at all has the id the
+   * classpath derives. On this BPMS that is the everyday case, because an application takes a
+   * single adapter dependency.
    *
    * @param properties VanillaBP's resolved configuration, which names the configured adapters
    * @param settings What the application wrote below the cockpit's own sections

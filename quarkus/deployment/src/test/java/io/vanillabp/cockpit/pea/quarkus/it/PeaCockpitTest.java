@@ -23,13 +23,13 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * The Process-Engine-API half of the Business Cockpit inside a booted Quarkus application: the
- * extension is enabled, the engine delivers a user task to the ADAPTER's own subscription, the
+ * The Process-Engine-API half of the Business Cockpit inside a booted Quarkus application. The
+ * extension is enabled. The engine delivers a user task to the ADAPTER's own subscription, the
  * adapter hands it to the observer bean this extension contributes, and what the application
  * enriched reaches the cockpit server. The bridge then answers what the cockpit reads back.
  * <p>
- * It runs the same way through as the Spring Boot test of this repository, and it exists because
- * a platform-neutral half being right says nothing about a platform's glue ever calling it.
+ * It runs the same way through as the Spring Boot test of this repository. It exists because a
+ * platform-neutral half being right says nothing about a platform's glue ever calling it.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

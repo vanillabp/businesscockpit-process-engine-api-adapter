@@ -26,26 +26,26 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
 /**
  * What a delivered user task means to the Business Cockpit.
  * <p>
- * It does the same little every BPMS half of the cockpit does: turn what the engine said into
- * the identifiers the cockpit addresses a task by, keep what only the delivery knows, and write
- * one outbox entry. Nothing is sent while the engine's delivery thread waits, and nothing is
- * read back afterwards - on this BPMS there is nothing to read back from.
+ * It does the same little every BPMS half of the cockpit does. It turns what the engine said into
+ * the identifiers the cockpit addresses a task by, keeps what only the delivery knows, and writes
+ * one outbox entry. Nothing is sent while the engine's delivery thread waits, and nothing is read
+ * back afterwards, because on this BPMS there is nothing to read back from.
  * <p>
- * The entry gets a transaction of its own: the Process-Engine-API delivers on a thread of the
- * engine's own with no transaction of the application to join. What that costs is decision 2 in
- * the repository's DECISIONS.md.
+ * The entry gets a transaction of its own. The Process-Engine-API delivers on a thread of the
+ * engine's own, and there is no transaction of the application to join. What that costs is
+ * decision 2 in the repository's DECISIONS.md.
  * <p>
- * The adapter hands over PLAIN identifiers - it translates what an engine reports back through
- * name-clash avoidance before it builds an observation - so nothing here spells an id a second
- * time. Two of them may be missing, and both are the adapter saying so rather than guessing: a
- * delivery whose BPMN process cannot be told is passed over with a line naming the task, and a
- * termination names no process at all, which costs nothing because what a terminated task was is
- * remembered from its delivery.
+ * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
+ * through name-clash avoidance before it builds an observation. So nothing here spells an id a
+ * second time. Two identifiers may be missing, and both times it is the adapter saying so rather
+ * than guessing. A delivery whose BPMN process cannot be told is passed over with a line naming
+ * the task. A termination names no process at all, which costs nothing, because what a terminated
+ * task was is remembered from its delivery.
  * <p>
  * What a delivery says beyond those identifiers is read under the key names the adapter itself
  * writes ({@link PeaTaskMeta}). The Process-Engine-API defines no vocabulary for the meta map of
- * a delivered task, so one spelling on both sides is what keeps the cockpit from showing a detail
- * as missing which the engine did fill.
+ * a delivered task. One spelling on both sides is what keeps the cockpit from showing a detail as
+ * missing which the engine did fill.
  */
 public class PeaCockpitObserver implements PeaUserTaskObserver {
 
@@ -63,9 +63,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks Where a delivery is remembered for the dispatch which follows it
    * @param versions What the adapter recorded about the deployed processes
-   * @param publisher Where an observed event is handed to, asked for on the first event rather
-   *          than up front: this object is built while the application is still wiring itself
-   *          together
+   * @param publisher Where an observed event is handed to. It is asked for on the first event
+   *          rather than up front, because this object is built while the application is still
+   *          wiring itself together
    */
   public PeaCockpitObserver(
       final PeaDeployedProcessesRegistry deployedProcesses,
@@ -87,7 +87,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
     final var bpmnProcessId = observation.bpmnProcessId();
     if (bpmnProcessId == null) {
       // the adapter could not tell which of the processes behind this subscription the task
-      // belongs to, so there is no workflow to report it under
+      // belongs to, so there is no workflow to report the task under
       logger
           .debug(
               "Process-Engine-API[{}]: not reporting user task '{}': the delivery named no BPMN process",
@@ -95,7 +95,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
               observation.taskId());
       return;
     }
-    // the engine which delivered the task is the one whose deployment is asked: two configured
+    // the deployment of the engine which delivered the task is the one to ask. Two configured
     // adapter ids may run the same workflow module on engines of their own, and a task of one of
     // them says nothing about what the other deployed
     final var process = deployedProcesses
@@ -162,19 +162,19 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
             known.get().reference(), endOf(observation), "%s#gone"
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
-    // only now: a report which did not get written leaves the task open here, so the engine
+    // only now. A report which did not get written leaves the task open here, so the engine
     // saying a second time that it is gone reports it again rather than being passed over
     deliveredUserTasks.ended(observation.taskId());
 
   }
 
   /**
-   * The cockpit lists business cases, and on this BPMS a case becomes visible with the first
-   * user task of it: the Process-Engine-API reports neither the start nor the end of a workflow,
-   * so there is no other moment to report one. It is reported with the FIRST user task of a case
-   * rather than with every one, because a case created again with every task of it is a case
-   * whose creation date moves - decision 6 in the repository's DECISIONS.md. A case which the
-   * node has since pushed out of its memory is reported as created again.
+   * The cockpit lists business cases, and on this BPMS a case becomes visible with its first user
+   * task. The Process-Engine-API reports neither the start nor the end of a workflow, so there is
+   * no other moment to report one. It is reported with the FIRST user task of a case rather than
+   * with every one, because a case created again with every task of it is a case whose creation
+   * date moves. That is decision 6 in the repository's DECISIONS.md. A case which the node has
+   * since pushed out of its memory is reported as created again.
    */
   private void reportTheWorkflowOnceItsFirstTaskAppeared(
       final UserTaskReference userTask) {
@@ -191,8 +191,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
             WorkflowEventKind.CREATED, "%s#created".formatted(userTask.workflowId()), OffsetDateTime
                 .now(),
             EventTransaction.NEW);
-    // only now: a report which did not get written leaves the case unreported, so the next user
-    // task of it is the one which makes it appear
+    // only now. A report which did not get written leaves the case unreported, so the next user
+    // task of the case is the one which makes it appear
     deliveredUserTasks.rememberWorkflowWasReported(userTask.adapterId(), userTask.workflowId());
 
   }
@@ -212,7 +212,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
         .builder()
         .bpmnProcessVersion(bpmnProcessVersion)
         .bpmnProcessName(process.processName())
-        // the aggregate's id is the business key of this BPMS: the Process-Engine-API's start
+        // the aggregate's id is the business key of this BPMS. The Process-Engine-API's start
         // command carries no second identifier a case could be looked up by
         .businessId(observation.workflowAggregateId())
         .bpmnTaskName(taskNameOf(taskInformation, element))
@@ -221,7 +221,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
         .candidateGroups(PeaTaskMeta.list(taskInformation, PeaTaskMeta.CANDIDATE_GROUPS))
         .dueDate(PeaTaskMeta.timestamp(taskInformation, PeaTaskMeta.DUE_DATE))
         .followUpDate(PeaTaskMeta.timestamp(taskInformation, PeaTaskMeta.FOLLOW_UP_DATE))
-        // the variables the subscription asked the engine for: a '@TaskParam' of a details
+        // the variables the subscription asked the engine for. A '@TaskParam' of a details
         // provider is bound from them, and a variable no subscription asked for is not among
         // them, which the repository's GAPS.md spells out
         .variables(observation.payload())
@@ -248,9 +248,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   }
 
   /**
-   * Whether a task which is gone was finished or withdrawn. The engine says so in the reason
-   * where it says anything at all, and a task which simply disappeared is reported as finished -
-   * see decision 4 in the repository's DECISIONS.md.
+   * Whether a task which is gone was finished or withdrawn. The engine says so in the reason,
+   * where it says anything at all, and a task which simply disappeared is reported as finished.
+   * See decision 4 in the repository's DECISIONS.md.
    */
   private static UserTaskEventKind endOf(
       final PeaUserTaskObservation observation) {
@@ -281,8 +281,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   /**
    * A workflow which the engine does not identify is identified by the aggregate the cockpit
-   * shows it for: the Process-Engine-API promises no instance id, and a business case without
-   * any id at all would arrive at the cockpit server as a case per event - decision 6 in the
+   * shows it for. The Process-Engine-API promises no instance id, and a business case without any
+   * id at all would arrive at the cockpit server as one case per event. See decision 6 in the
    * repository's DECISIONS.md.
    */
   private static String workflowIdOf(
@@ -300,10 +300,10 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * Which user task of the process was delivered. The engine's meta map names the BPMN element
    * where it is generous, and the subscription's own key answers where it is not.
    * <p>
-   * A form reference is not unique inside a process - two user tasks may show the same form - so
-   * the adapter answers all of them and the first one wins. That is the rule this extension has
-   * always followed, and there is nothing in a delivery to choose a better one by: what
-   * distinguishes the two tasks is the BPMN element id, which is the key that was missing.
+   * A form reference is not unique inside a process, because two user tasks may show the same
+   * form. So the adapter answers all of them and the first one wins. That is the rule this
+   * extension has always followed, and there is nothing in a delivery to choose a better one by.
+   * What tells the two tasks apart is the BPMN element id, which is the key that was missing.
    */
   private static BpmnTaskSpec elementOf(
       final DeployedProcess process,
@@ -338,10 +338,10 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   }
 
   /**
-   * Why the engine reported the task decides what the cockpit is told: a task delivered for the
-   * first time is new, and a task delivered again changed - its assignee, its candidates or its
+   * Why the engine reported the task decides what the cockpit is told. A task delivered for the
+   * first time is new, and a task delivered again changed: its assignee, its candidates or its
    * data. An engine which names no reason is reporting a task the cockpit has not seen either,
-   * because a delivery it does not distinguish is a delivery it repeats.
+   * because a delivery it does not tell apart is a delivery it repeats.
    */
   private static UserTaskEventKind kindOf(
       final PeaUserTaskObservation observation) {
@@ -355,10 +355,10 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   /**
    * What the cockpit is told this event was called in the BPMS. The engine repeats a delivery
-   * under the same task id and the same reason, so the pair identifies the delivery a report
-   * came from. It is not what makes two reports collapse - the outbox does that by the adapter,
-   * the task and the kind of event, so an assignment and a change waiting at the same time are
-   * one update either way.
+   * under the same task id and the same reason, so the pair says which delivery a report came
+   * from. It is not what makes two reports collapse. The outbox does that by the adapter, the
+   * task and the kind of event, so an assignment and a change waiting at the same time are one
+   * update either way.
    */
   private static String eventIdOf(
       final PeaUserTaskObservation observation) {
