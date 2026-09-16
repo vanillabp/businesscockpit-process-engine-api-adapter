@@ -34,6 +34,8 @@ public class PeaCockpitBridgeTest {
 
   private PeaDeliveredUserTasks deliveredUserTasks;
 
+  private TestDeliveryLog deliveryLog;
+
   private PeaCockpitObserver observer;
 
   private PeaCockpitBridge bridge;
@@ -43,16 +45,18 @@ public class PeaCockpitBridgeTest {
 
     final var deployedProcesses = TestModels.deployed();
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
+    deliveryLog = new TestDeliveryLog();
     observer = new PeaCockpitObserver(
         deployedProcesses, deliveredUserTasks, (
             adapterId,
             workflowModuleId,
             bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
     bridge = new PeaCockpitBridge(
-        TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, (
-            adapterId,
-            workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+        TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, TestModels
+            .recorded(deployedProcesses, deliveryLog), (
+                adapterId,
+                workflowModuleId,
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
 
   }
 
@@ -204,11 +208,13 @@ public class PeaCockpitBridgeTest {
 
     aDeliveredUserTask("task-1");
 
+    final var deployedProcesses = TestModels.deployed();
     final var anotherEngine = new PeaCockpitBridge(
-        "another-pea", TestModels.deployed(), deliveredUserTasks, (
-            adapterId,
-            workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+        "another-pea", deployedProcesses, deliveredUserTasks, TestModels
+            .recorded(deployedProcesses, deliveryLog), (
+                adapterId,
+                workflowModuleId,
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
 
     assertTrue(
         anotherEngine

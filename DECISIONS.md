@@ -149,3 +149,43 @@ the deployment, which is where that belongs.
 With that pass this extension also gives up its place in VanillaBP's deployment pipeline in this
 repository. It registers no `ExtensionWiringService` any more. What it needs to know is recorded
 by the adapter while it deploys, and read when a delivery or a cockpit question arrives.
+
+## 9. That a delivery happened is read out of VanillaBP's log, what it said stays in the memory
+
+Two questions look alike, and they have different answers. What does the cockpit show about this
+user task, and which user tasks of this business case did this application report? The first one
+asks for content, the second one for bookkeeping.
+
+The content stays where decision 3 put it, and that entry stands. `TaskDelivery`, the record
+VanillaBP writes about a delivery, carries not one field of that memory: no task name, no
+assignee, no candidate users or groups, no dates, no variables. Taking those fields into the
+record would make the platform write the engine's state into the application's database, which is
+the second copy decision 3 argues against. So a report which needs the content still needs the
+node the engine delivered to.
+
+The bookkeeping is read out of the platform's delivery log. VanillaBP writes one record per
+delivery it processed, in the transaction which saves the workflow aggregate, and it stamps the
+record once the completion of that task reaches the BPMS. That record sits in the application's
+own database, so it outlives a restart and every node reads the same one. This extension only
+reads it. A second writer would put work into the log which never ran, and the core would then
+skip a delivery nobody processed.
+
+Where both can answer, the memory answers. It carries more, and it heard what the engine said,
+while a record says that a delivery happened and how it ended. The log adds what the memory never
+saw or has forgotten. The rule is applied per task and not per business case: a task the memory
+holds is the memory's answer even where the memory says the task is over while the record is
+still open. The memory saw the engine take that task away, and the log only learns of an end
+which the application asked for.
+
+Two reads are not part of this. `prefilledUserTaskDetails` answers content, and the log holds
+none, so it stays on the memory alone. The end of a task stays there too, because the
+Process-Engine-API names only the task when it says one is gone, while the log has to be asked
+with the workflow module, the BPMN process, the workflow aggregate and the task.
+
+The log leaves two things out, and the repository's `GAPS.md` says what each of them costs. A user
+task which no `@WorkflowTask` method of the application claims is never recorded, because a record
+carries the outcome of a delivery and nobody processed that one. And a record written on this BPMS
+names neither the BPMN element nor the engine's own id of the workflow, because the
+Process-Engine-API adapter fills neither. Both are answered here the way a delivery answers them.
+The element comes out of what the adapter deployed, and the workflow is the aggregate the case is
+shown under.

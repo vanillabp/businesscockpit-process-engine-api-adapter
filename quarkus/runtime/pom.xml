@@ -58,6 +58,13 @@
       <artifactId>vanillabp-adapter-spi</artifactId>
     </dependency>
     <dependency>
+      <!-- VanillaBP's answer to which workflow aggregate serves a BPMN process: it arrives
+        transitively as well, and is declared because the producer asks it before it
+        resolves the delivery log of that aggregate -->
+      <groupId>io.vanillabp</groupId>
+      <artifactId>vanillabp-extension-spi</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
     </dependency>

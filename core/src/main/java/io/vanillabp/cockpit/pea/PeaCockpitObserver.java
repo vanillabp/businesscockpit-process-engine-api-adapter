@@ -142,6 +142,15 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   }
 
+  /**
+   * The engine took a user task away, and the cockpit is told how it ended.
+   * <p>
+   * This is the one read which cannot fall back on VanillaBP's delivery log. A termination
+   * carries no workflow aggregate, because the engine hands over no payload with it, and the log
+   * can only be asked with the workflow module, the BPMN process, the aggregate and the task. So
+   * a node which never saw the delivery has nothing to report the end of. That gap is entry 11 in
+   * the repository's GAPS.md.
+   */
   @Override
   public void userTaskTerminated(
       final PeaUserTaskObservation observation) {
@@ -298,32 +307,19 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   /**
    * Which user task of the process was delivered. The engine's meta map names the BPMN element
-   * where it is generous, and the subscription's own key answers where it is not.
-   * <p>
-   * A form reference is not unique inside a process, because two user tasks may show the same
-   * form. So the adapter answers all of them and the first one wins. That is the rule this
-   * extension has always followed, and there is nothing in a delivery to choose a better one by.
-   * What tells the two tasks apart is the BPMN element id, which is the key that was missing.
+   * where it is generous, and the subscription's own key answers where it is not. The rule
+   * behind that is shared with the reader of the platform's delivery log, which asks the same
+   * question about a task this node never saw.
    */
   private static BpmnTaskSpec elementOf(
       final DeployedProcess process,
       final PeaUserTaskObservation observation) {
 
-    final var bpmnTaskId = PeaTaskMeta
-        .text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID);
-    if (bpmnTaskId != null) {
-      final var namedByTheEngine = process.userTaskByElementId(bpmnTaskId);
-      if (namedByTheEngine != null) {
-        return namedByTheEngine;
-      }
-    }
-    if (observation.taskDefinition() == null) {
-      return null;
-    }
-    final var showingTheSameForm = process.userTasksByFormReference(observation.taskDefinition());
-    return showingTheSameForm.isEmpty()
-        ? null
-        : showingTheSameForm.getFirst();
+    return PeaUserTaskElements
+        .elementOf(
+            process, PeaTaskMeta
+                .text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID),
+            observation.taskDefinition());
 
   }
 

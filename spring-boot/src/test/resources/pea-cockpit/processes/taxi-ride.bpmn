@@ -11,9 +11,21 @@
         <zeebe:formDefinition externalReference="approve-the-ride" />
       </bpmn:extensionElements>
       <bpmn:incoming>ToApprove</bpmn:incoming>
+      <bpmn:outgoing>ToInspect</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToInspect" sourceRef="Approve" targetRef="Inspect" />
+    <!-- the user task no @WorkflowTask method of this application claims: it is worked on in a
+         task list only, and the question this model answers is whether the cockpit hears about
+         it all the same -->
+    <bpmn:userTask id="Inspect" name="Inspect the car">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="inspect-the-car" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToInspect</bpmn:incoming>
       <bpmn:outgoing>ToEnd</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:sequenceFlow id="ToEnd" sourceRef="Approve" targetRef="End" />
+    <bpmn:sequenceFlow id="ToEnd" sourceRef="Inspect" targetRef="End" />
     <bpmn:endEvent id="End">
       <bpmn:incoming>ToEnd</bpmn:incoming>
     </bpmn:endEvent>

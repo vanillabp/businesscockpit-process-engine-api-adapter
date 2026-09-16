@@ -29,6 +29,12 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * the subscriptions of this node delivered, which is everything this BPMS ever says about a task.
  * What that costs is written down one by one in the repository's <code>GAPS.md</code>, and the
  * wiki says it in the words of somebody using the cockpit.
+ * <p>
+ * There is a second source, and it answers the other half of the question. VanillaBP writes down
+ * every delivery it processed, in the application's own database, so that log says what this
+ * application reported and how it ended after a restart and on any node. The memory answers
+ * first, because it carries more, and the log adds the tasks the memory never saw or has
+ * forgotten. The border between the two is decision 9 in the repository's DECISIONS.md.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -39,6 +45,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
   private final PeaDeployedProcessesRegistry deployedProcesses;
 
   private final PeaDeliveredUserTasks deliveredUserTasks;
+
+  private final PeaRecordedUserTasks recordedUserTasks;
 
   private final PeaProcessVersions versions;
 
@@ -54,6 +62,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * @param adapterId The configured adapter id this bridge serves
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks What this node has seen
+   * @param recordedUserTasks What VanillaBP wrote down about the deliveries it processed
    * @param versions What the adapter recorded about the deployed processes
    * @param rememberedAggregates How many business cases this bridge keeps apart while saying that
    *          it knows nothing about them. It is the number which sizes the memory of the
@@ -64,12 +73,14 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final String adapterId,
       final PeaDeployedProcessesRegistry deployedProcesses,
       final PeaDeliveredUserTasks deliveredUserTasks,
+      final PeaRecordedUserTasks recordedUserTasks,
       final PeaProcessVersions versions,
       final int rememberedAggregates) {
 
     this.adapterId = Objects.requireNonNull(adapterId, "adapterId");
     this.deployedProcesses = Objects.requireNonNull(deployedProcesses, "deployedProcesses");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
+    this.recordedUserTasks = Objects.requireNonNull(recordedUserTasks, "recordedUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.aggregatesReportedAsUnknown = Collections
         .newSetFromMap(Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, false) {
@@ -102,6 +113,12 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   }
 
+  /**
+   * What the cockpit shows about a task, which only the memory holds. A delivery record carries
+   * identifiers and an outcome and not one word the engine said about the task, so there is
+   * nothing to read there. A report which finds nothing here is dropped, and what that costs is
+   * entry 10 in the repository's GAPS.md.
+   */
   @Override
   public Optional<UserTaskDetailsPrefill> prefilledUserTaskDetails(
       final UserTaskReference userTask) {
@@ -146,17 +163,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final String workflowAggregateId) {
 
     final var workflows = new LinkedHashMap<String, WorkflowReference>();
-    deliveredUserTasks
-        .ofAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId)
-        .stream()
-        .filter(this::servedByThisAdapter)
+    openTasksOfAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId)
         .forEach(
-            task -> workflows
+            userTask -> workflows
                 .putIfAbsent(
-                    task.reference().workflowId(),
+                    userTask.workflowId(),
                     new WorkflowReference(
-                        adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, task
-                            .reference()
+                        adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, userTask
                             .workflowId())));
     if (workflows.isEmpty()) {
       sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
@@ -172,12 +185,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final String workflowAggregateId,
       final List<String> userTaskIds) {
 
-    final var known = deliveredUserTasks
-        .ofAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId)
-        .stream()
-        .filter(this::servedByThisAdapter)
-        .map(PeaDeliveredUserTasks.DeliveredUserTask::reference)
-        .toList();
+    final var known = openTasksOfAggregate(
+        workflowModuleId, bpmnProcessId, workflowAggregateId);
     if (known.isEmpty()) {
       sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
       return List.of();
@@ -197,14 +206,96 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final String workflowAggregateId,
       final String userTaskId) {
 
+    final var remembered = deliveredUserTasks
+        .of(userTaskId)
+        .filter(this::servedByThisAdapter);
+    if (remembered.isPresent()) {
+      return remembered
+          .filter(task -> !task.ended())
+          .map(PeaDeliveredUserTasks.DeliveredUserTask::reference)
+          .filter(
+              reference -> reference.workflowModuleId().equals(workflowModuleId) && reference.bpmnProcessId()
+                  .equals(bpmnProcessId) && reference.workflowAggregateId().equals(workflowAggregateId));
+    }
+    return recordedUserTasks
+        .openTaskOfAggregate(
+            adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, userTaskId);
+
+  }
+
+  /**
+   * The open user tasks of one business case, out of both sources.
+   * <p>
+   * The memory answers first and the log fills the gaps, which is the rule decision 9 in the
+   * repository's DECISIONS.md writes down. It is applied per task rather than per business case:
+   * a task the memory holds is the memory's answer, even where the memory says the task is over
+   * and the log still has it open. The memory saw the engine take that task away, and the log
+   * only learns of an end which the application asked for.
+   */
+  private List<UserTaskReference> openTasksOfAggregate(
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowAggregateId) {
+
+    final var open = new LinkedHashMap<String, UserTaskReference>();
+    deliveredUserTasks
+        .ofAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId)
+        .stream()
+        .filter(this::servedByThisAdapter)
+        .map(PeaDeliveredUserTasks.DeliveredUserTask::reference)
+        .forEach(reference -> open.put(reference.userTaskId(), reference));
+    final var workflowNamedByTheEngine = open
+        .values()
+        .stream()
+        .findFirst()
+        .map(UserTaskReference::workflowId);
+    recordedUserTasks
+        .openTasksOfAggregate(adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId)
+        .stream()
+        .filter(recorded -> !remembers(recorded.userTaskId()))
+        .map(recorded -> under(recorded, workflowNamedByTheEngine))
+        .forEach(recorded -> open.putIfAbsent(recorded.userTaskId(), recorded));
+    return List.copyOf(open.values());
+
+  }
+
+  /**
+   * Puts a task of the delivery log under the workflow a delivery of the same business case
+   * named.
+   * <p>
+   * A record written on this BPMS names no workflow, so the reader falls back to the aggregate's
+   * id. Where a delivery of the same case is in the memory, the engine's own id for that workflow
+   * is known, and the two answers must not stand next to each other: the cockpit would show one
+   * business case twice, once under each id. The memory's answer wins here for the same reason it
+   * wins everywhere else, and a case with no delivery in the memory keeps the aggregate's id, as
+   * decision 6 in the repository's DECISIONS.md says it should.
+   */
+  private static UserTaskReference under(
+      final UserTaskReference recorded,
+      final Optional<String> workflowNamedByTheEngine) {
+
+    return workflowNamedByTheEngine
+        .filter(workflowId -> !workflowId.equals(recorded.workflowId()))
+        .map(
+            workflowId -> new UserTaskReference(
+                recorded.adapterId(), recorded.workflowModuleId(), recorded.bpmnProcessId(), recorded
+                    .workflowAggregateId(), workflowId, recorded.userTaskId(), recorded
+                        .taskDefinition(), recorded.bpmnTaskId()))
+        .orElse(recorded);
+
+  }
+
+  /**
+   * Whether this node saw the delivery of a task itself, whether or not the task is over. It is
+   * what keeps the log from answering about a task the memory has a better answer for.
+   */
+  private boolean remembers(
+      final String userTaskId) {
+
     return deliveredUserTasks
         .of(userTaskId)
         .filter(this::servedByThisAdapter)
-        .filter(task -> !task.ended())
-        .map(PeaDeliveredUserTasks.DeliveredUserTask::reference)
-        .filter(
-            reference -> reference.workflowModuleId().equals(workflowModuleId) && reference.bpmnProcessId()
-                .equals(bpmnProcessId) && reference.workflowAggregateId().equals(workflowAggregateId));
+        .isPresent();
 
   }
 
@@ -224,13 +315,14 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * Says that an application reported a change of something this BPMS cannot find again.
    * <p>
    * The Process-Engine-API cannot be asked which workflows or which user tasks belong to a
-   * business case. The only ones this half knows are those whose user tasks this node was given,
-   * and after the last of them ended it knows none. Both reads answer from that one memory, so
-   * they are silent together and say the same sentence. Reporting nothing is the honest answer,
-   * and an exception would be the wrong one, because the application's own work is done and
-   * rolling it back over a cockpit update helps nobody. The sentence is said once per business
-   * case, because an application which reports every change would otherwise fill the log with it.
-   * It is said again for a case which enough other ones have pushed out of that memory.
+   * business case. Two sources answer instead, and this is said when NEITHER of them knows
+   * anything: this node saw no open task of the case, and VanillaBP wrote none down either.
+   * Both reads use the same two sources, so they are silent together and say the same sentence.
+   * Reporting nothing is the honest answer, and an exception would be the wrong one, because the
+   * application's own work is done and rolling it back over a cockpit update helps nobody. The
+   * sentence is said once per business case, because an application which reports every change
+   * would otherwise fill the log with it. It is said again for a case which enough other ones
+   * have pushed out of the memory.
    */
   private void sayThatNothingIsKnown(
       final String workflowModuleId,
@@ -251,13 +343,16 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         .warn(
             """
                 Process-Engine-API[{}]: the change of workflow aggregate '{}' (BPMN process '{}' of \
-                workflow module '{}') was not reported to the Business Cockpit, because this node \
-                knows neither a workflow nor a user task of that aggregate. The Process-Engine-API \
-                offers no way to search for the workflows or the user tasks of a business case. Both \
-                are known while one of its user tasks is in the memory of this node, and never \
-                afterwards; see GAPS.md of businesscockpit-process-engine-api-adapter. Nothing about \
-                this case reaches the cockpit until the engine delivers a user task of it to this \
-                node again.""",
+                workflow module '{}') was not reported to the Business Cockpit, because neither \
+                source knows a workflow or a user task of that aggregate. The Process-Engine-API \
+                offers no way to search for the workflows or the user tasks of a business case, so \
+                this half answers from the deliveries this node was given and from the deliveries \
+                VanillaBP wrote into its own delivery log. The memory holds a task until the engine \
+                takes it away, the log holds one until the application completes it, and a user \
+                task no @WorkflowTask method of this application claims was never written down; see \
+                GAPS.md of businesscockpit-process-engine-api-adapter. Nothing about this case \
+                reaches the cockpit until the engine delivers a user task of it to this node \
+                again.""",
             adapterId,
             workflowAggregateId,
             bpmnProcessId,

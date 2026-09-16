@@ -12,7 +12,10 @@ import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
+import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
+import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
+import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -66,6 +69,29 @@ public class PeaCockpitProducer {
       final CockpitSettings settings) {
 
     return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(settings));
+
+  }
+
+  /**
+   * What VanillaBP wrote down about the deliveries it processed. It is the durable half of what
+   * this extension knows about a user task, and the platform is asked for it rather than the
+   * store being picked here: which store serves an aggregate follows the persistence VanillaBP
+   * resolved for it.
+   *
+   * @param handlers VanillaBP's answer to which workflow aggregate serves a BPMN process
+   * @param deliveryLogs The platform's resolver of the store holding an aggregate's records
+   * @param registry What the Process-Engine-API adapter recorded while deploying
+   * @return The reader of the delivery log
+   */
+  @Produces
+  @Singleton
+  @Unremovable
+  public PeaRecordedUserTasks businessCockpitPeaRecordedUserTasks(
+      final ExtensionHandlers handlers,
+      final TaskDeliveryLogResolver deliveryLogs,
+      final PeaDeployedProcessesRegistry registry) {
+
+    return new PeaRecordedUserTasks(handlers, deliveryLogs, registry);
 
   }
 
@@ -129,6 +155,7 @@ public class PeaCockpitProducer {
    * @param settings What the application wrote below the cockpit's own sections
    * @param registry What the Process-Engine-API adapter recorded while deploying
    * @param deliveredUserTasks The memory of what a delivery said
+   * @param recordedUserTasks What VanillaBP wrote down about the deliveries it processed
    * @param versions The versions of the deployed processes
    * @return One bridge per configured Process-Engine-API adapter id
    */
@@ -140,6 +167,7 @@ public class PeaCockpitProducer {
       final CockpitSettings settings,
       final PeaDeployedProcessesRegistry registry,
       final PeaDeliveredUserTasks deliveredUserTasks,
+      final PeaRecordedUserTasks recordedUserTasks,
       final PeaProcessVersions versions) {
 
     final var rememberedUserTasks = PeaCockpitSettings.rememberedUserTasks(settings);
@@ -148,7 +176,7 @@ public class PeaCockpitProducer {
         .stream()
         .<BusinessCockpitBpmsBridge>map(
             adapterId -> new PeaCockpitBridge(
-                adapterId, registry, deliveredUserTasks, versions, rememberedUserTasks))
+                adapterId, registry, deliveredUserTasks, recordedUserTasks, versions, rememberedUserTasks))
         .toList();
 
   }

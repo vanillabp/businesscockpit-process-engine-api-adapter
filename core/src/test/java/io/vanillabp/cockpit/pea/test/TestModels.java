@@ -1,9 +1,17 @@
 package io.vanillabp.cockpit.pea.test;
 
+import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 
+import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
+import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
+import io.vanillabp.integration.extension.spi.handler.HandlerCall;
+import io.vanillabp.integration.extension.spi.handler.HandlerContract;
+import io.vanillabp.integration.spi.TaskDeliveryLog;
 import io.vanillabp.pea.PeaBpmnModel;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
@@ -46,7 +54,125 @@ public final class TestModels {
       </bpmn:definitions>
       """;
 
+  /** The class of the workflow aggregate the test's BPMN process is served by. */
+  public static final class TestAggregate {
+  }
+
   private TestModels() {
+  }
+
+  /**
+   * The reader of VanillaBP's delivery log, wired the way a platform wires it.
+   *
+   * @param deployedProcesses What the adapter recorded while it deployed
+   * @param deliveryLog The store the application runs, or <code>null</code> for an application
+   *          which configured none
+   * @return The reader
+   */
+  public static PeaRecordedUserTasks recorded(
+      final PeaDeployedProcessesRegistry deployedProcesses,
+      final TaskDeliveryLog deliveryLog) {
+
+    return new PeaRecordedUserTasks(
+        handlersServing(TestAggregate.class), resolvingTo(deliveryLog), deployedProcesses);
+
+  }
+
+  /**
+   * @param deliveryLog What every aggregate's records are in, or <code>null</code> where there
+   *          is no store at all
+   * @return The platform's resolver
+   */
+  public static TaskDeliveryLogResolver resolvingTo(
+      final TaskDeliveryLog deliveryLog) {
+
+    return new TaskDeliveryLogResolver() {
+
+      @Override
+      public TaskDeliveryLog resolveFor(
+          final Class<?> workflowAggregateClass) {
+
+        return deliveryLog;
+
+      }
+
+      @Override
+      public String remediesDescription() {
+
+        return "";
+
+      }
+
+    };
+
+  }
+
+  /**
+   * VanillaBP's handlers, answering the one question this extension asks them.
+   *
+   * @param workflowAggregateClass The aggregate serving the test's BPMN process, or
+   *          <code>null</code> for a process no workflow service of the application declares
+   * @return The handlers
+   */
+  public static ExtensionHandlers handlersServing(
+      final Class<?> workflowAggregateClass) {
+
+    return new ExtensionHandlers() {
+
+      @Override
+      public void register(
+          final HandlerContract contract) {
+
+      }
+
+      @Override
+      public boolean hasHandler(
+          final Class<? extends Annotation> annotationType,
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final List<String> lookupKeys) {
+
+        return false;
+
+      }
+
+      @Override
+      public Optional<Object> invoke(
+          final HandlerCall call) {
+
+        return Optional.empty();
+
+      }
+
+      @Override
+      public Optional<Class<?>> workflowAggregateOf(
+          final String workflowModuleId,
+          final String bpmnProcessId) {
+
+        return Optional.ofNullable(workflowAggregateClass);
+
+      }
+
+      @Override
+      public List<String> bpmnProcessesOf(
+          final String workflowModuleId) {
+
+        return List.of(BPMN_PROCESS_ID);
+
+      }
+
+      @Override
+      public Optional<String> bpmnTaskNameOf(
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final String activityId) {
+
+        return Optional.empty();
+
+      }
+
+    };
+
   }
 
   /**
