@@ -148,18 +148,26 @@ right now.
 delivered to it, and `UserTaskSupport`, the helper the API ships for keeping exactly that, holds it
 in memory too.
 
-**What it costs:** this extension answers from the deliveries the node it runs on has seen
-(decision 3 in `DECISIONS.md`). Say a business case reports a change and this node never saw its
-tasks, after a restart or because another node got the delivery. Then nothing is reported to the
-cockpit, and the log says so once per case. `getUserTask` answers empty in the same situation.
+**What it costs:** this extension answers out of two sources, and neither is a query. The first is
+the deliveries the node it runs on has seen (decision 3 in `DECISIONS.md`). The second is
+VanillaBP's own delivery log, which answers `TaskDeliveryLog#openTasksOfAggregate` with the open
+deliveries of a business case. The log reads a table of the application's own database, so it
+answers after a restart and on any node, and decision 9 in `DECISIONS.md` says which of the two
+wins where both can answer.
 
-VanillaBP itself knows a little more. The platform's task delivery log answers
-`TaskDeliveryLog#openTasksOfAggregate` with the deliveries of a business case which are still open.
-It answers after a restart and on any node, because it reads a table of the application's own
-database. That is not the query this entry asks for. The log holds deliveries, so it names a user
-task only where a `@WorkflowTask` method of the application ran for it, and a task nobody wrote a
-method for never got recorded. What it holds about one is the delivery, not the identifiers the
-cockpit addresses a task by.
+What the log cannot do is what this entry asks for. It holds deliveries, so it names a user task
+only where a `@WorkflowTask` method of the application ran for it, and a task nobody wrote a method
+for was never recorded. It holds a record until the application's completion of that task reaches
+the BPMS, so a task the engine withdrew some other way stays in it. And on this BPMS a record names
+neither the BPMN element of the task nor the engine's own id of the workflow, because the
+Process-Engine-API adapter fills neither; this extension answers both out of what the adapter
+deployed.
+
+So a business case whose tasks were all withdrawn, or served by nobody, is still a case this half
+cannot find again. Nothing about it is reported to the cockpit then, and the log says so once per
+case. `getUserTask` answers empty for a task neither source knows, and it answers empty for a task
+only the delivery log knows, because a report of a running task without its details is no report
+(entry 10).
 
 **What would close it:** a query for user tasks by a restriction the API already knows
 (`businessKey`, `processInstanceId`), which is the cheapest read a task list needs anyway.
@@ -222,11 +230,50 @@ node the engine delivered to and nowhere else.
 
 A node which restarts in between therefore cannot say what the task looked like. A report of a
 creation or a change is dropped then, and the log says so, so the cockpit misses that task until
-the engine delivers it again. An end is still reported, because a report about the end of a task
-carries no details of its own. The same holds for a report whose entry is dispatched on another
+the engine delivers it again. The same holds for a report whose entry is dispatched on another
 node, and for a task which so many newer ones have pushed out of the memory that nothing is left of
 it. Sizing the memory (`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change
 that. It only decides how many tasks a node holds at once.
 
-**What would close it:** the single-task read of entry 7. With it, this extension answers a
+An end is two different things here, and only one of them survives. An entry which was already
+written is dispatched without details, because a report about the end of a task carries none of its
+own, so that end still reaches the cockpit. An end which the engine reports AFTER the restart never
+becomes an entry at all. `PeaCockpitObserver#userTaskTerminated` asks the memory what the task was,
+finds nothing and says so in a debug line, and the cockpit keeps showing that task as open. Entry
+11 says why the memory cannot be rebuilt to answer it.
+
+**What would close it:** the single-task read entry 11 asks for. With it, this extension answers a
 dispatch the way every other BPMS half does, and the memory is a cache rather than the only source.
+
+## 11. Nothing lets a fresh node rebuild what it knew about a user task
+
+**The cockpit needs** a node which has just started to be able to say what a user task of a running
+business case is: its name, who it is assigned to, who may claim it, its dates and its variables.
+Every other BPMS half of the cockpit reads exactly that when a report is dispatched, and it reads
+it from the engine.
+
+**The API offers** nothing to read a task from. There is no task query, no single-task get and no
+history. What a subscriber knows is what was delivered to it, and the API's own helper for keeping
+that, `UserTaskSupport`, keeps it in memory as well. An engine repeats a delivery when something
+about the task changes, but nobody can ask it to repeat one, so a node cannot fetch what it lost.
+
+VanillaBP fills half of the hole and cannot fill the other half. Its delivery log says which user
+tasks of a business case this application was handed and which of them are over, out of the
+application's own database, so a fresh node knows the tasks again (decision 9 in `DECISIONS.md`).
+The record holds no field of the content, and it must not: the platform would then write the
+engine's state into the application's database.
+
+**What it costs:** a report dispatched after the restart has nothing to show. A report about a
+running task is dropped then, so the cockpit misses that task until the engine delivers it again
+(entry 10). An end which the engine reports after the restart is not even written, because
+a termination on this API names the task and nothing else, and the delivery log has to be asked with
+the workflow module, the BPMN process, the workflow aggregate and the task. That task stays open in
+the cockpit until somebody looks at the engine. `getUserTask` answers empty for the same reason, so
+an application cannot read the task back either.
+
+**What would close it:** one read of one task by its id, answering what a delivery answers.
+`TaskInformation` plus the payload the subscription asked for is the whole of it, and the API
+already builds both when it delivers. With that read, this extension asks for the task while the
+report is dispatched, and the memory becomes a cache instead of the only source. A query for the
+open user tasks of a business key (entry 7) would close it as well and answer more, including the
+tasks no `@WorkflowTask` method of the application claims.

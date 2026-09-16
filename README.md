@@ -35,10 +35,10 @@ port and no configuration key to translate.
 The module layout every VanillaBP adapter repository uses:
 
 - `core` - everything which needs neither Spring nor Quarkus. That is the observer which turns a
-  delivered user task into a cockpit event, the memory of what a delivery said, and the bridge
-  which answers what the cockpit reads about a task or a business case. What was deployed is read
-  from the Process-Engine-API adapter's own record of it, so nothing here takes a place in
-  VanillaBP's deployment pipeline.
+  delivered user task into a cockpit event, the memory of what a delivery said, the reader of
+  VanillaBP's own delivery log, and the bridge which answers what the cockpit reads about a task or
+  a business case. What was deployed is read from the Process-Engine-API adapter's own record of
+  it, so nothing here takes a place in VanillaBP's deployment pipeline.
 - `spring-boot` and `quarkus/runtime` plus `quarkus/deployment` - the glue which registers those
   beans with each platform, and one bridge per configured `process-engine-api` adapter id.
 - `test-coverage-report` - the coverage measurement per platform and the gate which breaks the
@@ -72,6 +72,16 @@ The design is therefore the second way, and the seam exists:
 called from the subscription the adapter already opens. Everything behind it is implemented and
 tested through `PeaCockpitObserver`, which implements that interface: the memory of a delivery, the
 kinds of event, and the reads the cockpit does.
+
+## Two sources, and what each of them answers
+
+This BPMS cannot be asked anything about a user task, so the extension answers out of what it was
+told. The memory of this node holds what the engine said about a delivery, which is what the
+cockpit shows. VanillaBP's delivery log holds that a delivery happened and how it ended, in the
+application's own database, which is what survives a restart and what every node reads. The memory
+answers first because it carries more, and the log adds the tasks the memory never saw or has
+forgotten. Decision 9 in [`DECISIONS.md`](./DECISIONS.md) writes the border down, and entries 10
+and 11 of [`GAPS.md`](./GAPS.md) say what falls between the two.
 
 While the seam was missing, this repository carried a port of the same shape and asked an
 application to call it. Both are gone. The adapter is told about every delivery, while an
