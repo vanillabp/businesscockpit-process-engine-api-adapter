@@ -33,10 +33,13 @@ public class PeaBridgesPerAdapterIdTest {
   private List<String> bridgedAdapterIds(
       final MigrationAdapterProperties properties) {
 
+    final var deployedProcesses = new PeaDeployedProcessesRegistry();
     return new PeaCockpitProducer()
         .businessCockpitPeaBridges(
             properties, new CockpitSettings(null, null, null, null, null, null, Map.of()),
-            new PeaDeployedProcessesRegistry(), new PeaDeliveredUserTasks(10), (
+            deployedProcesses, new PeaDeliveredUserTasks(10), TestRecordedUserTasks
+                .knowingNothing(deployedProcesses),
+            (
                 adapterId,
                 workflowModuleId,
                 bpmnProcessId) -> null)

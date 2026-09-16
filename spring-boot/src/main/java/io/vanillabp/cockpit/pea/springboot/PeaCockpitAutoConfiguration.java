@@ -17,7 +17,10 @@ import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
+import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
+import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
+import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
@@ -55,6 +58,27 @@ public class PeaCockpitAutoConfiguration {
 
     PeaCockpitSettings.refuseWhatAWorkflowModuleConfigured(propertyNamesOf(environment));
     return new PeaDeliveredUserTasks(PeaCockpitSettings.rememberedUserTasks(settings));
+
+  }
+
+  /**
+   * What VanillaBP wrote down about the deliveries it processed. It is the durable half of what
+   * this extension knows about a user task, and the platform is asked for it rather than the
+   * store being picked here: which store serves an aggregate follows the persistence VanillaBP
+   * resolved for it.
+   *
+   * @param handlers VanillaBP's answer to which workflow aggregate serves a BPMN process
+   * @param deliveryLogs The platform's resolver of the store holding an aggregate's records
+   * @param registry What the Process-Engine-API adapter recorded while deploying
+   * @return The reader of the delivery log
+   */
+  @Bean
+  public PeaRecordedUserTasks businessCockpitPeaRecordedUserTasks(
+      final ExtensionHandlers handlers,
+      final TaskDeliveryLogResolver deliveryLogs,
+      final PeaDeployedProcessesRegistry registry) {
+
+    return new PeaRecordedUserTasks(handlers, deliveryLogs, registry);
 
   }
 
