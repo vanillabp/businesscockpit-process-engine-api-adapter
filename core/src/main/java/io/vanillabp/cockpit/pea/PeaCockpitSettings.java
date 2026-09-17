@@ -36,8 +36,8 @@ public final class PeaCockpitSettings {
   public static final String REMEMBERED_USER_TASKS = ConfigurationKeys.REMEMBERED_USER_TASKS;
 
   /**
-   * Enough for the tasks of a busy node between a delivery and the dispatch which follows it
-   * seconds later, and small enough to be paid for without thinking about it.
+   * Enough for the open tasks of a busy node, which is what this memory is asked about, and
+   * small enough to be paid for without thinking about it.
    */
   public static final int DEFAULT_REMEMBERED_USER_TASKS = 1000;
 

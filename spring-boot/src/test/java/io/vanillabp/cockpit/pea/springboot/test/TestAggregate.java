@@ -11,13 +11,13 @@ import jakarta.persistence.Version;
  * changes.
  * <p>
  * It carries a version attribute, and that is what an application with a writing details provider
- * is meant to do. The provider runs while a report is dispatched, in the transaction of that
- * dispatch, so it reads this case long before it writes it back. An application which changes the
- * same case in that window would otherwise lose its change without a word, because the dispatch
- * writes every field it holds, the older reading among them. With the version attribute the later
- * of the two writers reads a conflict instead. The application answers the conflict by repeating
- * its transaction. The dispatch answers it by leaving its outbox entry unfinished, so the report
- * goes out again from a fresh reading of the case. When that happens is not promised to anybody.
+ * is meant to do. The provider runs while the report is built, in the transaction the cockpit
+ * opens for the outbox entry, and it writes this case back when that transaction commits. An
+ * application which changes the same case in that window would otherwise lose its change without
+ * a word, because the provider writes every field it holds, the older reading among them. With
+ * the version attribute the later of the two writers reads a conflict instead, and each of them
+ * answers it the way it can. The application repeats its transaction. The cockpit loses the
+ * entry, so the report of that event is gone and the next one carries the case as it is then.
  */
 @Entity
 public class TestAggregate {

@@ -45,8 +45,8 @@ meantime is gone, and so is the startup message which asked an application to fe
 engine's full `TaskInformation`. So the reason reaches this extension: `delete` is reported as
 cancelled and everything else as completed (decision 4 in this repository's `DECISIONS.md`). The
 termination names no BPMN process and no workflow aggregate, and that costs nothing. What a
-terminated task was is what its delivery said, and this extension remembers that until the report
-is dispatched.
+terminated task was is what its delivery said, and this extension remembers that from the delivery
+until the end is reported.
 
 **Still open at the Process-Engine-API.** What the reason says is only half an outcome. The
 reference C7 adapter names `complete` when a task was finished through `UserTaskCompletionApi` and
@@ -214,43 +214,44 @@ adapter id anyway, so nothing here has to change when the adapter allows a secon
 **What would close it:** tenant support in the API, which is what the adapter's own `GAPS.md` entry
 15 asks for.
 
-## 10. A restart between a delivery and its dispatch loses the details
+## 10. What a delivery said lives on one node, and a restart takes it
 
-**The cockpit needs** to read the current state of a task while the report is dispatched, which is
-after the transaction the event was observed in committed.
+**The cockpit needs** to say what a user task looks like whenever something asks: while it builds
+the report of an event, and later when an application reads the task back or reports that its
+business case changed.
 
-**The API offers** nothing to read it from (entries 6 and 7), so this extension answers the
-dispatch from what the delivery said, in memory.
+**The API offers** nothing to read it from (entries 6 and 7), so this extension answers out of
+what the delivery said, in memory.
 
-**What it costs:** what a restart takes is what the task SHOWS, not that it exists. The outbox
-entry is a row in the application's database and survives it, and so does the platform's record of
-the delivery (entry 7). What is gone is everything the delivery said about the task: its name, who
-it is assigned to, who may claim it, its dates and its variables. That lived in the memory of the
-node the engine delivered to and nowhere else.
+**What it costs:** the report of a delivered task is safe. It is built in the moment the task
+arrives, out of the memory that same delivery was just written to, and it travels inside the
+outbox entry (decision 10 in `DECISIONS.md`). A restart before that entry is sent takes nothing
+from it, and neither does sending it on another node.
 
-A node which restarts in between therefore cannot say what the task looked like. A report of a
-creation or a change is dropped then, and the log says so, so the cockpit misses that task until
-the engine delivers it again. The same holds for a report whose entry is dispatched on another
-node, and for a task which so many newer ones have pushed out of the memory that nothing is left of
-it. Sizing the memory (`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change
-that. It only decides how many tasks a node holds at once.
+What a restart takes is every later question about that task. Its name, who it is assigned to,
+who may claim it, its dates and its variables lived in the memory of the node the engine delivered
+to and nowhere else. So a fresh node reports nothing when an application calls `aggregateChanged`
+for a task only the delivery log knows, because a report of a running task without its details is
+no report, and the log says so. `getUserTask` answers nothing for the same reason. And an end the
+engine reports never becomes an entry at all: a termination names the task and nothing else, so
+`PeaCockpitObserver#userTaskTerminated` asks the memory what the task was, finds nothing and says
+so in a debug line. The cockpit keeps showing that task as open, and entry 11 says why the memory
+cannot be rebuilt to answer it.
 
-An end is two different things here, and only one of them survives. An entry which was already
-written is dispatched without details, because a report about the end of a task carries none of its
-own, so that end still reaches the cockpit. An end which the engine reports AFTER the restart never
-becomes an entry at all. `PeaCockpitObserver#userTaskTerminated` asks the memory what the task was,
-finds nothing and says so in a debug line, and the cockpit keeps showing that task as open. Entry
-11 says why the memory cannot be rebuilt to answer it.
+The same holds for a task delivered to another node, and for one which so many newer tasks have
+pushed out of the memory. Sizing the memory
+(`vanillabp.cockpit.process-engine-api.remembered-user-tasks`) does not change that. It only
+decides how many tasks a node holds at once.
 
-**What would close it:** the single-task read entry 11 asks for. With it, this extension answers a
-dispatch the way every other BPMS half does, and the memory is a cache rather than the only source.
+**What would close it:** the single-task read entry 11 asks for. With it, the memory is a cache
+rather than the only source, and a fresh node answers those questions the way every other BPMS
+half does.
 
 ## 11. Nothing lets a fresh node rebuild what it knew about a user task
 
 **The cockpit needs** a node which has just started to be able to say what a user task of a running
 business case is: its name, who it is assigned to, who may claim it, its dates and its variables.
-Every other BPMS half of the cockpit reads exactly that when a report is dispatched, and it reads
-it from the engine.
+Every other BPMS half of the cockpit reads exactly that from its engine, whenever it is asked.
 
 **The API offers** nothing to read a task from. There is no task query, no single-task get and no
 history. What a subscriber knows is what was delivered to it, and the API's own helper for keeping
@@ -263,18 +264,19 @@ application's own database, so a fresh node knows the tasks again (decision 9 in
 The record holds no field of the content, and it must not: the platform would then write the
 engine's state into the application's database.
 
-**What it costs:** a report dispatched after the restart has nothing to show. A report about a
-running task is dropped then, so the cockpit misses that task until the engine delivers it again
-(entry 10). An end which the engine reports after the restart is not even written, because
-a termination on this API names the task and nothing else, and the delivery log has to be asked with
-the workflow module, the BPMN process, the workflow aggregate and the task. That task stays open in
+**What it costs:** a fresh node has nothing to show about a task it did not see delivered. A
+report an application asks for with `aggregateChanged` is dropped then, so the cockpit misses that
+task until the engine delivers it again (entry 10). An end which the engine reports after the
+restart is not even written, because a termination on this API names the task and nothing else, and
+the delivery log has to be asked with the workflow module, the BPMN process, the workflow aggregate
+and the task. That task stays open in
 the cockpit until somebody looks at the engine. `getUserTask` answers empty for the same reason, so
 an application cannot read the task back either.
 
 **What would close it:** one read of one task by its id, answering what a delivery answers.
 `TaskInformation` plus the payload the subscription asked for is the whole of it, and the API
-already builds both when it delivers. With that read, this extension asks for the task while the
-report is dispatched, and the memory becomes a cache instead of the only source. A query for the
+already builds both when it delivers. With that read, this extension asks the engine wherever the
+memory is empty, and the memory becomes a cache instead of the only source. A query for the
 open user tasks of a business key (entry 7) would close it as well and answer more, including the
 tasks no `@WorkflowTask` method of the application claims.
 

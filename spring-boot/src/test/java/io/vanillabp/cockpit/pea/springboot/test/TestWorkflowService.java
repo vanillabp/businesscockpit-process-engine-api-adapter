@@ -112,9 +112,9 @@ public class TestWorkflowService {
    * delivered and writes into the workflow aggregate, which is what a details provider is for.
    * <p>
    * The write has to stay even though no test reads the note any more. It is what leaves the case
-   * dirty in the transaction which dispatches the report. A dispatch writing nothing is no second
-   * writer of the case, and a second writer is what the version attribute of TestAggregate
-   * answers.
+   * dirty in the transaction the cockpit opens to write its outbox entry. A provider writing
+   * nothing is no second writer of the case, and a second writer is what the version attribute of
+   * TestAggregate answers.
    *
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param prefilled What the engine knew about the task
@@ -146,8 +146,8 @@ public class TestWorkflowService {
    * a task this application has code for, next to one it has none for.
    * <p>
    * It changes nothing about the workflow aggregate on purpose. A handler which writes the case
-   * would be a second writer next to the details provider of the report being dispatched, and
-   * this test is about who hears of a task, not about who writes the case.
+   * would be a second writer next to the details provider of the report being built, and this
+   * test is about who hears of a task, not about who writes the case.
    *
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param taskId The engine's id of the task

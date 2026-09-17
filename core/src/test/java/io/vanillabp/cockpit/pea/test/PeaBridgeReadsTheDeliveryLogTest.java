@@ -146,7 +146,7 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   }
 
   @Test
-  @DisplayName("What a task shows stays out of the log, so a report after a restart is dropped")
+  @DisplayName("What a task shows stays out of the log, so a fresh node shows nothing")
   public void theDetailsOfATaskAreNotInTheLog() {
 
     deliveryLog

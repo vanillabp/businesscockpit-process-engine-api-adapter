@@ -27,13 +27,20 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * What a delivered user task means to the Business Cockpit.
  * <p>
  * It does the same little every BPMS half of the cockpit does. It turns what the engine said into
- * the identifiers the cockpit addresses a task by, keeps what only the delivery knows, and writes
- * one outbox entry. Nothing is sent while the engine's delivery thread waits, and nothing is read
- * back afterwards, because on this BPMS there is nothing to read back from.
+ * the identifiers the cockpit addresses a task by, keeps what only the delivery knows, and hands
+ * the event over. The cockpit builds the report there and then and writes it into one outbox
+ * entry, so the report says what the task looked like when the engine handed it over. Nothing is
+ * sent to the cockpit server while the engine's delivery thread waits, and nothing is read back
+ * afterwards, because on this BPMS there is nothing to read back from.
  * <p>
  * The entry gets a transaction of its own. The Process-Engine-API delivers on a thread of the
  * engine's own, and there is no transaction of the application to join. What that costs is
  * decision 2 in the repository's DECISIONS.md.
+ * <p>
+ * Building the report runs the application's details provider on this thread. An exception out of
+ * it leaves no entry at all: the adapter logs it and the delivery reaches the application anyway,
+ * because an observer of this API cannot refuse one. So a broken provider costs the report and
+ * says so in the log. That is decision 10 in the repository's DECISIONS.md.
  * <p>
  * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
  * through name-clash avoidance before it builds an observation. So nothing here spells an id a
@@ -61,7 +68,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   /**
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
-   * @param deliveredUserTasks Where a delivery is remembered for the dispatch which follows it
+   * @param deliveredUserTasks Where a delivery is remembered, for the report built from it and
+   *          for the reads which come later
    * @param versions What the adapter recorded about the deployed processes
    * @param publisher Where an observed event is handed to. It is asked for on the first event
    *          rather than up front, because this object is built while the application is still
@@ -128,6 +136,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                     observation, element), element == null
                         ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
                         : element.activityId());
+    // remembered BEFORE the event is handed over, and the order matters. The cockpit builds the
+    // report inside the call below and asks the bridge what the delivery said, and the bridge has
+    // nowhere else to read that from
     deliveredUserTasks
         .remember(
             new DeliveredUserTask(
@@ -172,7 +183,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
             known.get().reference(), endOf(observation), "%s#gone"
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
-    // only now. A report which did not get written leaves the task open here, so the engine
+    // only now. The report of the end is built inside the call above and reads what the delivery
+    // said from here. A report which did not get written leaves the task open here, so the engine
     // saying a second time that it is gone reports it again rather than being passed over
     deliveredUserTasks.ended(observation.taskId());
 

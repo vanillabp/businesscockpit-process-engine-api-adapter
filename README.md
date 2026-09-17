@@ -83,6 +83,11 @@ answers first because it carries more, and the log adds the tasks the memory nev
 forgotten. Decision 9 in [`DECISIONS.md`](./DECISIONS.md) writes the border down, and entries 10
 and 11 of [`GAPS.md`](./GAPS.md) say what falls between the two.
 
+The report of a delivered task is built while that delivery is handled, out of the memory it was
+just written to, and it travels inside the outbox entry. So a restart costs no report which was
+already written. What it costs is every later question about that task, and decision 10 says what
+that leaves the memory for.
+
 While the seam was missing, this repository carried a port of the same shape and asked an
 application to call it. Both are gone. The adapter is told about every delivery, while an
 application which called a port of the cockpit only ever passed on what it noticed itself. The

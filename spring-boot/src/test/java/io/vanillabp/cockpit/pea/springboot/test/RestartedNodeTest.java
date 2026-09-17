@@ -37,7 +37,8 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * <p>
  * What the fresh node does NOT get back is what the engine said about the task. That is entry 10
  * in the repository's GAPS.md, and it is why this test asks the bridge and not the cockpit
- * server: a report about a task whose details are gone is dropped while it is dispatched.
+ * server: the reports of the deliveries themselves were built and written before the restart, and
+ * a report the fresh node would have to build has no details to build one from.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
