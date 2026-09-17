@@ -122,15 +122,16 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
     final var element = elementOf(process, observation);
     final var reference = new UserTaskReference(
-        observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, observation
-            .workflowAggregateId(), workflowIdOf(observation), observation.taskId(), taskDefinitionOf(
-                observation, element), element == null
-                    ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
-                    : element.activityId());
+        observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, reportedVersionOf(
+            observation), observation
+                .workflowAggregateId(), workflowIdOf(observation), observation.taskId(), taskDefinitionOf(
+                    observation, element), element == null
+                        ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
+                        : element.activityId());
     deliveredUserTasks
         .remember(
             new DeliveredUserTask(
-                reference, detailsOf(observation, process, element, versionOf(
+                reference, detailsOf(observation, process, element, shownVersionOf(
                     observation, bpmnProcessId))));
 
     reportTheWorkflowOnceItsFirstTaskAppeared(reference);
@@ -196,7 +197,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
         .publishWorkflowEvent(
             new WorkflowReference(
                 userTask.adapterId(), userTask.workflowModuleId(), userTask.bpmnProcessId(), userTask
-                    .workflowAggregateId(), userTask.workflowId()),
+                    .processVersion(), userTask.workflowAggregateId(), userTask.workflowId()),
             WorkflowEventKind.CREATED, "%s#created".formatted(userTask.workflowId()), OffsetDateTime
                 .now(),
             EventTransaction.NEW);
@@ -271,15 +272,36 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   }
 
   /**
-   * The version tag an engine put into the meta map of the delivery, or what this application
-   * deployed where it put none.
+   * The version of the BPMN process a delivered task belongs to, as far as this BPMS reports
+   * one. It is the version tag the engine wrote into the meta map of THAT task, and nothing
+   * where the engine wrote none.
+   * <p>
+   * This is the version a details provider is picked by, so only a value which says which model
+   * the task came from belongs here. The deployment key this application got when it deployed
+   * its files does not: it names one deployment of one node and changes every time the files go
+   * out again, so a method written for it would serve a different set of workflows after every
+   * release. It stays what a person reads, in the prefilled details.
+   * <p>
+   * What that leaves for a provider naming versions is entry 12 in the repository's GAPS.md.
    */
-  private String versionOf(
+  private static String reportedVersionOf(
+      final PeaUserTaskObservation observation) {
+
+    return PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.PROCESS_VERSION_TAG);
+
+  }
+
+  /**
+   * The version the cockpit SHOWS for the task: the version tag an engine put into the meta map
+   * of the delivery, or what this application deployed where it put none. A deployment key tells
+   * two releases of an application apart for somebody looking at a case, which is more than
+   * nothing and is why it is good enough here.
+   */
+  private String shownVersionOf(
       final PeaUserTaskObservation observation,
       final String bpmnProcessId) {
 
-    final var tag = PeaTaskMeta
-        .text(observation.taskInformation(), PeaTaskMeta.PROCESS_VERSION_TAG);
+    final var tag = reportedVersionOf(observation);
     if (tag != null) {
       return tag;
     }

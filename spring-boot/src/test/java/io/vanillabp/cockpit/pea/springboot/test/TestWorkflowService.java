@@ -51,6 +51,25 @@ public class TestWorkflowService {
   /** The BPMN element id of the user task nothing claims. */
   public static final String UNSERVED_BPMN_TASK_ID = "Inspect";
 
+  /**
+   * The external form reference of the third user task. Its details provider names a version, so
+   * it only runs for a delivery which says which version of the model it came from.
+   */
+  public static final String VERSIONED_TASK_DEFINITION = "pay-the-fare";
+
+  /** The BPMN element id of the user task whose provider names a version. */
+  public static final String VERSIONED_BPMN_TASK_ID = "Pay";
+
+  /**
+   * The version tag the engine of this test writes into the meta map of a delivered task. It is
+   * the only thing the Process-Engine-API ever reports as the version of a process, and the
+   * provider of the third user task is written against exactly this spelling.
+   */
+  public static final String VERSION_TAG = "ride-2026-09";
+
+  /** What the provider of the third user task writes, so that a test can see whether it ran. */
+  public static final String FARE_DETAIL = "priced by the provider";
+
   /** The task ids the <code>&#64;WorkflowTask</code> method of this service was called for. */
   public static final List<String> SERVED_NOTIFICATIONS = new CopyOnWriteArrayList<>();
 
@@ -158,6 +177,28 @@ public class TestWorkflowService {
 
     prefilled.setDetails(Map.of("customer", aggregate.getCustomer()));
     prefilled.setCandidateGroups(List.of("inspectors"));
+    return prefilled;
+
+  }
+
+  /**
+   * The details of the user task the version decides about. It runs for the deliveries which say
+   * they come from the version this method names, and for no other, which on this BPMS means the
+   * deliveries carrying that version tag.
+   * <p>
+   * A delivery which names no version reaches no method at all, and that is allowed: the cockpit
+   * then sends the prefilled details. Entry 12 in the repository's GAPS.md says what it costs.
+   *
+   * @param aggregate The workflow aggregate, loaded by VanillaBP
+   * @param prefilled What the engine knew about the task
+   * @return The enriched details
+   */
+  @UserTaskDetailsProvider(taskDefinition = VERSIONED_TASK_DEFINITION, version = VERSION_TAG)
+  public UserTaskDetails pay(
+      final TestAggregate aggregate,
+      final PrefilledUserTaskDetails prefilled) {
+
+    prefilled.setDetails(Map.of("fare", FARE_DETAIL));
     return prefilled;
 
   }

@@ -156,6 +156,12 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   }
 
+  /**
+   * The workflows of one business case, each under the version of the user task it was found
+   * through. A task this node was delivered carries the version the engine named with it, and a
+   * task only the delivery log knows carries none, because the log holds no version. Both are
+   * the honest answer: there is no catalogue to ask what a running workflow was started on.
+   */
   @Override
   public List<WorkflowReference> workflowsOfAggregate(
       final String workflowModuleId,
@@ -169,8 +175,9 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
                 .putIfAbsent(
                     userTask.workflowId(),
                     new WorkflowReference(
-                        adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, userTask
-                            .workflowId())));
+                        adapterId, workflowModuleId, bpmnProcessId, userTask
+                            .processVersion(), workflowAggregateId, userTask
+                                .workflowId())));
     if (workflows.isEmpty()) {
       sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
     }
@@ -279,7 +286,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         .map(
             workflowId -> new UserTaskReference(
                 recorded.adapterId(), recorded.workflowModuleId(), recorded.bpmnProcessId(), recorded
-                    .workflowAggregateId(), workflowId, recorded.userTaskId(), recorded
+                    .processVersion(), recorded.workflowAggregateId(), workflowId, recorded.userTaskId(), recorded
                         .taskDefinition(), recorded.bpmnTaskId()))
         .orElse(recorded);
 

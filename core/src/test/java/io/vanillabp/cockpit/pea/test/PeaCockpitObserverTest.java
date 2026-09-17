@@ -109,6 +109,9 @@ public class PeaCockpitObserverTest {
     assertEquals("task-1", reported.userTaskId());
     assertEquals(TestModels.USER_TASK_FORM, reported.taskDefinition());
     assertEquals(TestModels.USER_TASK_ELEMENT, reported.bpmnTaskId());
+    assertNull(
+        reported.processVersion(),
+        "this engine wrote no version tag, and there is nothing else this BPMS could report as the version of the process");
     assertEquals(List.of(UserTaskEventKind.CREATED), publisher.userTaskKinds());
     assertEquals(List.of("task-1#create"), publisher.userTaskEventIds());
     assertTrue(
@@ -137,6 +140,46 @@ public class PeaCockpitObserverTest {
     assertEquals(List.of(WorkflowEventKind.CREATED), publisher.workflowKinds());
     assertEquals("instance-1", publisher.workflows().getFirst().workflowId());
     assertEquals(List.of("instance-1#created"), publisher.workflowEventIds());
+
+  }
+
+  @Test
+  @DisplayName("The version tag of a delivery is the version the task and its business case are reported with")
+  public void theVersionTagOfADeliveryIsReported() {
+
+    observer
+        .userTaskDelivered(
+            delivery(
+                "task-1", TaskInformation.CREATE, Map
+                    .of(PeaTaskMeta.PROCESS_VERSION_TAG, TestModels.VERSION_TAG)));
+
+    assertEquals(
+        TestModels.VERSION_TAG,
+        publisher.userTasks().getFirst().processVersion(),
+        "it is what picks the details provider, so it travels with the task");
+    assertEquals(
+        TestModels.VERSION_TAG,
+        publisher.workflows().getFirst().processVersion(),
+        "the business case appears with its first task and takes the version of that task");
+    assertEquals(
+        TestModels.VERSION_TAG,
+        deliveredUserTasks.of("task-1").orElseThrow().details().bpmnProcessVersion(),
+        "and it is what a person sees next to the case, instead of the deployment key");
+
+  }
+
+  @Test
+  @DisplayName("A delivery without a version tag reports no version, and the deployment key stays what a person reads")
+  public void aDeliveryWithoutAVersionTagReportsNoVersion() {
+
+    observer.userTaskDelivered(delivery("task-1", TaskInformation.CREATE, Map.of()));
+
+    assertNull(publisher.userTasks().getFirst().processVersion());
+    assertNull(publisher.workflows().getFirst().processVersion());
+    assertEquals(
+        TestModels.DEPLOYMENT_KEY,
+        deliveredUserTasks.of("task-1").orElseThrow().details().bpmnProcessVersion(),
+        "the deployment key tells two releases of an application apart, which is worth showing and worthless to pick a method by");
 
   }
 

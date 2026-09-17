@@ -23,9 +23,21 @@
         <zeebe:formDefinition externalReference="inspect-the-car" />
       </bpmn:extensionElements>
       <bpmn:incoming>ToInspect</bpmn:incoming>
+      <bpmn:outgoing>ToPay</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToPay" sourceRef="Inspect" targetRef="Pay" />
+    <!-- the user task whose details provider is cut by version: its method names the version tag
+         the engine writes into the meta map of a delivery, so a delivery which carries that tag
+         reaches the method and a delivery without one does not -->
+    <bpmn:userTask id="Pay" name="Pay the fare">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="pay-the-fare" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToPay</bpmn:incoming>
       <bpmn:outgoing>ToEnd</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:sequenceFlow id="ToEnd" sourceRef="Inspect" targetRef="End" />
+    <bpmn:sequenceFlow id="ToEnd" sourceRef="Pay" targetRef="End" />
     <bpmn:endEvent id="End">
       <bpmn:incoming>ToEnd</bpmn:incoming>
     </bpmn:endEvent>

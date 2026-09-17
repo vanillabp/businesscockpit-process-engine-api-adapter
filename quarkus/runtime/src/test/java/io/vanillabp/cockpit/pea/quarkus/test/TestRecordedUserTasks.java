@@ -72,7 +72,8 @@ public final class TestRecordedUserTasks {
           final Class<? extends Annotation> annotationType,
           final String workflowModuleId,
           final String bpmnProcessId,
-          final List<String> lookupKeys) {
+          final List<String> lookupKeys,
+          final String processVersion) {
 
         return false;
 

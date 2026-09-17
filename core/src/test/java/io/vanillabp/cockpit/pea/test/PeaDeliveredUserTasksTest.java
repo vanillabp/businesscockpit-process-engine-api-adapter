@@ -27,7 +27,7 @@ public class PeaDeliveredUserTasksTest {
 
     return new DeliveredUserTask(
         new UserTaskReference(
-            TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1", taskId, TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT), UserTaskDetailsPrefill
+            TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, "4711", "instance-1", taskId, TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT), UserTaskDetailsPrefill
                 .builder().build());
 
   }

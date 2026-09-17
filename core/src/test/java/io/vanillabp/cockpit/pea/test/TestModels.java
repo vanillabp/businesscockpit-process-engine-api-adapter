@@ -39,6 +39,13 @@ public final class TestModels {
   public static final String DEPLOYMENT_KEY = "deployment-7";
 
   /**
+   * The version tag an engine writes into the meta map of a delivered task, where it keeps one.
+   * It is the only thing this BPMS ever reports as the version of a process, and it is what a
+   * details provider naming a version has to be written against here.
+   */
+  public static final String VERSION_TAG = "ride-2026-09";
+
+  /**
    * The BPMN file as a modeller would leave it. The adapter deploys these bytes and reads the two
    * names out of them on the way, so what the model carries below is what the cockpit shows and
    * nothing here opens the file again.
@@ -130,7 +137,8 @@ public final class TestModels {
           final Class<? extends Annotation> annotationType,
           final String workflowModuleId,
           final String bpmnProcessId,
-          final List<String> lookupKeys) {
+          final List<String> lookupKeys,
+          final String processVersion) {
 
         return false;
 

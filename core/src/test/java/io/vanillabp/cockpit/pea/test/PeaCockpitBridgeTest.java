@@ -3,6 +3,7 @@ package io.vanillabp.cockpit.pea.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,7 @@ import io.vanillabp.integration.test.utils.CapturedOutput;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
  * What the cockpit reads back about a task or a business case. All this BPMS has to answer with
@@ -63,11 +65,24 @@ public class PeaCockpitBridgeTest {
   private void aDeliveredUserTask(
       final String taskId) {
 
+    aDeliveredUserTask(taskId, null);
+
+  }
+
+  private void aDeliveredUserTask(
+      final String taskId,
+      final String versionTag) {
+
+    final var meta = new LinkedHashMap<String, String>();
+    meta.put(CommonRestrictions.PROCESS_INSTANCE_ID, "instance-1");
+    if (versionTag != null) {
+      meta.put(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag);
+    }
     observer
         .userTaskDelivered(
             new PeaUserTaskObservation(
                 TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
-                    taskId, Map.of(CommonRestrictions.PROCESS_INSTANCE_ID, "instance-1")), Map.of()));
+                    taskId, meta), Map.of()));
 
   }
 
@@ -75,7 +90,7 @@ public class PeaCockpitBridgeTest {
       final String taskId) {
 
     return new UserTaskReference(
-        TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1", taskId, TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT);
+        TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, "4711", "instance-1", taskId, TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT);
 
   }
 
@@ -116,7 +131,7 @@ public class PeaCockpitBridgeTest {
     final var details = bridge
         .prefilledWorkflowDetails(
             new WorkflowReference(
-                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1"));
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, "4711", "instance-1"));
 
     assertTrue(details.isPresent());
     assertEquals(TestModels.PROCESS_NAME, details.get().bpmnProcessName());
@@ -133,7 +148,7 @@ public class PeaCockpitBridgeTest {
         bridge
             .prefilledWorkflowDetails(
                 new WorkflowReference(
-                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, "AnotherProcess", "4711", "instance-1"))
+                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, "AnotherProcess", null, "4711", "instance-1"))
             .isEmpty());
 
   }
@@ -175,6 +190,30 @@ public class PeaCockpitBridgeTest {
                 TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "task-1")
             .orElseThrow()
             .userTaskId());
+
+  }
+
+  @Test
+  @DisplayName("A workflow is answered under the version of the delivery it was found through")
+  public void aWorkflowCarriesTheVersionOfTheDeliveryItWasFoundThrough() {
+
+    aDeliveredUserTask("task-1", TestModels.VERSION_TAG);
+
+    assertEquals(
+        List.of(TestModels.VERSION_TAG),
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .stream()
+            .map(WorkflowReference::processVersion)
+            .toList());
+    assertEquals(
+        List.of(TestModels.VERSION_TAG),
+        bridge
+            .userTasksOfAggregate(
+                TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", List.of())
+            .stream()
+            .map(UserTaskReference::processVersion)
+            .toList());
 
   }
 
@@ -224,7 +263,7 @@ public class PeaCockpitBridgeTest {
         anotherEngine
             .prefilledWorkflowDetails(
                 new WorkflowReference(
-                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711", "instance-1"))
+                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, "4711", "instance-1"))
             .isEmpty(),
         "a workflow of another engine is not answered with what this one deployed");
     assertTrue(
