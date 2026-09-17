@@ -38,9 +38,11 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * decision 2 in the repository's DECISIONS.md.
  * <p>
  * Building the report runs the application's details provider on this thread. An exception out of
- * it leaves no entry at all: the adapter logs it and the delivery reaches the application anyway,
- * because an observer of this API cannot refuse one. So a broken provider costs the report and
- * says so in the log. That is decision 10 in the repository's DECISIONS.md.
+ * it writes no entry and leaves this class: the adapter turns it into a failed delivery, so the
+ * engine hears about the broken provider and offers the task again. The application keeps its
+ * notification, because the adapter calls its {@code @WorkflowTask} method before it lets the
+ * failure out. The end of a task is the quiet half: a termination is not offered a second time, so
+ * a report which fails there is gone. That is decision 11 in the repository's DECISIONS.md.
  * <p>
  * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
  * through name-clash avoidance before it builds an observation. So nothing here spells an id a
@@ -184,8 +186,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
     // only now. The report of the end is built inside the call above and reads what the delivery
-    // said from here. A report which did not get written leaves the task open here, so the engine
-    // saying a second time that it is gone reports it again rather than being passed over
+    // said from here. A report which did not get written leaves the task open here, which is all
+    // this half can do: the failure reaches the engine, and an engine behind this API repeats a
+    // delivery but not a termination (decision 11 in the repository's DECISIONS.md)
     deliveredUserTasks.ended(observation.taskId());
 
   }
@@ -214,7 +217,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                 .now(),
             EventTransaction.NEW);
     // only now. A report which did not get written leaves the case unreported, so the next user
-    // task of the case is the one which makes it appear
+    // task of the case makes it appear, and so does the repeated delivery of this one
     deliveredUserTasks.rememberWorkflowWasReported(userTask.adapterId(), userTask.workflowId());
 
   }

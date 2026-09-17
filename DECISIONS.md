@@ -193,7 +193,7 @@ Process-Engine-API adapter fills neither. Both are answered here the way a deliv
 The element comes out of what the adapter deployed, and the workflow is the aggregate the case is
 shown under.
 
-## 10. The report is built when the task is delivered, not when its entry is sent
+## 10. The report is built when the task is delivered, not when its entry is sent - what a failing details provider costs superseded by decision 11
 
 The Business Cockpit used to put a report together while it sent the outbox entry, seconds after
 the event. Since decision 26 of `business-cockpit` it builds the report at the event and lets the
@@ -222,3 +222,49 @@ adapter logs the exception and the task reaches the application anyway, and no e
 One ERROR line of the adapter is the whole sign of a lost report. Before, the outbox repeated the
 failing provider with a growing backoff until its store gave up. Neither way is an incident, and
 this API offers nothing which would be one.
+
+## 11. A details provider which fails takes the delivery with it
+
+The last paragraph of decision 10 is no longer true. It said that an error in a details provider
+cannot disturb anything on this BPMS: the adapter would log it, the task would reach the
+application all the same, and one ERROR line would be the whole sign of a lost report. Since
+decision 12 of the `process-engine-api-adapter` an observer which throws fails the delivery it was
+told about. Decision 10 keeps its text and its number, and this entry says what holds instead.
+
+What happens now was read off the code of both sides. Four answers come out of it:
+
+- No entry is written, which is the one sentence of decision 10 which survives. The provider runs
+  while the entry is built, in the transaction decision 2 opens for that entry, so a provider which
+  throws rolls that transaction back.
+- The exception leaves `PeaCockpitObserver` as it is. The adapter wraps it, names this observer,
+  the task and the workflow module in the message, writes the whole failure to its own log and
+  hands it to the engine as a failed delivery.
+- The application keeps its notification. The adapter runs the `@WorkflowTask` method of the
+  delivery before it lets the failure out, and VanillaBP knows a repeated delivery by its task id,
+  so that method runs once per task however often the engine delivers it.
+- The task is not lost. The adapter measured what the API's reference implementation for an
+  embedded Camunda 7 does with a failed delivery: the task stays in the engine, no incident is
+  raised, and the next pull offers the task again. The API itself promises nothing about a handler
+  which throws, which is entry 25 of that repository's `GAPS.md`.
+
+So a broken provider costs the report of a delivery while it is broken, and the report arrives with
+the next delivery once somebody fixed it. That is what this half wanted. An error which nobody has
+to answer is an error nobody fixes.
+
+The end of a task is the other half, and it is quiet. A termination whose handler throws is
+reported once and never offered again, so a provider which fails on an end costs that report for
+good. `PeaCockpitObserver#userTaskTerminated` marks a task as ended only after its report was
+written, which was meant to let a second termination report the task again. Nothing on this BPMS
+sends a second one. So the task stays open in the memory of the node and open in the cockpit, the
+way it does for a node which never saw the delivery (entry 11 in `GAPS.md`).
+
+A repeated delivery does not become a second outbox entry. The attempt which failed left none, and
+the attempt which works writes one, under the idempotency key of decision 4 of `business-cockpit`:
+the operation, the adapter id, the task and the kind of event. A repeat carries the same kind, so
+it carries the same key, and an entry of that key which is still waiting is replaced rather than
+joined. The business case is reported once as well. Its entry is written first, in a transaction of
+its own, and the node marks the case as reported after that entry is in, so a repeat of the same
+task finds the case reported and passes it over.
+
+`FailingDetailsProviderTest` on both platforms holds all of this, against the adapter's own
+delivery.
