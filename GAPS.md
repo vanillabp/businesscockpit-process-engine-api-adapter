@@ -277,3 +277,45 @@ already builds both when it delivers. With that read, this extension asks for th
 report is dispatched, and the memory becomes a cache instead of the only source. A query for the
 open user tasks of a business key (entry 7) would close it as well and answer more, including the
 tasks no `@WorkflowTask` method of the application claims.
+
+## 12. A details provider cut by version never runs here, and nothing says so
+
+**The cockpit needs** to pick the `@UserTaskDetailsProvider` or `@WorkflowDetailsProvider` method which
+serves the version of the deployed process an event came from. An application writes one method per
+generation of a model, and VanillaBP chooses between them the way it chooses a `@WorkflowTask` method.
+
+**The API offers** one version, and only sometimes. There is no repository, so there are no process
+definitions to count and no version numbers (entry 5). What reaches this half is the
+`processDefinitionVersionTag` an engine writes into the meta map of a delivered task, where it keeps one.
+So the reference of a user task and of the business case it appears with carries that tag, or nothing.
+
+One way of writing a version survives that. `version = "ride-2026-09"` is compared to the reported tag as
+text, so a method written that way runs for the deliveries carrying that tag. Everything else needs the
+catalogue this BPMS has none of. A specification made of numbers (`3`, `1-3`, `>2`) has no number to
+compare against, and a range between two tags (`v1.0..v2.0`) has to place both ends in the deployment
+order, which only a list of the deployed versions answers.
+
+**What it costs:** a method which serves no version does nothing, and does it quietly. A `@WorkflowTask`
+method in the same position is loud, because a delivery whose methods all name versions fails and the
+message says why; the adapter's own `GAPS.md` writes that down as its entry 19. A details provider is the opposite, and
+that is by design: no matching method is a LEGAL answer. The cockpit then sends the details it had
+prefilled, so the task appears with the names out of the BPMN and with what the engine said about it, and
+the enrichment the application wrote is not there.
+
+Two checks could catch it and neither does. The platform warns about a method naming versions where the
+extension reports no version with its calls, and this extension does report one, so that warning stays
+silent. The check for a method which serves no deployed version needs the list of deployed versions, which
+no adapter of this BPMS can answer.
+
+What is left is the two lines the platform does write, and neither of them lands. At startup it says that a
+version tag is known to no BPMS and that the method serves no workflow. That is the wrong way round here: a
+tag is the one specification which does run. And a delivery whose tag no method names draws one line about a
+BPMS nobody can ask for its versions. A delivery carrying NO version draws nothing at all, and that is the
+normal state of this BPMS. An engine which fills no version tag leaves every version-named provider idle
+without a word. So an application which cut its providers by version loses that enrichment here, and the
+only sign of it is a cockpit showing less than the application wrote.
+
+**What would close it:** what entry 5 asks for, both halves of it. A repository API answering the process
+definitions of a key with their versions is the catalogue, and a version in the meta map of a delivery is
+the version of the task at hand. With the two together a version specification means here what it means on
+every other BPMS.
