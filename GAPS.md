@@ -32,8 +32,9 @@ workflow application, which `PeaSubscriptionProbeTest` still holds the in-memory
 definition, the workflow aggregate's id, the engine's `TaskInformation` and the payload the
 subscription asked for. The identifiers are the PLAIN ones, which the adapter translated back
 through name-clash avoidance. Every delivery reaches an observer, including one no `@WorkflowTask`
-method of the application claims, and an observer which throws costs neither the task nor the
-observers behind it.
+method of the application claims. An observer which throws costs the observers behind it nothing:
+they are told first, and then the failure leaves the adapter as a failed delivery. What that means
+for this extension is decision 11 in this repository's `DECISIONS.md`.
 
 This extension implements that interface in `PeaCockpitObserver` and contributes it as a bean on
 both platforms; the adapter collects the beans by type. The port this repository carried in the

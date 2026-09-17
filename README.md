@@ -86,7 +86,9 @@ and 11 of [`GAPS.md`](./GAPS.md) say what falls between the two.
 The report of a delivered task is built while that delivery is handled, out of the memory it was
 just written to, and it travels inside the outbox entry. So a restart costs no report which was
 already written. What it costs is every later question about that task, and decision 10 says what
-that leaves the memory for.
+that leaves the memory for. A details provider which throws while a report is built fails the
+delivery. The engine then offers the task again, so the report is not simply lost. Decision 11 says
+that, and it says why the end of a task gets no second chance.
 
 While the seam was missing, this repository carried a port of the same shape and asked an
 application to call it. Both are gone. The adapter is told about every delivery, while an

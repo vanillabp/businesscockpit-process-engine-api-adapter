@@ -3,6 +3,7 @@ package io.vanillabp.cockpit.pea.quarkus.it;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.vanillabp.spi.cockpit.details.DetailsEvent;
 import io.vanillabp.spi.cockpit.usertask.PrefilledUserTaskDetails;
@@ -73,6 +74,15 @@ public class TestWorkflowService {
   /** What the details provider writes into the aggregate, so that a test can see it ran. */
   public static final String APPROVE_NOTE = "seen by the details provider";
 
+  /** What the details provider of the first user task throws while a test asks it to break. */
+  public static final String PROVIDER_BROKE = "the details provider broke";
+
+  /**
+   * How many more calls of the details provider of the first user task are to fail. A test sets
+   * it, the provider counts it down, and every other test meets a provider which works.
+   */
+  public static final AtomicInteger APPROVALS_TO_FAIL = new AtomicInteger();
+
   @Inject
   ProcessService<TestAggregate> processService;
 
@@ -114,6 +124,11 @@ public class TestWorkflowService {
       @DetailsEvent final DetailsEvent.Event event,
       @TaskParam("passenger") final String passenger) {
 
+    if (APPROVALS_TO_FAIL.getAndUpdate(left -> left > 0
+        ? left - 1
+        : 0) > 0) {
+      throw new IllegalStateException(PROVIDER_BROKE);
+    }
     aggregate.setNote(APPROVE_NOTE);
     prefilled
         .setDetails(
