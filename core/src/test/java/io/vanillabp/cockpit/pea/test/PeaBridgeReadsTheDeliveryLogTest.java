@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -160,6 +161,23 @@ public class PeaBridgeReadsTheDeliveryLogTest {
                     .orElseThrow())
             .isEmpty(),
         "a record carries identifiers and an outcome, and not one word the engine said");
+
+  }
+
+  @Test
+  @DisplayName("A task read out of the log names no version, so a provider naming one does not run for it")
+  public void aTaskOfTheLogNamesNoVersion() {
+
+    deliveryLog
+        .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", Instant.now());
+
+    assertNull(
+        bridge
+            .userTaskOfAggregate(
+                TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID, "task-1")
+            .orElseThrow()
+            .processVersion(),
+        "the platform writes the same fields for every BPMS, and a version of a process is not among them");
 
   }
 

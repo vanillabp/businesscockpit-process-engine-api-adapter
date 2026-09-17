@@ -151,12 +151,19 @@ public class PeaRecordedUserTasks {
   /**
    * How the cockpit addresses the task a record is about.
    * <p>
-   * Two of the eight identifiers are not in the record on this BPMS. The Process-Engine-API
+   * Two of the identifiers are not in the record on this BPMS. The Process-Engine-API
    * adapter names neither the BPMN element of a delivery nor the engine's own id of the
    * workflow, so the record carries neither, and both are answered the way a delivery answers
    * them: the element out of what the adapter deployed, and the workflow by the aggregate it is
    * shown for (decision 6 in the repository's DECISIONS.md). An adapter which does name them
    * wins, because the record is read first.
+   * <p>
+   * The version of the process is not in the record for anybody. A delivery log holds what a
+   * delivery was, not what the engine said about the model behind it, and the platform writes
+   * the same fields for every BPMS. So a task read back out of the log names no version, and a
+   * details provider which names one does not run for it. On this BPMS that changes little,
+   * because a version only ever arrives with a delivery this node saw itself; entry 12 in the
+   * repository's GAPS.md says what it costs.
    */
   private UserTaskReference referenceOf(
       final String adapterId,
@@ -179,7 +186,7 @@ public class PeaRecordedUserTasks {
         ? record.bpmnElementId()
         : elementIdOf(element);
     return new UserTaskReference(
-        adapterId, record.workflowModuleId(), record.bpmnProcessId(), record
+        adapterId, record.workflowModuleId(), record.bpmnProcessId(), null, record
             .workflowAggregateId(), workflowId, record.taskId(), taskDefinition, bpmnElementId);
 
   }
