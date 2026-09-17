@@ -37,22 +37,25 @@ reports it twice, and the outbox spots the repetition by the task id and the rea
 named. What it cannot spot is a report about a task the engine took back a moment later, and there
 is nothing on this BPMS to ask about that. Decision 3 is about the same hole.
 
-## 3. What a delivery said is remembered in memory, per node, and never persisted
+## 3. What a delivery said is remembered in memory, per node, and never persisted - what the memory is for amended by decision 10
 
-Every other BPMS half of the cockpit reads the current state of a task when the report is
-dispatched, seconds after the event was seen. On the Process-Engine-API there is nothing to read
-from: no task query, no single-task get, no history. So what arrived with the delivery is kept in
-a bounded map per node, and the dispatch is answered from that map. A task the engine has taken
-away stays in it as well, marked as ended: the report of its creation may still be waiting, and it
-is dispatched after the task is gone. The task leaves the map when a newer one needs the room.
+Every other BPMS half of the cockpit can read the state of a task from its engine whenever it is
+asked. On the Process-Engine-API there is nothing to read from: no task query, no single-task get,
+no history. So what arrived with the delivery is kept in a bounded map per node, and every
+question about a task is answered from that map. A task the engine has taken away stays in it as
+well, marked as ended, because this map is the only source which saw that happen. A task leaves
+the map when a newer one needs the room.
 
 It is deliberately not persisted. An extension which writes the engine's state into the
 application's database keeps a second copy of a state nobody can reconcile it with, and the
 application's own data is the copy which already exists. The price is said out loud rather than
-hidden. A node which restarts between a delivery and its dispatch reports the task without its
-details, and a task delivered to one node is unknown to the others.
+hidden. A node which restarts knows nothing about the tasks it was given before, and a task
+delivered to one node is unknown to the others.
 `vanillabp.cockpit.process-engine-api.remembered-user-tasks` sizes the map, and the repository's
 `GAPS.md` says what the Process-Engine-API would have to offer for this to become unnecessary.
+
+Decision 10 narrows what the map has to carry. The report of a delivery no longer reads it later,
+because it is built while the delivery is handled.
 
 ## 4. A user task which is gone is reported as completed unless the engine says it was withdrawn - the missing reason answered by decision 7
 
@@ -189,3 +192,33 @@ names neither the BPMN element nor the engine's own id of the workflow, because 
 Process-Engine-API adapter fills neither. Both are answered here the way a delivery answers them.
 The element comes out of what the adapter deployed, and the workflow is the aggregate the case is
 shown under.
+
+## 10. The report is built when the task is delivered, not when its entry is sent
+
+The Business Cockpit used to put a report together while it sent the outbox entry, seconds after
+the event. Since decision 26 of `business-cockpit` it builds the report at the event and lets the
+report travel inside the entry. `prefilledUserTaskDetails` and `prefilledWorkflowDetails` of this
+half therefore run on the engine's delivery thread, in the transaction decision 2 opens for the
+entry.
+
+Nothing in this half had to change for it. `PeaCockpitObserver` already fills the whole prefill
+out of the delivery and remembers it BEFORE it hands the event over, and the bridge reads it back
+from there. The end of a task works the same way round: the report is built first, and the task is
+marked as ended after it. Both places used to be tidy and are now the reason this works, so both
+of them say why.
+
+This narrows decision 3. The memory no longer has to outlive the sending of an entry. A report
+which was written is in the entry, so it costs nothing if the node restarts, if another node sends
+the entry, or if newer tasks push the task out. What the memory is still the only source for is
+how a task ended, which tasks of a business case are open, and what `getUserTask` shows. Entry 10
+of `GAPS.md` says what each of those costs on a fresh node. An ended task therefore keeps the age
+it had instead of moving to the young end of the map. Nothing waits for it any more, so it must
+not push out a task somebody is still working on.
+
+What it costs is the failing details provider. It now runs while the engine's delivery thread
+waits, and the cockpit wants an error there to disturb, so that somebody fixes it instead of a
+repeat hiding it. On this BPMS it cannot disturb. An observer cannot refuse a delivery, so the
+adapter logs the exception and the task reaches the application anyway, and no entry is written.
+One ERROR line of the adapter is the whole sign of a lost report. Before, the outbox repeated the
+failing provider with a growing backoff until its store gave up. Neither way is an incident, and
+this API offers nothing which would be one.

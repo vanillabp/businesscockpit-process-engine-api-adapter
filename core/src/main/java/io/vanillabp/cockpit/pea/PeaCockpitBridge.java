@@ -116,8 +116,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
   /**
    * What the cockpit shows about a task, which only the memory holds. A delivery record carries
    * identifiers and an outcome and not one word the engine said about the task, so there is
-   * nothing to read there. A report which finds nothing here is dropped, and what that costs is
-   * entry 10 in the repository's GAPS.md.
+   * nothing to read there.
+   * <p>
+   * The report of a delivered task is built right after that delivery was remembered, so it is
+   * answered. The other two callers may find nothing: a report an application asks for with
+   * <code>aggregateChanged</code>, where the task is one only the delivery log knows, and the read
+   * behind <code>getUserTask</code>. A report which finds nothing here is dropped, and what that
+   * costs is entry 10 in the repository's GAPS.md.
    */
   @Override
   public Optional<UserTaskDetailsPrefill> prefilledUserTaskDetails(

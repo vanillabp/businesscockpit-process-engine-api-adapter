@@ -68,8 +68,8 @@ public class PeaDeliveredUserTasksTest {
   }
 
   @Test
-  @DisplayName("A task which ended waits for the reports about it before it is forgotten")
-  public void anEndedUserTaskIsNotTheNextToGo() {
+  @DisplayName("A task which ended keeps its age, so it does not push out an open one")
+  public void anEndedUserTaskDoesNotPushOutAnOpenOne() {
 
     final var remembered = new PeaDeliveredUserTasks(2);
 
@@ -79,17 +79,39 @@ public class PeaDeliveredUserTasksTest {
     remembered.remember(userTask("task-3"));
 
     assertTrue(
-        remembered.of("task-1").isPresent(),
-        "the report of its end was just written and is read from here while it is dispatched");
-    assertTrue(remembered.of("task-2").isEmpty());
+        remembered.of("task-1").isEmpty(),
+        "the report of its end was built before it was marked as ended, so nothing waits for it");
+    assertTrue(
+        remembered.of("task-2").isPresent(),
+        "a task somebody may still be working on outlives one which is over");
     assertEquals(
-        List.of("task-3"),
+        List.of("task-2", "task-3"),
         remembered
             .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
             .stream()
             .map(task -> task.reference().userTaskId())
             .toList(),
         "a task which is gone is none of its business case's open tasks");
+
+  }
+
+  @Test
+  @DisplayName("What was known about a task which ended stays known")
+  public void anEndedUserTaskIsStillRemembered() {
+
+    final var remembered = new PeaDeliveredUserTasks(2);
+
+    remembered.remember(userTask("task-1"));
+    remembered.ended("task-1");
+
+    assertTrue(
+        remembered.of("task-1").isPresent(),
+        "this memory is the only source which saw the engine take the task away");
+    assertTrue(
+        remembered
+            .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .isEmpty(),
+        "and it is none of the open tasks of its business case");
 
   }
 

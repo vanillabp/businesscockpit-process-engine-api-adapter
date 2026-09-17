@@ -104,7 +104,7 @@ public class PeaCockpitBridgeTest {
   }
 
   @Test
-  @DisplayName("What a delivery said is what the dispatch which follows it reads")
+  @DisplayName("What a delivery said is what the report built from it reads")
   public void aDeliveredTaskIsReadBack() {
 
     aDeliveredUserTask("task-1");
@@ -218,15 +218,15 @@ public class PeaCockpitBridgeTest {
   }
 
   @Test
-  @DisplayName("A task which ended is still read by the report which was waiting for it")
-  public void anEndedTaskIsStillReadByItsPendingReport() {
+  @DisplayName("A task which ended is still what the memory says it was")
+  public void anEndedTaskIsStillReadBack() {
 
     aDeliveredUserTask("task-1");
     deliveredUserTasks.ended("task-1");
 
     assertTrue(
         bridge.prefilledUserTaskDetails(reference("task-1")).isPresent(),
-        "the report of its creation is dispatched after the task ended, and this BPMS cannot be asked what it was");
+        "this BPMS cannot be asked what a task was, so the memory keeps saying it");
     assertTrue(
         bridge
             .userTaskOfAggregate(

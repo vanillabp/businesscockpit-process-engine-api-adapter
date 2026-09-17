@@ -12,18 +12,22 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 /**
  * The user tasks this node has seen, and what the engine said about them.
  * <p>
- * Every other BPMS half of the Business Cockpit reads the current state of a task when the report
- * is dispatched, a moment after the event was seen. On the Process-Engine-API there is nothing to
- * read from: no task query, no single-task get, no history. What is known about a task is what
- * arrived with its delivery, so that is kept until the task is gone.
+ * Every other BPMS half of the Business Cockpit can read the state of a task from its engine at
+ * any time. On the Process-Engine-API there is nothing to read from: no task query, no
+ * single-task get, no history. What is known about a task is what arrived with its delivery, so
+ * that is kept until the task is gone.
  * <p>
- * It is kept in memory, per node, and bounded. An outbox entry is dispatched on the node which
- * wrote it and within seconds, so the memory of a delivery only has to outlive that. What it
- * costs is said out loud rather than hidden. A node which restarts between a delivery and its
- * dispatch reports the task without its details, and a task delivered to another node is unknown
- * here. Persisting it instead would make the extension keep a second copy of the engine's state,
- * which is exactly what an application's own database is for. This is decision 3 in the
- * repository's DECISIONS.md.
+ * The report of a delivered task is built while that delivery is being handled, out of what was
+ * just written here, and it travels inside the outbox entry. So no report waits on this memory.
+ * The questions which come later do: how a task ended, which tasks of a business case are open,
+ * and what <code>getUserTask</code> shows.
+ * <p>
+ * It is kept in memory, per node, and bounded. What that costs is said out loud rather than
+ * hidden. A node which restarts has none of it, and a task delivered to another node is unknown
+ * here, so those later questions go unanswered there. Persisting it instead would make the
+ * extension keep a second copy of the engine's state, which is exactly what an application's own
+ * database is for. This is decision 3 in the repository's DECISIONS.md, and decision 10 says what
+ * the report being built at the event took off it.
  */
 public class PeaDeliveredUserTasks {
 
@@ -33,9 +37,8 @@ public class PeaDeliveredUserTasks {
    * @param reference How the cockpit addresses the task
    * @param details What the engine said about it
    * @param ended Whether the engine has taken the task away again. Such a task is no longer one
-   *          of the open tasks of its business case. It is still answered to the dispatch of the
-   *          reports about it, because those were written before the task ended and are read
-   *          afterwards
+   *          of the open tasks of its business case. What was known about it stays here, because
+   *          this memory is the only source which saw the engine take the task away
    */
   public record DeliveredUserTask(
                                   UserTaskReference reference,
@@ -108,15 +111,15 @@ public class PeaDeliveredUserTasks {
 
   /**
    * Notes that a task is gone. It is called once the end was reported, so that a report which
-   * never left leaves the memory as it was. A task still marked open is reported again when the
-   * engine says a second time that it is gone, while one marked ended by a report nobody received
-   * would be dropped without a word.
+   * never got written leaves the memory as it was and the engine saying a second time that the
+   * task is gone reports it again.
    * <p>
-   * What was known stays known until the oldest entry makes room for a newer task. A report
-   * written before the task ended is dispatched after it ended, and this BPMS cannot be asked
-   * about a task twice, so forgetting the task here would drop the report of its creation with
-   * it. The task moves to the newest end of the memory for the same reason: the reports about it
-   * are still on their way.
+   * What was known stays here, and it keeps the place it had. It stays because the reads of a
+   * business case ask this memory first, and it is the only source which saw the engine take the
+   * task away: VanillaBP's delivery log holds a task until the application completes it. It keeps
+   * its place because nothing is waiting for it any more. The report of the end was built before
+   * this call and carries what it needs, so a task which is over must not push out one somebody
+   * is still working on.
    *
    * @param userTaskId The engine's own id of the task
    */
@@ -128,7 +131,8 @@ public class PeaDeliveredUserTasks {
       if (known == null) {
         return;
       }
-      putAsTheNewest(userTaskId, known.asEnded());
+      // put, not putAsTheNewest: the entry keeps its age and makes room for newer tasks
+      byTaskId.put(userTaskId, known.asEnded());
     }
 
   }

@@ -32,9 +32,9 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * <p>
  * Nothing on that way is faked but the cockpit server and the engine. The workflow is started
  * through VanillaBP. The engine delivers a user task to the ADAPTER's own subscription, and the
- * adapter hands the delivery to the observer bean this extension contributes. The entry is
- * written into the application's outbox, dispatched afterwards and enriched by the application's
- * details provider, and what arrives at the server is asserted.
+ * adapter hands the delivery to the observer bean this extension contributes. The application's
+ * details provider runs there and then, the finished report is written into the application's
+ * outbox, and what arrives at the server is asserted.
  * <p>
  * What the engine says about a task is what an in-memory engine says, which is little: no
  * assignee, no process instance id, no reason. That is deliberate here. What the cockpit makes of
@@ -92,10 +92,10 @@ public class PeaCockpitTest {
    * else wrote the same case in between.
    * <p>
    * That somebody is the Business Cockpit itself. Its details provider reads the case while a
-   * report is dispatched and writes it back when that dispatch commits, so the two transactions
-   * overlap whenever an application changes a case it has just reported. Without the version
-   * attribute the later of the two writers wins silently; with it, one of them reads a conflict
-   * and repeats.
+   * report is built and writes it back when that transaction commits, so the two transactions
+   * overlap whenever an application changes a case a delivery is being reported for. Without the
+   * version attribute the later of the two writers wins silently; with it, one of them reads a
+   * conflict and repeats.
    *
    * @param aggregateId The case to change
    * @param changeAndReport Changes the attached case and reports it to the cockpit
@@ -224,11 +224,9 @@ public class PeaCockpitTest {
     // The customer in that body is what the details provider read off the case, so the report
     // shows that the provider ran on the real aggregate. Whether the case KEEPS what that
     // provider wrote into it is not asserted, on purpose. The write rides the transaction which
-    // dispatches the report, and the report is sent before that transaction commits. So the
-    // commit can still be refused, by another writer of the same case running into the version
-    // attribute. The report stands and the write is gone with the transaction. When the outbox
-    // dispatches the entry again is nobody's promise, so a test waiting for that write waits on
-    // something it does not control.
+    // builds the report and writes the entry, and another writer of the same case can refuse
+    // that commit through the version attribute. Entry and write are gone together then, so a
+    // test waiting for that write waits on something it does not control.
 
   }
 
@@ -289,9 +287,9 @@ public class PeaCockpitTest {
         });
 
     // the report carries what the application wrote, not what the case said before it. The
-    // report of the user task may still be dispatching while this runs, and its details provider
-    // holds the case over this transaction. The version attribute of TestAggregate is what keeps
-    // that dispatch from writing the older reading back
+    // report of the user task may still be under construction while this runs, and its details
+    // provider holds the case over this transaction. The version attribute of TestAggregate is
+    // what keeps that provider from writing the older reading back
     awaitReportCarrying(
         "/workflow/%s/updated".formatted(workflowIdOf(aggregate)),
         "\"customer\":\"Dora the second\"",
