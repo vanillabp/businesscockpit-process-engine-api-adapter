@@ -36,6 +36,11 @@ method of the application claims. An observer which throws costs the observers b
 they are told first, and then the failure leaves the adapter as a failed delivery. What that means
 for this extension is decision 11 in this repository's `DECISIONS.md`.
 
+What a failed delivery costs and what a failed end costs are two different questions, and the end
+is two questions again. A delivery is offered a second time, a completion comes back with the
+outbox entry which carries it, and a cancelation is offered once and never again. Decision 12 in
+this repository's `DECISIONS.md` holds the measurement behind that.
+
 This extension implements that interface in `PeaCockpitObserver` and contributes it as a bean on
 both platforms; the adapter collects the beans by type. The port this repository carried in the
 meantime is gone, and so is the startup message which asked an application to feed it.
@@ -52,7 +57,9 @@ until the end is reported.
 **Still open at the Process-Engine-API.** What the reason says is only half an outcome. The
 reference C7 adapter names `complete` when a task was finished through `UserTaskCompletionApi` and
 `delete` for everything else it notices, so a task somebody finished in a task list arrives as
-`delete` like a cancelled one.
+`delete` like a cancelled one. Measured on 2026-09-18 against that adapter (2025.11.1 on Camunda
+7.24): a task completed through the engine's own task service was reported as `delete`, a second
+later, by the pull which found it gone.
 
 **What it costs:** a task finished outside the API is reported as cancelled, which reads as work
 somebody stopped.
