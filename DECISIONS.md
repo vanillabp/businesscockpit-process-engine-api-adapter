@@ -307,11 +307,11 @@ takes part in the transaction the dispatch runs in, which an embedded engine doe
 takes the completion with it. That half was measured against the reference implementation with a
 transaction of the test's own around the completion, which is the shape a dispatch has: the user
 task was still there afterwards, and the next pull offered it again as a new delivery. The next
-attempt then completes the task again and reports the end once the provider works. Where the engine keeps the
-completion, which is what a remote engine and the in-memory engine of the tests do, the next
-attempt finds no task. VanillaBP reads that as a stale entry, writes one WARN line and consumes
-the entry, and the report of that end is gone. That is what the test application showed: one
-retry, one warning, and nothing at the cockpit server after it.
+attempt then completes the task again and reports the end once the provider works. Where the
+engine keeps the completion, which is what a remote engine and the in-memory engine of the tests
+do, the next attempt finds no task. VanillaBP reads that as a stale entry, writes one WARN line
+and consumes the entry, and the report of that end is gone. That is what the test application
+showed: one retry, one warning, and nothing at the cockpit server after it.
 
 A cancelation is the quiet half decision 11 described. The reference implementation notices at its
 next pull that a task it had delivered is gone, calls the handler on one of its own worker
