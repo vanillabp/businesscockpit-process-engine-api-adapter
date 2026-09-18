@@ -304,9 +304,10 @@ transaction is not rolled back by it.
 What a broken provider costs a completion is decided by the outbox and by the engine together. The
 failed dispatch is a failed outbox entry, and the outbox brings that entry back. Where the engine
 takes part in the transaction the dispatch runs in, which an embedded engine does, the rollback
-takes the completion with it: measured against the reference implementation, the user task was
-still there afterwards and the next pull offered it again as a new delivery. The next attempt then
-completes the task again and reports the end once the provider works. Where the engine keeps the
+takes the completion with it. That half was measured against the reference implementation with a
+transaction of the test's own around the completion, which is the shape a dispatch has: the user
+task was still there afterwards, and the next pull offered it again as a new delivery. The next
+attempt then completes the task again and reports the end once the provider works. Where the engine keeps the
 completion, which is what a remote engine and the in-memory engine of the tests do, the next
 attempt finds no task. VanillaBP reads that as a stale entry, writes one WARN line and consumes
 the entry, and the report of that end is gone. That is what the test application showed: one
