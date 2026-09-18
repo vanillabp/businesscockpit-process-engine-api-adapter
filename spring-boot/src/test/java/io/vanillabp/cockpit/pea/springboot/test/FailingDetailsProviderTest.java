@@ -23,6 +23,7 @@ import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
+import io.vanillabp.pea.mock.InMemoryProcessEngine.CompletedTask;
 import io.vanillabp.pea.observation.PeaUserTaskObserverFailure;
 
 /**
@@ -36,8 +37,10 @@ import io.vanillabp.pea.observation.PeaUserTaskObserverFailure;
  * Decision 11 in the repository's DECISIONS.md holds the reasoning, and this test holds the
  * behaviour.
  * <p>
- * The two halves of it are told apart on purpose. A delivery is repeated and a termination is not,
- * so a report lost at the end of a task is lost for good.
+ * Three moments are told apart on purpose, because they cost different things. A DELIVERY is
+ * offered again. A COMPLETION travels in the outbox entry which carries the completion, so the
+ * entry comes back. A CANCELATION is offered once, and a report lost there is lost for good.
+ * Decision 12 holds what was measured on each of them.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -54,6 +57,9 @@ public class FailingDetailsProviderTest {
 
   @Autowired
   private TestWorkflowService workflowService;
+
+  @Autowired
+  private TestAggregateRepository aggregates;
 
   @Autowired
   private TransactionTemplate transactions;
@@ -178,8 +184,8 @@ public class FailingDetailsProviderTest {
   }
 
   @Test
-  @DisplayName("A details provider which fails on the end of a task lets the termination fail")
-  public void aFailingDetailsProviderFailsTheTermination() {
+  @DisplayName("A details provider which fails on a cancelation costs that report for good")
+  public void aFailingDetailsProviderFailsACancelation() {
 
     final var aggregate = aStartedWorkflow("Tilda");
     aDeliveredUserTask(aggregate, "broken-3");
@@ -187,17 +193,50 @@ public class FailingDetailsProviderTest {
     CockpitServer.forgetRequests();
 
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
+    // the engine takes the task away without finishing it, which is what a boundary event does
     assertThrows(
         PeaUserTaskObserverFailure.class,
         () -> engine
             .terminateTask(
                 "broken-3", TestWorkflowService.TASK_DEFINITION,
-                TestWorkflowService.BPMN_PROCESS_ID, TaskInformation.COMPLETE));
+                TestWorkflowService.BPMN_PROCESS_ID, TaskInformation.DELETE));
 
     CockpitServer.awaitQuiet();
     assertTrue(
-        CockpitServer.matching("/usertask/broken-3/completed").isEmpty(),
-        "the end of the task is not reported, and this BPMS offers no termination a second time");
+        CockpitServer.matching("/usertask/broken-3/cancelled").isEmpty(),
+        "the end of the task is not reported, and a cancelation is offered once (decision 12)");
+
+  }
+
+  @Test
+  @DisplayName("A details provider which fails on a completion leaves the application alone")
+  public void aFailingDetailsProviderOnACompletionLeavesTheApplicationAlone() {
+
+    final var aggregate = aStartedWorkflow("Vito");
+    aDeliveredUserTask(aggregate, "broken-4");
+    CockpitServer.awaitRequest("/usertask/created");
+    CockpitServer.forgetRequests();
+
+    TestWorkflowService.APPROVALS_TO_FAIL.set(1);
+    // completing a user task is a phase-two operation, so the engine is asked after this
+    // transaction committed, on a worker of the outbox. What the provider throws is that
+    // worker's business and never the caller's (decision 12)
+    transactions
+        .executeWithoutResult(
+            status -> workflowService
+                .processes()
+                .completeUserTask(
+                    aggregates.findById(aggregate.getId()).orElseThrow(), "broken-4"));
+
+    CockpitServer.awaitQuiet();
+    assertTrue(
+        CockpitServer.matching("/usertask/broken-4/completed").isEmpty(),
+        "the report of the end was not written, because the provider threw while it was built");
+    assertEquals(
+        List.of("broken-4"),
+        engine.getCompletedTasks().stream().map(CompletedTask::taskId).toList(),
+        "the engine finished the task all the same: the report fails after the completion, and "
+            + "this engine keeps it, so the repeated entry finds no task to complete again");
 
   }
 

@@ -88,7 +88,13 @@ just written to, and it travels inside the outbox entry. So a restart costs no r
 already written. What it costs is every later question about that task, and decision 10 says what
 that leaves the memory for. A details provider which throws while a report is built fails the
 delivery. The engine then offers the task again, so the report is not simply lost. Decision 11 says
-that, and it says why the end of a task gets no second chance.
+that.
+
+The end of a user task is two ends. A completion is a task the engine finished because somebody
+asked it to, and a cancelation is the engine taking the task away, say through a boundary event. A
+broken provider costs them different things: a completion comes back with the outbox entry which
+carries it, while a cancelation is reported once and the report is gone if it fails. Decision 12
+holds what was measured on both.
 
 While the seam was missing, this repository carried a port of the same shape and asked an
 application to call it. Both are gone. The adapter is told about every delivery, while an

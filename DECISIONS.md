@@ -223,7 +223,7 @@ One ERROR line of the adapter is the whole sign of a lost report. Before, the ou
 failing provider with a growing backoff until its store gave up. Neither way is an incident, and
 this API offers nothing which would be one.
 
-## 11. A details provider which fails takes the delivery with it
+## 11. A details provider which fails takes the delivery with it - what the end of a task costs corrected by decision 12
 
 The last paragraph of decision 10 is no longer true. It said that an error in a details provider
 cannot disturb anything on this BPMS: the adapter would log it, the task would reach the
@@ -268,3 +268,66 @@ task finds the case reported and passes it over.
 
 `FailingDetailsProviderTest` on both platforms holds all of this, against the adapter's own
 delivery.
+
+## 12. A completion and a cancelation are two different ends
+
+Stephan asked on 2026-09-18 for two words to be used everywhere. A completion is a user task which
+ends because it was finished, seen from the engine. What it meant for the business may well be a
+rejection, and a BPMN error event may pick that up. A cancelation is the engine taking the task
+away without finishing it, say through a boundary event, and the task becomes pointless. Both
+arrive at `PeaCockpitObserver#userTaskTerminated`, and only `PeaUserTaskObservation#reason()`
+tells them apart.
+
+Decision 11 treats the two as one case. Its last paragraphs say that the end of a task is quiet,
+reported once and never offered again, so a report lost there is lost for good. That holds for a
+cancelation and is wrong for a completion. Decision 11 keeps its text and its number, and this
+entry says what holds instead.
+
+The difference was measured on 2026-09-18, against the API's own reference implementation for an
+embedded Camunda 7 (`process-engine-adapter-camunda-platform-c7-embedded-spring-boot-starter`
+2025.11.1 on Camunda 7.24 and H2, user tasks pulled once a second) and against this repository's
+own Spring Boot test application.
+
+A completion reaches the engine through `UserTaskCompletionApi#completeTask`, and the reference
+implementation calls the termination handler inside that very call. It runs on the thread which
+asked for the completion, inside that caller's transaction, and it names the reason `complete`. So
+the observer and everything it does belong to the caller, and a failure travels back to it.
+
+That caller is not the application's thread. Completing a user task is a phase-two operation of
+the Process-Engine-API adapter, scheduled while the application's transaction commits and
+dispatched after it by VanillaBP's phase-two outbox. Measured in the test application: while the
+application's transaction was still open and right after it committed, no details provider had
+run, and it ran a moment later on an outbox worker thread. An application which calls
+`ProcessService#completeUserTask` therefore never sees what a broken provider throws, and its own
+transaction is not rolled back by it.
+
+What a broken provider costs a completion is decided by the outbox and by the engine together. The
+failed dispatch is a failed outbox entry, and the outbox brings that entry back. Where the engine
+takes part in the transaction the dispatch runs in, which an embedded engine does, the rollback
+takes the completion with it. That half was measured against the reference implementation with a
+transaction of the test's own around the completion, which is the shape a dispatch has: the user
+task was still there afterwards, and the next pull offered it again as a new delivery. The next
+attempt then completes the task again and reports the end once the provider works. Where the
+engine keeps the completion, which is what a remote engine and the in-memory engine of the tests
+do, the next attempt finds no task. VanillaBP reads that as a stale entry, writes one WARN line
+and consumes the entry, and the report of that end is gone. That is what the test application
+showed: one retry, one warning, and nothing at the cockpit server after it.
+
+A cancelation is the quiet half decision 11 described. The reference implementation notices at its
+next pull that a task it had delivered is gone, calls the handler on one of its own worker
+threads, outside any transaction of the application, and names the reason `delete`. The
+subscription of that task is forgotten before the handler runs, so the same end is never offered a
+second time. Measured: the failure travels out of the pull cycle into the scheduler's error log,
+the task is not delivered again, and the terminations which were queued behind it in that cycle
+are skipped with it. A report lost on a cancelation is lost for good, and the task stays open in
+the memory of the node and open in the cockpit, the way it does for a node which never saw the
+delivery (entry 11 in `GAPS.md`).
+
+One more thing was measured, and it is not new but it is worth saying next to the two words. The
+reason `complete` only reaches this extension for a completion which went through the API. A task
+somebody finished in a task list arrives as `delete`, so decision 4 reports it as cancelled. What
+the cockpit shows then is work somebody stopped, for work which was done. Entry 2 in `GAPS.md`
+carries that one, and it is the reason the words of this entry are not the words a cockpit user
+reads off a task.
+
+`FailingDetailsProviderTest` on both platforms holds the two ends apart, one test per end.

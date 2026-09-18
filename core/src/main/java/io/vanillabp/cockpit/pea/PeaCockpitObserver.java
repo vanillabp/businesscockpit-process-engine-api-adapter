@@ -41,8 +41,14 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * it writes no entry and leaves this class: the adapter turns it into a failed delivery, so the
  * engine hears about the broken provider and offers the task again. The application keeps its
  * notification, because the adapter calls its {@code @WorkflowTask} method before it lets the
- * failure out. The end of a task is the quiet half: a termination is not offered a second time, so
- * a report which fails there is gone. That is decision 11 in the repository's DECISIONS.md.
+ * failure out. That is decision 11 in the repository's DECISIONS.md.
+ * <p>
+ * The end of a task is two ends, and they cost a broken provider different things. A COMPLETION
+ * runs on the thread which asked the engine to finish the task, which in a VanillaBP application
+ * is the worker of the phase-two outbox, so the failure fails that outbox entry and the entry
+ * comes back. A CANCELATION runs on a thread of the engine's own and is offered once, so a report
+ * which fails there is gone. Decision 12 in the repository's DECISIONS.md holds the measurement
+ * behind both.
  * <p>
  * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
  * through name-clash avoidance before it builds an observation. So nothing here spells an id a
@@ -157,7 +163,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   }
 
   /**
-   * The engine took a user task away, and the cockpit is told how it ended.
+   * The engine took a user task away, and the cockpit is told how it ended. A completion and a
+   * cancelation both arrive here, and {@link PeaUserTaskObservation#reason()} is what tells them
+   * apart (see {@link #endOf}).
    * <p>
    * This is the one read which cannot fall back on VanillaBP's delivery log. A termination
    * carries no workflow aggregate, because the engine hands over no payload with it, and the log
@@ -186,9 +194,10 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
     // only now. The report of the end is built inside the call above and reads what the delivery
-    // said from here. A report which did not get written leaves the task open here, which is all
-    // this half can do: the failure reaches the engine, and an engine behind this API repeats a
-    // delivery but not a termination (decision 11 in the repository's DECISIONS.md)
+    // said from here. A report which did not get written leaves the task open here, and what that
+    // costs depends on which end this was: a completion travels in an outbox entry which comes
+    // back, a cancelation is offered once and is then gone (decision 12 in the repository's
+    // DECISIONS.md)
     deliveredUserTasks.ended(observation.taskId());
 
   }
@@ -273,9 +282,14 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   }
 
   /**
-   * Whether a task which is gone was finished or withdrawn. The engine says so in the reason,
-   * where it says anything at all, and a task which simply disappeared is reported as finished.
+   * Whether a task which is gone was completed or canceled. The engine says so in the reason,
+   * where it says anything at all, and a task which simply disappeared is reported as completed.
    * See decision 4 in the repository's DECISIONS.md.
+   * <p>
+   * The reason names the API which noticed the end rather than what happened to the task. Only a
+   * completion through {@code ProcessService#completeUserTask} arrives as {@code complete}, and a
+   * task somebody completed in a task list arrives as {@code delete} like a canceled one. Entry 2
+   * in the repository's GAPS.md says what that costs.
    */
   private static UserTaskEventKind endOf(
       final PeaUserTaskObservation observation) {
