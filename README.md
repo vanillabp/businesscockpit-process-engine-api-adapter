@@ -4,6 +4,9 @@
 
 [![Apache License V.2](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
+Spring Boot [![Coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fvanillabp.github.io%2Fbusinesscockpit-process-engine-api-adapter%2Fspring-boot-report%2Findex.html&search=Total.*%3F.([0-9]%2B)[^0-9]*%3F%25&replace=%241%25&flags=m&label=Coverage&color=green&cacheSeconds=60)](https://vanillabp.github.io/businesscockpit-process-engine-api-adapter/spring-boot-report)<br>
+Quarkus [![Coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fvanillabp.github.io%2Fbusinesscockpit-process-engine-api-adapter%2Fquarkus-report%2Findex.html&search=Total.*%3F.([0-9]%2B)[^0-9]*%3F%25&replace=%241%25&flags=m&label=Coverage&color=green&cacheSeconds=60)](https://vanillabp.github.io/businesscockpit-process-engine-api-adapter/quarkus-report)
+
 This repository holds the [VanillaBP Business Cockpit](https://github.com/vanillabp/business-cockpit)
 integration for the BPMS-agnostic
 [Process-Engine-API](https://github.com/bpm-crafters/process-engine-api). It is built as an
@@ -121,6 +124,10 @@ publish never waits for a build, and a publish which is already running is never
 two runs which publish at the same time would overwrite each other. `release.yaml` is started by
 hand and publishes to Maven Central from a release branch. It deploys no snapshot, so it can run
 beside a publish.
+
+`deploy-to-github-packages.yaml` also publishes the two coverage reports to GitHub Pages, which is
+what the badges at the top of this page link to. `deploy` runs every phase the pull-request build
+runs, so the number covers the whole test suite.
 
 ## Noteworthy & Contributors
 
