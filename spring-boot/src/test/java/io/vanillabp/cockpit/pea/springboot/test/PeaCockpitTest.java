@@ -205,11 +205,11 @@ public class PeaCockpitTest {
 
     aDeliveredUserTask(aggregate, "task-1");
 
-    final var workflow = CockpitServer.awaitRequest("/workflow/created");
+    final var workflow = CockpitServer.awaitAnyRequest("/workflow/created");
     assertTrue(workflow.body().contains("\"customer\":\"Anna\""), workflow.body());
     assertTrue(workflow.body().contains(TestWorkflowService.BPMN_PROCESS_ID), workflow.body());
 
-    final var userTask = CockpitServer.awaitRequest("/usertask/created");
+    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
     assertTrue(userTask.body().contains("\"customer\":\"Anna\""), userTask.body());
     assertTrue(userTask.body().contains("\"event\":\"CREATED\""), userTask.body());
     assertTrue(
@@ -236,7 +236,7 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Rita");
     aDeliveredUserTask(aggregate, "task-6");
-    CockpitServer.awaitRequest("/usertask/created");
+    CockpitServer.awaitAnyRequest("/usertask/created");
     CockpitServer.forgetRequests();
 
     // the engine repeats a delivery whenever something about the task changed: its assignee, its
@@ -248,7 +248,7 @@ public class PeaCockpitTest {
     // this engine drive it.
     aDeliveredUserTask(aggregate, "task-6");
 
-    final var again = CockpitServer.awaitRequest("/usertask/created");
+    final var again = CockpitServer.awaitAnyRequest("/usertask/created");
     assertTrue(again.body().contains("\"customer\":\"Rita\""), again.body());
 
   }
@@ -259,14 +259,14 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Cleo");
     aDeliveredUserTask(aggregate, "task-3");
-    CockpitServer.awaitRequest("/usertask/created");
+    CockpitServer.awaitAnyRequest("/usertask/created");
 
     engine
         .terminateTask(
             "task-3", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
             TaskInformation.COMPLETE);
 
-    assertNotNull(CockpitServer.awaitRequest("/usertask/task-3/completed"));
+    assertNotNull(CockpitServer.awaitAnyRequest("/usertask/task-3/completed"));
 
   }
 
@@ -276,7 +276,7 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Dora");
     aDeliveredUserTask(aggregate, "task-4");
-    CockpitServer.awaitRequest("/workflow/created");
+    CockpitServer.awaitAnyRequest("/workflow/created");
     CockpitServer.forgetRequests();
 
     changeTheCase(

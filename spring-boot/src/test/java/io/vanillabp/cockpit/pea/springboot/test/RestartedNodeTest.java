@@ -237,7 +237,7 @@ public class RestartedNodeTest {
                 .processes()
                 .completeUserTask(
                     aggregates.findById(aggregate.getId()).orElseThrow(), "restart-2"));
-    CockpitServer.awaitRequest("/usertask/restart-2/completed");
+    CockpitServer.awaitAnyRequest("/usertask/restart-2/completed");
     awaitTheRecordOfTheTaskBeingStamped(aggregate, "restart-2");
 
     try (var restarted = aRestartedNode()) {
