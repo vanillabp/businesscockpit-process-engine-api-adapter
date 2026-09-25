@@ -162,7 +162,8 @@ public class FailingDetailsProviderTest {
     // what an engine behind this API does with a failed delivery: it offers the task again
     aDeliveredUserTask(aggregate, "broken-2");
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"broken-2\"");
     assertTrue(userTask.body().contains("\"customer\":\"Sami\""), userTask.body());
 
     CockpitServer.awaitQuiet();

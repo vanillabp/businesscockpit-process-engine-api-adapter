@@ -128,10 +128,13 @@ public class UnservedUserTaskTest {
     anUnservedUserTask(aggregate, "unserved-1");
 
     // the business case appears with its first user task, and this one is the first
-    final var workflow = CockpitServer.awaitAnyRequest("/workflow/created");
+    final var workflow = CockpitServer
+        .awaitRequest(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(aggregate.getId()));
     assertTrue(workflow.body().contains("\"customer\":\"Nora\""), workflow.body());
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"unserved-1\"");
     // a first delivery, not a repetition of one the cockpit already knows
     assertTrue(userTask.body().contains("\"updated\":false"), userTask.body());
     assertTrue(
@@ -207,7 +210,8 @@ public class UnservedUserTaskTest {
             "served-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
                 .of("id", String.valueOf(aggregate.getId())));
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"served-1\"");
     assertTrue(
         userTask
             .body()
