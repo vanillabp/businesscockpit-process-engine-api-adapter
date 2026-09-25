@@ -114,6 +114,15 @@ mvn install
 Snapshots go to GitHub Packages through the pipeline described below. Releases go to Maven Central
 under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business Cockpit.
 
+The gate in `test-coverage-report/coverage-gate` reads the aggregated coverage reports, and JaCoCo
+writes those in the `verify` phase. A build which stops at `package` never gets that far. The gate
+then prints a line per platform saying that the coverage was not checked, and those two tests are
+reported as skipped, instead of failing over a file the run could not have written.
+
+`TestClassConventionsTest` next to it keeps every test class on the output suppression. It also
+reads the main sources of this repository, for a guiding message whose sentence fell apart: a run
+of spaces between two words, or two words a line continuation glued into one.
+
 ## What CI runs
 
 `build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
