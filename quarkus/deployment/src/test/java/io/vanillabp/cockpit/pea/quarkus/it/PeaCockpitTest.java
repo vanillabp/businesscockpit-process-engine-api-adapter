@@ -121,10 +121,13 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Anna");
     aDeliveredUserTask(aggregate, "task-1");
 
-    final var workflow = CockpitServer.awaitAnyRequest("/workflow/created");
+    final var workflow = CockpitServer
+        .awaitRequest(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowIdOf(aggregate)));
     assertTrue(workflow.body().contains("\"customer\":\"Anna\""), workflow.body());
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"task-1\"");
     assertTrue(userTask.body().contains("\"customer\":\"Anna\""), userTask.body());
     assertTrue(userTask.body().contains("Approve the ride"), userTask.body());
 
@@ -151,7 +154,8 @@ public class PeaCockpitTest {
     // carries the change which would let this engine drive it.
     aDeliveredUserTask(aggregate, "task-6");
 
-    final var again = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var again = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"task-6\"");
     assertTrue(again.body().contains("\"customer\":\"Rita\""), again.body());
 
   }

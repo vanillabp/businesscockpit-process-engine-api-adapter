@@ -129,10 +129,13 @@ public class UnservedUserTaskTest {
 
     anUnservedUserTask(aggregate, "unserved-1");
 
-    final var workflow = CockpitServer.awaitAnyRequest("/workflow/created");
+    final var workflow = CockpitServer
+        .awaitRequest(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(aggregate.getId()));
     assertTrue(workflow.body().contains("\"customer\":\"Nora\""), workflow.body());
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"unserved-1\"");
     assertTrue(
         userTask
             .body()
@@ -185,7 +188,8 @@ public class UnservedUserTaskTest {
             "served-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
                 .of("id", String.valueOf(aggregate.getId())));
 
-    final var userTask = CockpitServer.awaitAnyRequest("/usertask/created");
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"served-1\"");
     assertTrue(
         userTask
             .body()
