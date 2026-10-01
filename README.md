@@ -114,14 +114,46 @@ mvn install
 Snapshots go to GitHub Packages through the pipeline described below. Releases go to Maven Central
 under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business Cockpit.
 
-The gate in `test-coverage-report/coverage-gate` reads the aggregated coverage reports, and JaCoCo
-writes those in the `verify` phase. A build which stops at `package` never gets that far. The gate
-then prints a line per platform saying that the coverage was not checked, and those two tests are
-reported as skipped, instead of failing over a file the run could not have written.
+## Test coverage
 
-`TestClassConventionsTest` next to it keeps every test class on the output suppression. It also
-reads the main sources of this repository, for a guiding message whose sentence fell apart: a run
-of spaces between two words, or two words a line continuation glued into one.
+`mvn install` builds one aggregated JaCoCo report per platform. The Spring Boot report sums up
+`core` and `spring-boot`, and it lands in `test-coverage-report/spring-boot/report`. The Quarkus one
+sums up `core` together with `quarkus/runtime` and `quarkus/deployment`, and it lands in
+`test-coverage-report/quarkus/report`. The badges at the top of this page link to the copies CI
+publishes.
+
+Coverage is measured per platform because `core` is platform-neutral. A line of the core counts on
+the platform whose tests ran it, so a core line Quarkus never reaches is a feature Quarkus never
+runs. Both platforms are held to the same number, and each one has to earn it with its own tests.
+
+`test-coverage-report/coverage-gate` is the last module of the build. It reads both reports and
+fails whenever a platform is below its threshold in the root POM
+(`coverage.threshold.spring-boot` and `coverage.threshold.quarkus`, in percent of covered
+instructions, which is the number the badges show). Both hold 85, the number every VanillaBP
+repository gates on, and that number is not the target. The target is `coverage.rule`, which holds
+90, so a report between the two passes the build and still names a gap somebody owes a test for.
+The gate is therefore never edited to make a build pass. It also compares every module writing a
+`jacoco.exec` with the two aggregates, so a module added to the build but to no report cannot stay
+unnoticed.
+
+`CoverageGateTest` is where both measurements happen, and it prints what it measured on every run,
+green ones included. That makes it the one test class of this repository which says something while
+it passes. The angle brackets stand for the numbers of the run:
+
+```
+coverage gate | Spring Boot: <percent> % instructions (<missed> of <total> missed) | at the rule of 90 %
+coverage gate | Quarkus: <percent> % instructions (<missed> of <total> missed) | <gap> points below the rule of 90 %, build breaks below 85 %
+```
+
+`mvn package` does not check the threshold. JaCoCo writes the aggregated reports in the `verify`
+phase, and a build which stops at `package` never gets that far. The gate then prints a line per
+platform saying that the coverage was not checked and naming the command which does check it, and
+those two tests are reported as skipped, instead of failing over a file the run could not have
+written.
+
+`TestClassConventionsTest` next to the gate keeps every test class on the output suppression. It
+also reads the main sources of this repository, for a guiding message whose sentence fell apart: a
+run of spaces between two words, or two words a line continuation glued into one.
 
 ## What CI runs
 

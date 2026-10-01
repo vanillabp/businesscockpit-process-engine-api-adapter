@@ -1,5 +1,6 @@
 package io.vanillabp.cockpit.pea.springboot.test;
 
+import io.vanillabp.spi.service.NoSyncWithBPMS;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,7 +27,12 @@ public class TestAggregate {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  /** What the persistence increments per write, and what a second writer runs into. */
+  /**
+   * What the persistence increments per write, and what a second writer runs into. It stays in
+   * the application: no model of this workflow reads it, and the number says nothing a BPMN
+   * model could decide on.
+   */
+  @NoSyncWithBPMS
   @Version
   private Long version;
 
