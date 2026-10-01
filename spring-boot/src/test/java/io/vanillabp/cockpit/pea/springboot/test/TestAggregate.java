@@ -18,6 +18,11 @@ import jakarta.persistence.Version;
  * the version attribute the later of the two writers reads a conflict instead, and each of them
  * answers it the way it can. The application repeats its transaction. The cockpit loses the
  * entry, so the report of that event is gone and the next one carries the case as it is then.
+ * <p>
+ * Only a boolean and a text mean the same in every expression language, so every other value
+ * an aggregate shares is declared first. Here that is {@code version}, which the workflow of
+ * {@code application.yaml} names under {@code declared-aggregate-values}. The declaration says
+ * that the application looked at the value and knows what the Process-Engine-API makes of it.
  */
 @Entity
 public class TestAggregate {
