@@ -152,12 +152,37 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
                 .deployedVersionOf(workflow.workflowModuleId(), workflow.bpmnProcessId()))
         .map(
             process -> new WorkflowDetailsPrefill(
-                versions
-                    .versionOf(adapterId, workflow.workflowModuleId(), workflow.bpmnProcessId()),
+                shownVersionOf(workflow),
                 // the business key is the aggregate's id here. The Process-Engine-API's start
                 // command carries no business key of its own, so there is no second identifier
                 // the cockpit could show
                 workflow.workflowAggregateId(), process.processName(), null));
+
+  }
+
+  /**
+   * The version the cockpit SHOWS for a business case, which is the version it shows for the user
+   * tasks of that case. Only a delivery carries the version tag of this BPMS, and the memory of
+   * this node is the only place that tag survives, so the last task of the workflow this node was
+   * given answers.
+   * <p>
+   * Falling back to what this application deployed is the normal case and not an exception, which
+   * is worth saying because it reads like dead code. A node remembers a bounded number of
+   * deliveries (<code>vanillabp.cockpit.process-engine-api.remembered-user-tasks</code>), so every
+   * business case whose tasks were pushed out of that memory is answered with the deployment key,
+   * even where its tasks once carried a tag. So is every case this node never saw a task of.
+   * Entry 5 in the repository's GAPS.md says what that costs.
+   */
+  private String shownVersionOf(
+      final WorkflowReference workflow) {
+
+    final var namedWithATask = deliveredUserTasks
+        .versionOfWorkflow(
+            adapterId, workflow.workflowModuleId(), workflow.bpmnProcessId(), workflow
+                .workflowId());
+    return namedWithATask == null
+        ? versions.versionOf(adapterId, workflow.workflowModuleId(), workflow.bpmnProcessId())
+        : namedWithATask;
 
   }
 

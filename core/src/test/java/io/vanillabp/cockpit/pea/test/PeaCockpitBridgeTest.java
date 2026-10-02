@@ -73,16 +73,36 @@ public class PeaCockpitBridgeTest {
       final String taskId,
       final String versionTag) {
 
+    aDeliveredUserTask(observer, taskId, "4711", "instance-1", versionTag);
+
+  }
+
+  private static void aDeliveredUserTask(
+      final PeaCockpitObserver observer,
+      final String taskId,
+      final String workflowAggregateId,
+      final String workflowId,
+      final String versionTag) {
+
     final var meta = new LinkedHashMap<String, String>();
-    meta.put(CommonRestrictions.PROCESS_INSTANCE_ID, "instance-1");
+    meta.put(CommonRestrictions.PROCESS_INSTANCE_ID, workflowId);
     if (versionTag != null) {
       meta.put(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag);
     }
     observer
         .userTaskDelivered(
             new PeaUserTaskObservation(
-                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, workflowAggregateId, new TaskInformation(
                     taskId, meta), Map.of()));
+
+  }
+
+  private static WorkflowReference workflow(
+      final String workflowAggregateId,
+      final String workflowId) {
+
+    return new WorkflowReference(
+        TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, workflowAggregateId, workflowId);
 
   }
 
@@ -214,6 +234,99 @@ public class PeaCockpitBridgeTest {
             .stream()
             .map(UserTaskReference::processVersion)
             .toList());
+
+  }
+
+  @Test
+  @DisplayName("A business case shows the version its user tasks show")
+  public void aCaseShowsTheVersionItsUserTasksShow() {
+
+    aDeliveredUserTask("task-1", TestModels.VERSION_TAG);
+
+    assertEquals(
+        TestModels.VERSION_TAG,
+        bridge.prefilledUserTaskDetails(reference("task-1")).orElseThrow().bpmnProcessVersion());
+    assertEquals(
+        TestModels.VERSION_TAG,
+        bridge
+            .prefilledWorkflowDetails(workflow("4711", "instance-1"))
+            .orElseThrow()
+            .bpmnProcessVersion(),
+        "the engine named a version with the task, so the case names the same one");
+
+  }
+
+  @Test
+  @DisplayName("A business case whose delivery named no version shows what this application deployed")
+  public void aCaseWithoutAVersionTagShowsTheDeploymentKey() {
+
+    aDeliveredUserTask("task-1");
+
+    assertEquals(
+        TestModels.DEPLOYMENT_KEY,
+        bridge.prefilledUserTaskDetails(reference("task-1")).orElseThrow().bpmnProcessVersion());
+    assertEquals(
+        TestModels.DEPLOYMENT_KEY,
+        bridge
+            .prefilledWorkflowDetails(workflow("4711", "instance-1"))
+            .orElseThrow()
+            .bpmnProcessVersion(),
+        "this engine fills no version tag, so both read what this release deployed");
+
+  }
+
+  @Test
+  @DisplayName("A business case whose user tasks all ended keeps its version")
+  public void aCaseWhoseTasksEndedKeepsItsVersion() {
+
+    aDeliveredUserTask("task-1", TestModels.VERSION_TAG);
+    deliveredUserTasks.ended("task-1");
+
+    assertEquals(
+        TestModels.VERSION_TAG,
+        bridge
+            .prefilledWorkflowDetails(workflow("4711", "instance-1"))
+            .orElseThrow()
+            .bpmnProcessVersion(),
+        "what a case runs on does not change when its last task is finished");
+
+  }
+
+  @Test
+  @DisplayName("A business case this node holds no delivery of shows what this application deployed")
+  public void aForgottenCaseShowsTheDeploymentKey() {
+
+    final var deployedProcesses = TestModels.deployed();
+    final var oneDeliveryAtATime = new PeaDeliveredUserTasks(1);
+    final var narrowObserver = new PeaCockpitObserver(
+        deployedProcesses, oneDeliveryAtATime, (
+            adapterId,
+            workflowModuleId,
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
+    final var narrowBridge = new PeaCockpitBridge(
+        TestModels.ADAPTER_ID, deployedProcesses, oneDeliveryAtATime, TestModels
+            .recorded(deployedProcesses, deliveryLog), (
+                adapterId,
+                workflowModuleId,
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+
+    aDeliveredUserTask(narrowObserver, "task-1", "4711", "instance-1", TestModels.VERSION_TAG);
+    aDeliveredUserTask(narrowObserver, "task-2", "4712", "instance-2", TestModels.VERSION_TAG);
+
+    assertEquals(
+        TestModels.DEPLOYMENT_KEY,
+        narrowBridge
+            .prefilledWorkflowDetails(workflow("4711", "instance-1"))
+            .orElseThrow()
+            .bpmnProcessVersion(),
+        "the delivery which carried the tag was pushed out, and nothing else on this BPMS keeps it");
+    assertEquals(
+        TestModels.VERSION_TAG,
+        narrowBridge
+            .prefilledWorkflowDetails(workflow("4712", "instance-2"))
+            .orElseThrow()
+            .bpmnProcessVersion(),
+        "the case the node still holds a delivery of answers with the tag");
 
   }
 

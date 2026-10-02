@@ -8,8 +8,12 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * It cannot say much. The API has no repository, so there are no process definitions to count and
  * no version numbers. Two things do exist: the deployment key the engine answered when this
  * application version deployed its files, and a version tag an engine may put into the meta map of
- * a delivered task. The cockpit shows the tag where an engine fills it and the deployment key
- * otherwise. That at least tells apart what two releases of an application deployed.
+ * a delivered task. This interface answers the deployment key, because a deployment knows nothing
+ * else. It at least tells apart what two releases of an application deployed.
+ * <p>
+ * The tag arrives with the task which carried it, and {@link PeaDeliveredUserTasks} is where it
+ * survives the delivery. The read of a task and the read of a business case both get it from
+ * there, so the two show the tag where an engine fills it and the deployment key otherwise.
  * <p>
  * Both are only ever the CURRENTLY deployed version. A workflow still running on what an earlier
  * release deployed is shown with the version this release deployed, because the engine keeps no
