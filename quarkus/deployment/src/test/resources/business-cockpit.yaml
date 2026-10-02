@@ -13,6 +13,8 @@ vanillabp:
       name-clash-avoidance: none
   prioritized-adapters:
     - pea
+  cockpit:
+    initiator-source: system
   workflow-modules:
     pea-cockpit:
       adapters:

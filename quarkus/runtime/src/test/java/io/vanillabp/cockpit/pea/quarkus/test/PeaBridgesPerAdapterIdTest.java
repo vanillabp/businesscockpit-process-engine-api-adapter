@@ -36,7 +36,7 @@ public class PeaBridgesPerAdapterIdTest {
     final var deployedProcesses = new PeaDeployedProcessesRegistry();
     return new PeaCockpitProducer()
         .businessCockpitPeaBridges(
-            properties, new CockpitSettings(null, null, null, null, null, null, Map.of()),
+            properties, new CockpitSettings(null, null, null, null, null, null, null, Map.of()),
             deployedProcesses, new PeaDeliveredUserTasks(10), TestRecordedUserTasks
                 .knowingNothing(deployedProcesses),
             (

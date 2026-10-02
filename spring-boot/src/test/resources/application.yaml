@@ -15,6 +15,7 @@ vanillabp:
   prioritized-adapters:
     - pea
   cockpit:
+    initiator-source: system
     rest:
       base-url: replaced-by-the-test
   workflow-modules:
