@@ -27,7 +27,7 @@ public class PeaCockpitSettingsTest {
       final String rememberedUserTasks) {
 
     return new CockpitSettings(
-        null, null, null, null, null, new CockpitSettings.ProcessEngineApi(rememberedUserTasks), Map.of());
+        null, null, null, null, null, null, new CockpitSettings.ProcessEngineApi(rememberedUserTasks), Map.of());
 
   }
 
