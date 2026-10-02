@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -17,7 +18,9 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
  * The memory of a node has an end, and what happens when it is reached is the difference between
- * a cockpit which loses a report and an application which runs out of heap.
+ * a cockpit which loses a report and an application which runs out of heap. The order the
+ * deliveries keep in it is the second thing tested here, because it is what answers the version
+ * of a business case.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaDeliveredUserTasksTest {
@@ -25,10 +28,18 @@ public class PeaDeliveredUserTasksTest {
   private static DeliveredUserTask userTask(
       final String taskId) {
 
+    return userTask(taskId, null);
+
+  }
+
+  private static DeliveredUserTask userTask(
+      final String taskId,
+      final String shownVersion) {
+
     return new DeliveredUserTask(
         new UserTaskReference(
             TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, null, "4711", "instance-1", taskId, TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT), UserTaskDetailsPrefill
-                .builder().build());
+                .builder().bpmnProcessVersion(shownVersion).build());
 
   }
 
@@ -112,6 +123,59 @@ public class PeaDeliveredUserTasksTest {
             .ofAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
             .isEmpty(),
         "and it is none of the open tasks of its business case");
+
+  }
+
+  @Test
+  @DisplayName("The version of a workflow is the one the engine named last")
+  public void theVersionOfAWorkflowIsTheOneNamedLast() {
+
+    final var remembered = new PeaDeliveredUserTasks(10);
+
+    remembered.remember(userTask("task-1", "ride-2026-08"));
+    remembered.remember(userTask("task-2", "ride-2026-09"));
+
+    assertEquals(
+        "ride-2026-09",
+        remembered
+            .versionOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "the files went out again between the two deliveries, and the later word of the engine wins");
+
+    remembered.ended("task-2");
+
+    assertEquals(
+        "ride-2026-09",
+        remembered
+            .versionOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "a task the engine took away still says what its business case runs on");
+
+  }
+
+  @Test
+  @DisplayName("A workflow no delivery of this node belongs to has no version")
+  public void aWorkflowWithoutADeliveryHasNoVersion() {
+
+    final var remembered = new PeaDeliveredUserTasks(10);
+
+    remembered.remember(userTask("task-1", "ride-2026-09"));
+
+    assertNull(
+        remembered
+            .versionOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-2"),
+        "another business case of the same process is another case");
+    assertNull(
+        remembered
+            .versionOfWorkflow(
+                "another-pea", TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "another engine's workflow of the same id is another case");
+    assertNull(
+        remembered
+            .versionOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, "AnotherProcess", "instance-1"),
+        "a version belongs to one BPMN process, and a delivery which named no workflow is remembered under an aggregate's id two processes may share");
 
   }
 

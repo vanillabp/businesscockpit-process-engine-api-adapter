@@ -122,7 +122,9 @@ engine fills it.
 
 **What it costs:** the cockpit shows the version tag where an engine sets one and the deployment
 key otherwise. A workflow still running on what an earlier release deployed is shown with what this
-release deployed.
+release deployed. A business case and its user tasks show the same answer, as long as this node
+still holds a delivery of that case. Once the last one was pushed out of its memory, the case
+shows the deployment key again, even where its tasks carried a tag.
 
 **What would close it:** a repository API, which answers process definitions by key with their
 version and their resources.

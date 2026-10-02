@@ -166,6 +166,45 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
+   * The version the engine named with the last user task of one workflow this node was delivered.
+   * It is what the cockpit shows for the business case, so a case and its tasks say the same
+   * thing. The value is the one the delivery was remembered under: the version tag where the
+   * engine wrote one into the meta map of that task, and what this application deployed where it
+   * wrote none.
+   * <p>
+   * Two things are different from {@link #ofAggregate}. A task the engine has taken away counts,
+   * because the version of a business case does not change when its last task is finished.
+   * Leaving ended tasks out would make the end of a case lose the tag again. And where two tasks
+   * of one workflow carry different tags, because the files went out again in between, the one
+   * delivered last wins. It is the later word of the engine about the same case.
+   *
+   * @param adapterId The configured adapter id which got the delivery
+   * @param workflowModuleId The workflow module
+   * @param bpmnProcessId The plain BPMN process id
+   * @param workflowId The engine's own id of the workflow
+   * @return The version, or <code>null</code> where this node holds no task of that workflow
+   */
+  public String versionOfWorkflow(
+      final String adapterId,
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowId) {
+
+    synchronized (byTaskId) {
+      String version = null;
+      for (final var task : byTaskId.values()) {
+        if (isOfWorkflow(task, adapterId, workflowModuleId, bpmnProcessId, workflowId)) {
+          // the map holds its entries in the order they were delivered, so the last match is
+          // what the engine said last about this workflow
+          version = task.details().bpmnProcessVersion();
+        }
+      }
+      return version;
+    }
+
+  }
+
+  /**
    * Whether the cockpit was already told about a workflow. That is what makes a workflow reported
    * with its first user task rather than with every one.
    * <p>
@@ -202,6 +241,29 @@ public class PeaDeliveredUserTasks {
     synchronized (reportedWorkflows) {
       reportedWorkflows.put(workflowKey(adapterId, workflowId), Boolean.TRUE);
     }
+
+  }
+
+  /**
+   * Whether a remembered task belongs to one workflow of one engine.
+   * <p>
+   * The workflow module and the BPMN process are part of the question, although the engine's own
+   * id of a workflow should be enough on its own. That id is not always the engine's: a delivery
+   * which names no workflow is remembered under the aggregate's id instead, and two aggregates of
+   * two BPMN processes may well carry the same id. Without the process, one business case would
+   * then answer with the version of another.
+   */
+  private static boolean isOfWorkflow(
+      final DeliveredUserTask task,
+      final String adapterId,
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowId) {
+
+    final var reference = task.reference();
+    return reference.adapterId().equals(adapterId) && reference.workflowModuleId()
+        .equals(workflowModuleId) && reference.bpmnProcessId().equals(bpmnProcessId) && reference
+            .workflowId().equals(workflowId);
 
   }
 
