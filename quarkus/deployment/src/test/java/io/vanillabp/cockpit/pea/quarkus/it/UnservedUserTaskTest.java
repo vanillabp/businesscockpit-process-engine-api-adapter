@@ -159,7 +159,7 @@ public class UnservedUserTaskTest {
 
     final var aggregate = aStartedWorkflow("Olga");
     anUnservedUserTask(aggregate, "unserved-2");
-    CockpitServer.awaitAnyRequest("/usertask/created");
+    CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"unserved-2\"");
 
     assertTrue(
         workflowService

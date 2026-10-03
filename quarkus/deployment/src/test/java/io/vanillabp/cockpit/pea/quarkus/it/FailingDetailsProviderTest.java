@@ -144,7 +144,9 @@ public class FailingDetailsProviderTest {
 
     // the business case is reported before the task is, in a transaction of its own, so it
     // survives the failure of the task's own report
-    CockpitServer.awaitAnyRequest("/workflow/created");
+    CockpitServer
+        .awaitRequestOf(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(aggregate.getId()));
     CockpitServer.awaitQuiet();
     assertTrue(
         CockpitServer.matching("/usertask/created").isEmpty(),
@@ -161,7 +163,9 @@ public class FailingDetailsProviderTest {
     assertThrows(
         PeaUserTaskObserverFailure.class,
         () -> aDeliveredUserTask(aggregate, "broken-2"));
-    CockpitServer.awaitAnyRequest("/workflow/created");
+    CockpitServer
+        .awaitRequestOf(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(aggregate.getId()));
 
     // what an engine behind this API does with a failed delivery: it offers the task again
     aDeliveredUserTask(aggregate, "broken-2");
@@ -192,7 +196,7 @@ public class FailingDetailsProviderTest {
 
     final var aggregate = aStartedWorkflow("Tilda");
     aDeliveredUserTask(aggregate, "broken-3");
-    CockpitServer.awaitAnyRequest("/usertask/created");
+    CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"broken-3\"");
     CockpitServer.forgetRequests();
 
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
@@ -217,7 +221,7 @@ public class FailingDetailsProviderTest {
 
     final var aggregate = aStartedWorkflow("Vito");
     aDeliveredUserTask(aggregate, "broken-4");
-    CockpitServer.awaitAnyRequest("/usertask/created");
+    CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"broken-4\"");
     CockpitServer.forgetRequests();
 
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);

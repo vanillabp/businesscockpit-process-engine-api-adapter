@@ -239,7 +239,7 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Rita");
     aDeliveredUserTask(aggregate, "task-6");
-    CockpitServer.awaitAnyRequest("/usertask/created");
+    CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"task-6\"");
     CockpitServer.forgetRequests();
 
     // the engine repeats a delivery whenever something about the task changed: its assignee, its
@@ -263,7 +263,7 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Cleo");
     aDeliveredUserTask(aggregate, "task-3");
-    CockpitServer.awaitAnyRequest("/usertask/created");
+    CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"task-3\"");
 
     engine
         .terminateTask(
@@ -280,7 +280,9 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Dora");
     aDeliveredUserTask(aggregate, "task-4");
-    CockpitServer.awaitAnyRequest("/workflow/created");
+    CockpitServer
+        .awaitRequestOf(
+            "/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowIdOf(aggregate)));
     CockpitServer.forgetRequests();
 
     changeTheCase(
