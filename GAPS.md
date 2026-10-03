@@ -173,9 +173,17 @@ neither the BPMN element of the task nor the engine's own id of the workflow, be
 Process-Engine-API adapter fills neither; this extension answers both out of what the adapter
 deployed.
 
-So a business case whose tasks were all withdrawn, or served by nobody, is still a case this half
-cannot find again. Nothing about it is reported to the cockpit then, and the log says so once per
-case. `getUserTask` answers empty for a task neither source knows, and it answers empty for a task
+A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
+answered a start with, and `WorkflowElection#workflowIdOf` reads it. So a case whose workflow
+VanillaBP started is found even while it has no open user task, and `aggregateChanged` updates it.
+Why the open tasks still answer first is the decision in `DECISIONS.pending/1414.md`.
+
+So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
+did not write down, is still a case this half cannot find again. That is a workflow started before
+VanillaBP wrote such notes, one whose note is older than `vanillabp.delivery.workflow-start-retention`,
+or one on an engine which answers a start with no id. Nothing about it is reported to the cockpit
+then, and the log says so once per case. The user tasks of a case are found only through the first
+two sources, because the id of a workflow names no task. `getUserTask` answers empty for a task neither source knows, and it answers empty for a task
 only the delivery log knows, because a report of a running task without its details is no report
 (entry 10).
 

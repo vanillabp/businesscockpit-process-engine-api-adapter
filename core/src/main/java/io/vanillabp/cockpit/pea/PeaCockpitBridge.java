@@ -16,6 +16,7 @@ import io.vanillabp.cockpit.extension.spi.UserTaskDetailsPrefill;
 import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 import io.vanillabp.cockpit.extension.spi.WorkflowDetailsPrefill;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
@@ -35,6 +36,12 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * application reported and how it ended after a restart and on any node. The memory answers
  * first, because it carries more, and the log adds the tasks the memory never saw or has
  * forgotten. The border between the two is decision 9 in the repository's DECISIONS.md.
+ * <p>
+ * A third source names a workflow, and only a workflow. VanillaBP writes down the engine's id of
+ * a workflow when it starts it, and {@link WorkflowElection#workflowIdOf} reads that note without
+ * asking the engine. It answers for a business case which has no open user task at the moment,
+ * such as a workflow which is busy with a service task. Why it comes after the tasks, and what an
+ * empty answer means, is the decision in {@code DECISIONS.pending/1414.md}.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -50,6 +57,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   private final PeaProcessVersions versions;
 
+  private final WorkflowElection election;
+
   /**
    * The business cases already reported as unknown. It is bounded like everything this half keeps
    * in memory. The sentence is said once per case, until enough other cases have pushed that case
@@ -64,6 +73,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * @param deliveredUserTasks What this node has seen
    * @param recordedUserTasks What VanillaBP wrote down about the deliveries it processed
    * @param versions What the adapter recorded about the deployed processes
+   * @param election VanillaBP's election, asked only for the id it wrote down when a workflow
+   *          started
    * @param rememberedAggregates How many business cases this bridge keeps apart while saying that
    *          it knows nothing about them. It is the number which sizes the memory of the
    *          deliveries themselves, because a case is unknown exactly as long as none of its tasks
@@ -75,6 +86,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaRecordedUserTasks recordedUserTasks,
       final PeaProcessVersions versions,
+      final WorkflowElection election,
       final int rememberedAggregates) {
 
     this.adapterId = Objects.requireNonNull(adapterId, "adapterId");
@@ -82,6 +94,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
     this.recordedUserTasks = Objects.requireNonNull(recordedUserTasks, "recordedUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
+    this.election = Objects.requireNonNull(election, "election");
     this.aggregatesReportedAsUnknown = Collections
         .newSetFromMap(Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, false) {
 
@@ -191,6 +204,11 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * through. A task this node was delivered carries the version the engine named with it, and a
    * task only the delivery log knows carries none, because the log holds no version. Both are
    * the honest answer: there is no catalogue to ask what a running workflow was started on.
+   * <p>
+   * A case with no open task is answered by the id VanillaBP wrote down when it started the
+   * workflow. The version then comes from a delivery of that workflow this node still remembers,
+   * and it is empty where there is none. The tasks come first, because they name the id the
+   * cockpit already shows the case under (the decision in {@code DECISIONS.pending/1414.md}).
    */
   @Override
   public List<WorkflowReference> workflowsOfAggregate(
@@ -209,6 +227,17 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
                             .processVersion(), workflowAggregateId, userTask
                                 .workflowId())));
     if (workflows.isEmpty()) {
+      startedByVanillaBp(workflowModuleId, bpmnProcessId, workflowAggregateId)
+          .ifPresent(
+              workflowId -> workflows
+                  .put(
+                      workflowId,
+                      new WorkflowReference(
+                          adapterId, workflowModuleId, bpmnProcessId, deliveredUserTasks
+                              .versionOfWorkflow(adapterId, workflowModuleId, bpmnProcessId,
+                                  workflowId), workflowAggregateId, workflowId)));
+    }
+    if (workflows.isEmpty()) {
       sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
     }
     return List.copyOf(workflows.values());
@@ -225,7 +254,17 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
     final var known = openTasksOfAggregate(
         workflowModuleId, bpmnProcessId, workflowAggregateId);
     if (known.isEmpty()) {
-      sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
+      if (startedByVanillaBp(workflowModuleId, bpmnProcessId, workflowAggregateId).isPresent()) {
+        // a running workflow without an open user task is nothing to warn about. It is what a
+        // workflow looks like between two user tasks
+        logger
+            .debug(
+                "Process-Engine-API[{}]: no open user task of aggregate '{}' is known",
+                adapterId,
+                workflowAggregateId);
+      } else {
+        sayThatNothingIsKnown(workflowModuleId, bpmnProcessId, workflowAggregateId);
+      }
       return List.of();
     }
     return known
@@ -297,6 +336,27 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
   }
 
   /**
+   * The engine's id of the workflow VanillaBP started for one business case, as VanillaBP wrote it
+   * down.
+   * <p>
+   * The answer says what was true at the start. It does not say that the workflow still runs, so
+   * it only names the workflow in a report and is never sent to the engine.
+   *
+   * @return The id, or empty where VanillaBP does not know it. That covers a workflow nobody
+   *         started, one started before VanillaBP wrote such notes, one whose note is too old to be
+   *         kept, and an engine which answered the start with no id. Nobody can tell these apart,
+   *         so nothing is read into an empty answer
+   */
+  private Optional<String> startedByVanillaBp(
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowAggregateId) {
+
+    return election.workflowIdOf(workflowModuleId, bpmnProcessId, workflowAggregateId);
+
+  }
+
+  /**
    * Puts a task of the delivery log under the workflow a delivery of the same business case
    * named.
    * <p>
@@ -352,9 +412,10 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * Says that an application reported a change of something this BPMS cannot find again.
    * <p>
    * The Process-Engine-API cannot be asked which workflows or which user tasks belong to a
-   * business case. Two sources answer instead, and this is said when NEITHER of them knows
-   * anything: this node saw no open task of the case, and VanillaBP wrote none down either.
-   * Both reads use the same two sources, so they are silent together and say the same sentence.
+   * business case. Three sources answer instead, and this is said when NONE of them knows
+   * anything: this node saw no open task of the case, VanillaBP wrote none down either, and
+   * VanillaBP wrote down no start of its workflow. Both reads ask the same sources, so they are
+   * silent together and say the same sentence.
    * Reporting nothing is the honest answer, and an exception would be the wrong one, because the
    * application's own work is done and rolling it back over a cockpit update helps nobody. The
    * sentence is said once per business case, because an application which reports every change
@@ -380,13 +441,15 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         .warn(
             """
                 Process-Engine-API[{}]: the change of workflow aggregate '{}' (BPMN process '{}' of \
-                workflow module '{}') was not reported to the Business Cockpit, because neither \
-                source knows a workflow or a user task of that aggregate. The Process-Engine-API \
-                offers no way to search for the workflows or the user tasks of a business case, so \
-                this half answers from the deliveries this node was given and from the deliveries \
-                VanillaBP wrote into its own delivery log. The memory holds a task until the engine \
-                takes it away, the log holds one until the application completes it, and a user \
-                task no @WorkflowTask method of this application claims was never written down; see \
+                workflow module '{}') was not reported to the Business Cockpit, because no source \
+                knows a workflow or a user task of that aggregate. The Process-Engine-API offers no \
+                way to search for the workflows or the user tasks of a business case, so this half \
+                answers from the deliveries this node was given, from the deliveries VanillaBP wrote \
+                into its own delivery log, and from the id VanillaBP wrote down when it started the \
+                workflow. The memory holds a task until the engine takes it away, the log holds one \
+                until the application completes it, a user task no @WorkflowTask method of this \
+                application claims was never written down, and the note of a start is kept for \
+                vanillabp.delivery.workflow-start-retention; see \
                 GAPS.md of businesscockpit-process-engine-api-adapter. Nothing about this case \
                 reaches the cockpit until the engine delivers a user task of it to this node \
                 again.""",

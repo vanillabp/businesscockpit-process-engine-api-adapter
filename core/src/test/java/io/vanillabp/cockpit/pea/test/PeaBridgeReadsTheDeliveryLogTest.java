@@ -48,6 +48,9 @@ public class PeaBridgeReadsTheDeliveryLogTest {
 
   private TestDeliveryLog deliveryLog;
 
+  /** What VanillaBP wrote down about starts. It survives a restart, like the delivery log. */
+  private final TestElection election = new TestElection();
+
   private PeaCockpitObserver observer;
 
   private PeaCockpitBridge bridge;
@@ -84,7 +87,7 @@ public class PeaBridgeReadsTheDeliveryLogTest {
         TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, recordedUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, election, 10);
 
   }
 

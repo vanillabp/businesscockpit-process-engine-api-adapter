@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -12,10 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import dev.bpmcrafters.processengineapi.CommonRestrictions;
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.extension.test.support.CockpitServer;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
@@ -51,7 +54,13 @@ public class PeaCockpitTest {
               .addClass(TestAggregatePersistence.class)
               .addClass(TestWorkflowService.class))
       .overrideRuntimeConfigKey(
-          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl());
+          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl())
+      // a database of its own. VanillaBP's delivery records are not dropped between two test
+      // classes, while the workflow aggregates of this application live in memory and start at
+      // the first id with every boot. An open record another class left behind for the same
+      // aggregate id would name a workflow of a case this test thinks has no open user task
+      .overrideRuntimeConfigKey(
+          "quarkus.datasource.jdbc.url", "jdbc:h2:mem:pea-cockpit-quarkus-cockpit;DB_CLOSE_DELAY=-1");
 
   @Inject
   TestWorkflowService workflowService;
@@ -67,6 +76,10 @@ public class PeaCockpitTest {
 
   @Inject
   UserTransaction transaction;
+
+  /** VanillaBP's election, which says what id it wrote down when it started a workflow. */
+  @Inject
+  WorkflowElection election;
 
   private TestAggregate aStartedWorkflow(
       final String customer) throws Exception {
@@ -217,6 +230,80 @@ public class PeaCockpitTest {
     final var updated = CockpitServer
         .awaitAnyRequest("/workflow/%s/updated".formatted(workflowIdOf(aggregate)));
     assertTrue(updated.body().contains("\"customer\":\"Cleo the second\""), updated.body());
+
+  }
+
+  /**
+   * Waits for the id VanillaBP writes down once phase two of the start reached the engine.
+   *
+   * @param aggregate The case whose workflow was started
+   * @return The engine's id of the workflow
+   */
+  private String awaitTheStartedWorkflowOf(
+      final TestAggregate aggregate) throws InterruptedException {
+
+    final var giveUpAt = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+    while (System.nanoTime() < giveUpAt) {
+      final var workflowId = election
+          .workflowIdOf(MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, aggregate.getId());
+      if (workflowId.isPresent()) {
+        return workflowId.get();
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError(
+        "VanillaBP wrote down no start of the workflow of aggregate %s within 30 seconds"
+            .formatted(aggregate.getId()));
+
+  }
+
+  @Test
+  @DisplayName("An application reporting a changed aggregate updates a business case which has no open user task")
+  public void aggregateChangedUpdatesAWorkflowWithoutAnOpenTask() throws Exception {
+
+    final var aggregate = aStartedWorkflow("Fritz");
+    final var workflowId = awaitTheStartedWorkflowOf(aggregate);
+    // an engine like the reference one, which names the instance it answered the start with in
+    // every task it delivers. The in-memory engine names none unless it is told to
+    engine
+        .deliverTask(
+            "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
+                .of("id", String.valueOf(aggregate.getId())),
+            Map
+                .of(CommonRestrictions.PROCESS_INSTANCE_ID, workflowId));
+    CockpitServer.awaitRequestOf("/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowId));
+    engine
+        .terminateTask(
+            "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
+            TaskInformation.COMPLETE);
+    CockpitServer.awaitAnyRequest("/usertask/task-7/completed");
+    CockpitServer.forgetRequests();
+
+    // the workflow has moved on and no user task of it is open now
+    assertEquals(
+        List.of(workflowId),
+        bridges
+            .getFirst()
+            .workflowsOfAggregate(MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, String.valueOf(aggregate.getId()))
+            .stream()
+            .map(workflow -> workflow.workflowId())
+            .toList(),
+        "no user task of the case is open, so the id VanillaBP wrote down at the start names its workflow");
+    transaction.begin();
+    try {
+      final var loaded = aggregates.byId(aggregate.getId());
+      loaded.setCustomer("Fritz the second");
+      aggregates.save(loaded);
+      workflowService.businessCockpit().aggregateChanged(loaded);
+      transaction.commit();
+    } catch (final RuntimeException e) {
+      transaction.rollback();
+      throw e;
+    }
+
+    final var updated = CockpitServer
+        .awaitAnyRequest("/workflow/%s/updated".formatted(workflowId));
+    assertTrue(updated.body().contains("\"customer\":\"Fritz the second\""), updated.body());
 
   }
 
