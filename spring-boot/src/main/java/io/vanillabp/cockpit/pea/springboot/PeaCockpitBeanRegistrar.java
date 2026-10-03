@@ -12,6 +12,7 @@ import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.AdapterBeanRegistrarSupport;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
@@ -53,9 +54,10 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
                                 adapterId, supplierContext.bean(PeaDeployedProcessesRegistry.class), supplierContext
                                     .bean(PeaDeliveredUserTasks.class), supplierContext
                                         .bean(PeaRecordedUserTasks.class), supplierContext
-                                            .bean(PeaProcessVersions.class), PeaCockpitSettings
-                                                .rememberedUserTasks(
-                                                    supplierContext.bean(CockpitSettings.class))))));
+                                            .bean(PeaProcessVersions.class), supplierContext
+                                                .bean(WorkflowElection.class), PeaCockpitSettings
+                                                    .rememberedUserTasks(
+                                                        supplierContext.bean(CockpitSettings.class))))));
 
   }
 

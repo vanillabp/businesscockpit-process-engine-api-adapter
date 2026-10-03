@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -34,9 +35,18 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitBridgeTest {
 
+  /** The words of the warning about a workflow VanillaBP started whose version is unknown. */
+  private static final String VERSION_IS_UNKNOWN = "is unknown. VanillaBP started that workflow";
+
+  /** The words of the warning about a business case no source knows anything about. */
+  private static final String NOTHING_IS_KNOWN = "because no source knows a workflow";
+
   private PeaDeliveredUserTasks deliveredUserTasks;
 
   private TestDeliveryLog deliveryLog;
+
+  /** What VanillaBP wrote down about starts. It survives a restart, like the delivery log. */
+  private final TestElection election = new TestElection();
 
   private PeaCockpitObserver observer;
 
@@ -58,7 +68,7 @@ public class PeaCockpitBridgeTest {
             .recorded(deployedProcesses, deliveryLog), (
                 adapterId,
                 workflowModuleId,
-                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, election, 10);
 
   }
 
@@ -308,7 +318,7 @@ public class PeaCockpitBridgeTest {
             .recorded(deployedProcesses, deliveryLog), (
                 adapterId,
                 workflowModuleId,
-                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, election, 10);
 
     aDeliveredUserTask(narrowObserver, "task-1", "4711", "instance-1", TestModels.VERSION_TAG);
     aDeliveredUserTask(narrowObserver, "task-2", "4712", "instance-2", TestModels.VERSION_TAG);
@@ -366,7 +376,7 @@ public class PeaCockpitBridgeTest {
             .recorded(deployedProcesses, deliveryLog), (
                 adapterId,
                 workflowModuleId,
-                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, 10);
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, election, 10);
 
     assertTrue(
         anotherEngine
@@ -424,7 +434,7 @@ public class PeaCockpitBridgeTest {
     final var said = output.getAll();
     final var aboutThisCase = said
         .lines()
-        .filter(line -> line.contains("was not reported to the Business Cockpit"))
+        .filter(line -> line.contains(NOTHING_IS_KNOWN))
         .filter(line -> line.contains("'0815'"))
         .count();
 
@@ -433,6 +443,90 @@ public class PeaCockpitBridgeTest {
         aboutThisCase,
         () -> "both reads say the same sentence, and they say it once per business case: "
             + said);
+
+  }
+
+  @Test
+  @DisplayName("A business case without an open user task is found by the workflow VanillaBP started")
+  public void aCaseWithoutAnOpenTaskIsFoundByItsStart(
+      final CapturedOutput output) {
+
+    // a case of its own, because the output captured here is the one of the whole class
+    aDeliveredUserTask(observer, "task-3", "4713", "instance-3", TestModels.VERSION_TAG);
+    deliveredUserTasks.ended("task-3");
+    election.started("4713", "instance-3");
+
+    // what BusinessCockpitService.aggregateChanged asks while the workflow is busy with a
+    // service task, after its only user task so far was finished
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4713");
+
+    assertEquals(List.of("instance-3"), found.stream().map(WorkflowReference::workflowId).toList());
+    assertEquals(
+        TestModels.VERSION_TAG,
+        found.getFirst().processVersion(),
+        "the node still remembers a delivery of that workflow, and the delivery named its version");
+    final var prefill = bridge.prefilledWorkflowDetails(found.getFirst()).orElseThrow();
+    assertEquals("4713", prefill.businessId());
+    assertEquals(TestModels.PROCESS_NAME, prefill.bpmnProcessName());
+    assertTrue(
+        bridge
+            .userTasksOfAggregate(
+                TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4713", List.of())
+            .isEmpty(),
+        "the case has no open user task, which is no reason to warn while its workflow is known");
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains("was not reported to the Business Cockpit") && line.contains("'4713'")),
+        output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A workflow VanillaBP started is not reported while nothing on this node says which version it runs on")
+  public void aStartWithoutAKnownVersionIsNotReported(
+      final CapturedOutput output) {
+
+    election.started("4714", "instance-4");
+
+    assertTrue(
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4714")
+            .isEmpty(),
+        "a report without a version passes over every details provider which names one, and the cockpit would show empty details");
+    assertTrue(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4714'")),
+        output.getAll());
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(NOTHING_IS_KNOWN) && line.contains("'4714'")),
+        "VanillaBP knows the workflow, so the sentence about a case nobody knows would be wrong");
+
+  }
+
+  @Test
+  @DisplayName("Where an open user task names the workflow, the task answers and not the start")
+  public void anOpenTaskNamesTheWorkflowBeforeTheStart() {
+
+    aDeliveredUserTask("task-1");
+    // an engine whose answer to a start differs from what its deliveries name. The cockpit shows
+    // the case under the id of its first task, so that id has to stay
+    election.started("4711", "instance-of-the-start");
+
+    assertEquals(
+        List.of("instance-1"),
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711")
+            .stream()
+            .map(WorkflowReference::workflowId)
+            .toList());
 
   }
 

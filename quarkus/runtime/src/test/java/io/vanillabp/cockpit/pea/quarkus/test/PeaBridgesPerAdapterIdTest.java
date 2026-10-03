@@ -42,7 +42,11 @@ public class PeaBridgesPerAdapterIdTest {
             (
                 adapterId,
                 workflowModuleId,
-                bpmnProcessId) -> null)
+                bpmnProcessId) -> null,
+            (
+                workflowModuleId,
+                bpmnProcessId,
+                workflowAggregateId) -> PeaAdapter.ADAPTER_TYPE)
         .stream()
         .map(bridge -> bridge.adapterId())
         .toList();

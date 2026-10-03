@@ -15,6 +15,7 @@ import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
 import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
@@ -157,6 +158,7 @@ public class PeaCockpitProducer {
    * @param deliveredUserTasks The memory of what a delivery said
    * @param recordedUserTasks What VanillaBP wrote down about the deliveries it processed
    * @param versions The versions of the deployed processes
+   * @param election VanillaBP's election, which knows the id of a workflow it started
    * @return One bridge per configured Process-Engine-API adapter id
    */
   @Produces
@@ -168,7 +170,8 @@ public class PeaCockpitProducer {
       final PeaDeployedProcessesRegistry registry,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaRecordedUserTasks recordedUserTasks,
-      final PeaProcessVersions versions) {
+      final PeaProcessVersions versions,
+      final WorkflowElection election) {
 
     final var rememberedUserTasks = PeaCockpitSettings.rememberedUserTasks(settings);
     return properties
@@ -176,7 +179,7 @@ public class PeaCockpitProducer {
         .stream()
         .<BusinessCockpitBpmsBridge>map(
             adapterId -> new PeaCockpitBridge(
-                adapterId, registry, deliveredUserTasks, recordedUserTasks, versions, rememberedUserTasks))
+                adapterId, registry, deliveredUserTasks, recordedUserTasks, versions, election, rememberedUserTasks))
         .toList();
 
   }

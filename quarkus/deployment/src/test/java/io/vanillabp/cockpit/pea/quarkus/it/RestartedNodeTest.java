@@ -19,6 +19,7 @@ import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
@@ -84,6 +85,9 @@ public class RestartedNodeTest {
   @Inject
   UserTransaction transaction;
 
+  @Inject
+  WorkflowElection election;
+
   /**
    * The Business Cockpit half of a node which has just started: everything it knows it reads out
    * of the application's database.
@@ -91,7 +95,7 @@ public class RestartedNodeTest {
   private PeaCockpitBridge aFreshNode() {
 
     return new PeaCockpitBridge(
-        ADAPTER_ID, deployedProcesses, new PeaDeliveredUserTasks(10), recordedUserTasks, versions, 10);
+        ADAPTER_ID, deployedProcesses, new PeaDeliveredUserTasks(10), recordedUserTasks, versions, election, 10);
 
   }
 
