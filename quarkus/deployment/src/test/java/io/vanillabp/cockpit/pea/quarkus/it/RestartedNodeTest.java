@@ -48,24 +48,7 @@ public class RestartedNodeTest {
   private static final String MODULE_ID = "pea-cockpit";
 
   @RegisterExtension
-  static final QuarkusExtensionTest extensionTest = new QuarkusExtensionTest()
-      .withApplicationRoot(
-          jar -> jar
-              .addAsResource("business-cockpit.yaml", "application.yaml")
-              .addAsResource("pea-cockpit/processes/taxi-ride.bpmn")
-              .addAsResource(
-                  "workflow-module-descriptor/workflow-module", "META-INF/workflow-module")
-              .addClass(TestAggregate.class)
-              .addClass(TestAggregatePersistence.class)
-              .addClass(TestWorkflowService.class))
-      .overrideRuntimeConfigKey(
-          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl())
-      // a database of its own. VanillaBP's delivery records are not dropped between two test
-      // classes, while the workflow aggregates of this application live in memory and start at
-      // the first id with every boot. Sharing the database would let this test's aggregate ids
-      // meet the records another test class left behind
-      .overrideRuntimeConfigKey(
-          "quarkus.datasource.jdbc.url", "jdbc:h2:mem:pea-cockpit-quarkus-restart;DB_CLOSE_DELAY=-1");
+  static final QuarkusExtensionTest extensionTest = TestApplication.forTestClass(RestartedNodeTest.class);
 
   @Inject
   TestWorkflowService workflowService;

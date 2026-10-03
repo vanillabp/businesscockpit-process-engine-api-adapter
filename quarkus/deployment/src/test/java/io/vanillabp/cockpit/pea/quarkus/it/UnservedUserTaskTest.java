@@ -34,18 +34,7 @@ import jakarta.transaction.UserTransaction;
 public class UnservedUserTaskTest {
 
   @RegisterExtension
-  static final QuarkusExtensionTest extensionTest = new QuarkusExtensionTest()
-      .withApplicationRoot(
-          jar -> jar
-              .addAsResource("business-cockpit.yaml", "application.yaml")
-              .addAsResource("pea-cockpit/processes/taxi-ride.bpmn")
-              .addAsResource(
-                  "workflow-module-descriptor/workflow-module", "META-INF/workflow-module")
-              .addClass(TestAggregate.class)
-              .addClass(TestAggregatePersistence.class)
-              .addClass(TestWorkflowService.class))
-      .overrideRuntimeConfigKey(
-          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl());
+  static final QuarkusExtensionTest extensionTest = TestApplication.forTestClass(UnservedUserTaskTest.class);
 
   @Inject
   TestWorkflowService workflowService;

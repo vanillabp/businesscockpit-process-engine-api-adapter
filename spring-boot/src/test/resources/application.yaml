@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:pea-cockpit;DB_CLOSE_DELAY=-1
+    url: "jdbc:h2:mem:${pea-cockpit.test.database-name};DB_CLOSE_DELAY=-1"
   jpa:
     hibernate:
       ddl-auto: create

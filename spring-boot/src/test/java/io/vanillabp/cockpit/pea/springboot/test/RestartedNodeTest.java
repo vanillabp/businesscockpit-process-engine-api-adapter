@@ -53,19 +53,16 @@ public class RestartedNodeTest {
   private static final Duration STAMP_TIMEOUT = Duration.ofSeconds(30);
 
   /**
-   * A database of its own. VanillaBP's delivery records are not a JPA entity, so nothing drops
-   * them between two test classes, while the workflow aggregates are created anew with every
-   * context. Sharing the database would let this test's aggregate ids meet the records another
-   * test class left behind.
+   * The database {@link ADatabaseOfItsOwn} gives this class. The restarted node is booted outside
+   * the test framework, so it is told the same URL by hand.
    */
-  private static final String DATABASE = "jdbc:h2:mem:pea-cockpit-restart;DB_CLOSE_DELAY=-1";
+  private static final String DATABASE = ADatabaseOfItsOwn.urlOf(RestartedNodeTest.class);
 
   @DynamicPropertySource
-  static void aDatabaseOfItsOwn(
+  static void cockpitServer(
       final DynamicPropertyRegistry registry) {
 
     registry.add("vanillabp.cockpit.rest.base-url", CockpitServer::baseUrl);
-    registry.add("spring.datasource.url", () -> DATABASE);
 
   }
 

@@ -63,11 +63,6 @@ public class PeaCockpitTest {
       final DynamicPropertyRegistry registry) {
 
     registry.add("vanillabp.cockpit.rest.base-url", CockpitServer::baseUrl);
-    // a database of its own. Every test class here boots a context of its own, and each boot
-    // creates the table of the aggregates anew, so their ids start at 1 again. VanillaBP's
-    // delivery records stay. An open record another class left for the same aggregate id would
-    // name a workflow of a case this class thinks has no open user task
-    registry.add("spring.datasource.url", () -> "jdbc:h2:mem:pea-cockpit-cockpit-test;DB_CLOSE_DELAY=-1");
 
   }
 
