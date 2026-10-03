@@ -371,9 +371,9 @@ nothing straight after it, and only make the test shorter than it reads.
 
 What a wait names here:
 
-| what is waited for | path                | what the wait names                    |
+| what is waited for |        path         |          what the wait names           |
 |--------------------|---------------------|----------------------------------------|
-| a user task        | `/usertask/created` | `"userTaskId":"<task id>"` |
+| a user task        | `/usertask/created` | `"userTaskId":"<task id>"`             |
 | a business case    | `/workflow/created` | `"workflowId":"<id of the aggregate>"` |
 
 That is the form `RestartedNodeTest` and `PeaCockpitTest` already used, so the 17 places are now
@@ -397,3 +397,4 @@ Where this is referred to, each in its own words rather than by number:
   of trusting the next test class to get it right
 - decision 11 and decision 12 keep their text. `FailingDetailsProviderTest` holds their behaviour
   and asserts the same things as before, it only waits for the right report now
+
