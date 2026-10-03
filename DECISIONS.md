@@ -398,3 +398,54 @@ Where this is referred to, each in its own words rather than by number:
 - decision 11 and decision 12 keep their text. `FailingDetailsProviderTest` holds their behaviour
   and asserts the same things as before, it only waits for the right report now
 
+## 14. A business case without an open user task is found by the workflow VanillaBP started
+
+Decided on 2026-10-03.
+
+`BusinessCockpitService.aggregateChanged` names a business case by its aggregate id. The bridge has
+to answer which workflows belong to it. Until now it answered out of the open user tasks it knew,
+from the memory of this node and from VanillaBP's delivery log. A workflow which had no open user
+task at that moment was missing. That is a workflow busy with a service task, or one waiting for a
+message. So the change of such a case reached the cockpit as nothing, and the log said that nothing
+was known about the case.
+
+VanillaBP now writes down the engine's id of a workflow when it starts it. The Process-Engine-API
+adapter hands over the `instanceId` the engine answered the start with.
+`WorkflowElection#workflowIdOf` reads that note. It asks no engine, waits for nothing and throws
+nothing.
+
+`workflowsOfAggregate` still asks the open user tasks first. Only where none is known does it take
+the id VanillaBP wrote down. This is the other way round from the Camunda 8 half of the cockpit, and
+the reason is the id the cockpit shows a case under. A case is created in the cockpit with its first
+user task, under the workflow id that delivery named (decision 6). The adapter assumes that the id a
+start answers and the id a delivery names are the same, and the reference engine fills both with
+the process instance id. The API does not promise it. An engine which names no instance in its
+deliveries shows its cases under the aggregate id, and the in-memory engine of the tests does just
+that. Where the two ids differ, the task's id is the one the cockpit knows. So the task answers
+where there is one. A case without any open task is reported under the id of the start, and on such
+an engine that is an id the cockpit does not show the case under. Nothing here can tell the two
+engines apart.
+
+The version of a workflow found this way comes from a delivery of that workflow which this node
+still remembers. Where there is none, the reference carries no version, like a task read out of the
+delivery log. `prefilledWorkflowDetails` needs no change. It reads what the adapter deployed by the
+workflow module and the BPMN process, not by the workflow id, so it finds a workflow known only by
+its start as well.
+
+An empty answer covers every case where VanillaBP does not know. Nobody started the workflow, it
+started before VanillaBP wrote such notes, the note is older than
+`vanillabp.delivery.workflow-start-retention`, or the engine answered the start with no id. These
+cannot be told apart, so the bridge reads nothing into an empty answer. It falls back to what it did
+before and says once per case that nothing is known.
+
+An id says what was true at the start. It does not say that the workflow still runs. The bridge uses
+it to name the workflow in a report and never sends it to the engine.
+
+`userTasksOfAggregate` and `userTaskOfAggregate` do not use the note, because the id of a workflow
+names no task. But `userTasksOfAggregate` no longer warns about a case whose workflow VanillaBP
+started. A workflow between two user tasks is a normal state.
+
+This leaves decision 6 as it stands. A case still appears in the cockpit with its first user task,
+and a workflow without any user task still never appears, because nothing reports it as created.
+What changes is that a case which once had a user task keeps receiving its updates after its tasks
+are done.

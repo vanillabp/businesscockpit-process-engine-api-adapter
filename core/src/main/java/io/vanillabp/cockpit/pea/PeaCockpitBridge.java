@@ -41,7 +41,7 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * a workflow when it starts it, and {@link WorkflowElection#workflowIdOf} reads that note without
  * asking the engine. It answers for a business case which has no open user task at the moment,
  * such as a workflow which is busy with a service task. Why it comes after the tasks, and what an
- * empty answer means, is the decision in {@code DECISIONS.pending/1414.md}.
+ * empty answer means, is decision 14.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -208,7 +208,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * A case with no open task is answered by the id VanillaBP wrote down when it started the
    * workflow. The version then comes from a delivery of that workflow this node still remembers,
    * and it is empty where there is none. The tasks come first, because they name the id the
-   * cockpit already shows the case under (the decision in {@code DECISIONS.pending/1414.md}).
+   * cockpit already shows the case under (decision 14).
    */
   @Override
   public List<WorkflowReference> workflowsOfAggregate(
