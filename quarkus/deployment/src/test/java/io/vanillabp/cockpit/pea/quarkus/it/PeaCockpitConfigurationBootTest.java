@@ -8,7 +8,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.config.ConfigurationKeys;
-import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
@@ -24,18 +23,7 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 public class PeaCockpitConfigurationBootTest {
 
   @RegisterExtension
-  static final QuarkusExtensionTest extensionTest = new QuarkusExtensionTest()
-      .withApplicationRoot(
-          jar -> jar
-              .addAsResource("business-cockpit.yaml", "application.yaml")
-              .addAsResource("pea-cockpit/processes/taxi-ride.bpmn")
-              .addAsResource(
-                  "workflow-module-descriptor/workflow-module", "META-INF/workflow-module")
-              .addClass(TestAggregate.class)
-              .addClass(TestAggregatePersistence.class)
-              .addClass(TestWorkflowService.class))
-      .overrideRuntimeConfigKey(
-          "vanillabp.cockpit.rest.base-url", CockpitServer.baseUrl())
+  static final QuarkusExtensionTest extensionTest = TestApplication.forTestClass(PeaCockpitConfigurationBootTest.class)
       .overrideRuntimeConfigKey(
           "vanillabp.cockpit.%s"
               .formatted(PeaCockpitSettings.REMEMBERED_USER_TASKS),
