@@ -2,7 +2,6 @@ package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -35,6 +34,12 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitBridgeTest {
+
+  /** The words of the warning about a workflow VanillaBP started whose version is unknown. */
+  private static final String VERSION_IS_UNKNOWN = "is unknown. VanillaBP started that workflow";
+
+  /** The words of the warning about a business case no source knows anything about. */
+  private static final String NOTHING_IS_KNOWN = "because no source knows a workflow";
 
   private PeaDeliveredUserTasks deliveredUserTasks;
 
@@ -429,7 +434,7 @@ public class PeaCockpitBridgeTest {
     final var said = output.getAll();
     final var aboutThisCase = said
         .lines()
-        .filter(line -> line.contains("was not reported to the Business Cockpit"))
+        .filter(line -> line.contains(NOTHING_IS_KNOWN))
         .filter(line -> line.contains("'0815'"))
         .count();
 
@@ -480,22 +485,29 @@ public class PeaCockpitBridgeTest {
   }
 
   @Test
-  @DisplayName("A business case this node never saw a task of is found by the workflow VanillaBP started")
-  public void aCaseNobodyDeliveredATaskOfIsFoundByItsStart() {
+  @DisplayName("A workflow VanillaBP started is not reported while nothing on this node says which version it runs on")
+  public void aStartWithoutAKnownVersionIsNotReported(
+      final CapturedOutput output) {
 
-    election.started("4711", "instance-1");
+    election.started("4714", "instance-4");
 
-    final var found = bridge
-        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4711");
-
-    assertEquals(List.of("instance-1"), found.stream().map(WorkflowReference::workflowId).toList());
-    assertNull(
-        found.getFirst().processVersion(),
-        "only a delivery carries the version tag of this BPMS, and there was none");
-    assertEquals(
-        TestModels.DEPLOYMENT_KEY,
-        bridge.prefilledWorkflowDetails(found.getFirst()).orElseThrow().bpmnProcessVersion(),
-        "the cockpit shows what this application deployed, as for every case this node never saw");
+    assertTrue(
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4714")
+            .isEmpty(),
+        "a report without a version passes over every details provider which names one, and the cockpit would show empty details");
+    assertTrue(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4714'")),
+        output.getAll());
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(NOTHING_IS_KNOWN) && line.contains("'4714'")),
+        "VanillaBP knows the workflow, so the sentence about a case nobody knows would be wrong");
 
   }
 

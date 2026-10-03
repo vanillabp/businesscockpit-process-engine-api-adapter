@@ -427,10 +427,17 @@ an engine that is an id the cockpit does not show the case under. Nothing here c
 engines apart.
 
 The version of a workflow found this way comes from a delivery of that workflow which this node
-still remembers. Where there is none, the reference carries no version, like a task read out of the
-delivery log. `prefilledWorkflowDetails` needs no change. It reads what the adapter deployed by the
-workflow module and the BPMN process, not by the workflow id, so it finds a workflow known only by
-its start as well.
+still remembers, finished or not. Where there is none, the workflow is left out, and a warning says
+why, once per case. Only a delivery names a version on this BPMS. There is no repository to ask, and
+what this application deployed is not the version a running workflow started on. The version picks
+the `@WorkflowDetailsProvider` method. A report without one passes over every method which names a
+version, so it arrives with empty details. The cockpit server takes the details of an update as
+they come, so that report would replace what the cockpit shows with nothing. No report keeps it as
+it is.
+
+`prefilledWorkflowDetails` needs no change. It reads what the adapter deployed by the workflow
+module and the BPMN process, not by the workflow id, so it finds a workflow known only by its start
+as well.
 
 An empty answer covers every case where VanillaBP does not know. Nobody started the workflow, it
 started before VanillaBP wrote such notes, the note is older than

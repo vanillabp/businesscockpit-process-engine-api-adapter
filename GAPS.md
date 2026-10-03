@@ -176,6 +176,8 @@ deployed.
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
 answered a start with, and `WorkflowElection#workflowIdOf` reads it. So a case whose workflow
 VanillaBP started is found even while it has no open user task, and `aggregateChanged` updates it.
+That needs a delivery of the workflow which this node still remembers, because only a delivery says
+which version it runs on. Without one the change is not reported, and the log says why.
 Why the open tasks still answer first is decision 14.
 
 So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
