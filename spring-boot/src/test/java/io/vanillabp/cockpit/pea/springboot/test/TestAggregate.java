@@ -19,6 +19,12 @@ import jakarta.persistence.Version;
  * the version attribute the later of the two writers reads a conflict instead, and each of them
  * answers it the way it can. The application repeats its transaction. The cockpit loses the
  * entry, so the report of that event is gone and the next one carries the case as it is then.
+ * <p>
+ * Keeping the version out of the BPMS leaves <code>allow-full-sync-with-bpms</code> without an
+ * effect in this test application: the startup check returns as soon as an aggregate holds
+ * anything back. The line stays all the same. The Quarkus test application holds nothing back and
+ * does need it, and one line fewer here would only mean that this application stops starting the
+ * day somebody takes the annotation off.
  */
 @Entity
 public class TestAggregate {
