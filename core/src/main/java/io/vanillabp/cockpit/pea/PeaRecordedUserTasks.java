@@ -168,7 +168,7 @@ public class PeaRecordedUserTasks {
    * named. A record names none where the engine filled no tag. It names none either where it was
    * written before the platform kept the version, or where the application's own store keeps no
    * version. The bridge decides what a missing version means, as
-   * {@code DECISIONS.pending/1441.md} says.
+   * decision 17 says.
    */
   private UserTaskReference referenceOf(
       final String adapterId,

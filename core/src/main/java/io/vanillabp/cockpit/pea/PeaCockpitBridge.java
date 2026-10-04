@@ -273,7 +273,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * tag from a record which lost it, and the version picks the details provider. So a report
    * without one could replace the details the cockpit shows with an empty map, which is the harm
    * decision 14 in the repository's DECISIONS.md is about. Why this holds for such a task as well
-   * is in {@code DECISIONS.pending/1441.md}.
+   * is in decision 17.
    */
   private List<WorkflowReference> workflowsOfTheOpenTasks(
       final List<UserTaskReference> openTasks,

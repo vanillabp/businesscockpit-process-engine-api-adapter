@@ -191,7 +191,7 @@ A task only the delivery log knows names the version VanillaBP wrote into its re
 the version tag its delivery carried. Where the record names none, the note of the start answers,
 and where that names none either, the change of the case is not reported, and the log says why.
 A record without a version cannot tell an engine which fills no tag from a record which lost it.
-`DECISIONS.pending/1441.md` says why the change is then left out rather than reported without a
+Decision 17 says why the change is then left out rather than reported without a
 version.
 
 So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
@@ -356,7 +356,7 @@ only sign of it is a cockpit showing less than the application wrote.
 One case is answered the other way round. A business case whose open user task this node knows only from
 VanillaBP's delivery log, and whose record names no version, is not reported when the application changes
 it. A report could then pass over a provider which names a version, and replace what the cockpit shows with
-empty details. The log says so once per case. `DECISIONS.pending/1441.md` says why.
+empty details. The log says so once per case. Decision 17 says why.
 
 **What would close it:** what entry 5 asks for, both halves of it. A repository API answering the process
 definitions of a key with their versions is the catalogue, and a version in the meta map of a delivery is
