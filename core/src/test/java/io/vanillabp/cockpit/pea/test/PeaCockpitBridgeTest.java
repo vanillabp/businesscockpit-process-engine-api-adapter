@@ -597,6 +597,30 @@ public class PeaCockpitBridgeTest {
   }
 
   @Test
+  @DisplayName("A start without a version is not reported under the deployment key a remembered delivery shows")
+  public void aStartWithoutAVersionIsNotReportedUnderTheDeploymentKey(
+      final CapturedOutput output) {
+
+    // the engine wrote no tag, so the memory shows what this application deployed. That picks no
+    // details provider which names a version, so the case is not reported at all
+    aDeliveredUserTask(observer, "task-10", "4720", "instance-10", null);
+    deliveredUserTasks.ended("task-10");
+    election.started("4720", new WorkflowStart(TestModels.ADAPTER_ID, "instance-10", null, true));
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4720");
+
+    assertEquals(List.of(), found.stream().map(WorkflowReference::processVersion).toList());
+    assertTrue(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4720'")),
+        output.getAll());
+
+  }
+
+  @Test
   @DisplayName("A note of a start on another adapter is no workflow of this engine")
   public void aNoteOfAnotherAdapterIsLeftOut(
       final CapturedOutput output) {

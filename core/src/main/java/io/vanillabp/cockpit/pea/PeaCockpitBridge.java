@@ -215,11 +215,13 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * <p>
    * A case with no open task is answered by what VanillaBP wrote down when it started the
    * workflow. The version is the one VanillaBP wrote down with it, which it took from a delivery of
-   * that workflow where the start named none. Where VanillaBP has none, a delivery of that workflow
-   * this node still remembers answers. Where there is none either, the workflow is left out with a
-   * warning, because a report without a version would empty the details the cockpit shows. The
-   * tasks come first, because they name the id the cockpit already shows the case under (decision
-   * 14).
+   * that workflow where the start named none. Where VanillaBP has none, the version tag of a
+   * delivery of that workflow this node still remembers answers. It is the tag and not the version
+   * the memory shows, because without a tag that is a deployment key, and a deployment key picks
+   * no details provider which names a version. Where there is no tag either, the workflow is left
+   * out with a warning, because a report without a version would empty the details the cockpit
+   * shows. The tasks come first, because they name the id the cockpit already shows the case under
+   * (decision 14).
    * <p>
    * The same holds whether VanillaBP says that a version may still come or that it never will
    * ({@link WorkflowStart#versionsAreReported}). "Never" is also its answer for a note which names
@@ -244,8 +246,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
     final var workflowId = started.get().workflowId();
     final var version = hasAVersion(started.get().processVersion())
         ? started.get().processVersion()
-        : deliveredUserTasks.versionOfWorkflow(adapterId, workflowModuleId, bpmnProcessId, workflowId);
-    if (version == null) {
+        : deliveredUserTasks.versionTagOfWorkflow(adapterId, workflowModuleId, bpmnProcessId, workflowId);
+    if (!hasAVersion(version)) {
       // the version picks the @WorkflowDetailsProvider method. Without one, a method which names
       // a version is passed over, and the report would replace the details the cockpit shows
       // with an empty map. No report leaves them as they are
