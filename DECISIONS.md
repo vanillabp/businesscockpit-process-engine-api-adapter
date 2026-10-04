@@ -153,7 +153,7 @@ With that pass this extension also gives up its place in VanillaBP's deployment 
 repository. It registers no `ExtensionWiringService` any more. What it needs to know is recorded
 by the adapter while it deploys, and read when a delivery or a cockpit question arrives.
 
-## 9. That a delivery happened is read out of VanillaBP's log, what it said stays in the memory
+## 9. That a delivery happened is read out of VanillaBP's log, what it said stays in the memory - what a record names narrowed by decision 15
 
 Two questions look alike, and they have different answers. What does the cockpit show about this
 user task, and which user tasks of this business case did this application report? The first one
@@ -456,3 +456,36 @@ This leaves decision 6 as it stands. A case still appears in the cockpit with it
 and a workflow without any user task still never appears, because nothing reports it as created.
 What changes is that a case which once had a user task keeps receiving its updates after its tasks
 are done.
+
+## 15. A delivery record names the workflow and the BPMN element where the adapter can
+
+Decided on 2026-10-04 for story 1420.
+
+This entry narrows decision 9. Whoever moves it into the log gives it the next free number N and
+adds "narrowed by decision N" to the headline of decision 9. The text of decision 9 stays as it is.
+
+Decision 9 says that a record of the delivery log names neither the BPMN element nor the engine's
+own id of the workflow on this BPMS, because the Process-Engine-API adapter fills neither. That was
+true when it was written. It is not true any more. The adapter now fills both fields of the
+`TaskDelivery` record, as far as it knows them.
+
+The workflow id is what the engine names as the process instance in the meta map of a delivery.
+An engine which names none leaves the field empty. The in-memory engine of the tests is such an
+engine, so its records name no workflow.
+
+The BPMN element is what the engine names as the activity in the meta map. Where it names none, the
+adapter reads the element out of the model it deployed. That works where the model has one user
+task with that form reference. Where several user tasks of one process share the form, the model
+cannot tell them apart, and the field stays empty.
+
+A record written before the adapter filled these fields names neither.
+
+Nothing in this extension had to change for it. The reader of the log already took both fields out
+of the record first and answered only an empty one itself. It answers an empty element out of what
+the adapter deployed, by the same rule a delivery is answered by, and an empty workflow with the
+aggregate's id, as decision 6 says. The observer answers a delivery by the same two rules. So a
+task read back out of the log on a fresh node has the same element and the same workflow as the
+report of its delivery.
+
+The rest of decision 9 stands. A record still holds no field of the content, and the memory still
+answers first where it holds the task.
