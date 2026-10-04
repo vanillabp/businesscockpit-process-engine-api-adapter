@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -205,6 +209,23 @@ public class PeaCockpitTest {
 
   }
 
+  /**
+   * When the report of an end says its user task was created. Only the report of an end carries
+   * it.
+   *
+   * @param report The report as the cockpit server received it
+   * @return The time the report names, as an instant
+   */
+  private static Instant startNamedBy(
+      final CockpitServer.Request report) {
+
+    final var createdAt = Pattern.compile("\"createdAt\":\"([^\"]+)\"").matcher(report.body());
+    assertTrue(createdAt.find(), "the report of an end did not say when the task was created: "
+        + report.body());
+    return OffsetDateTime.parse(createdAt.group(1)).toInstant();
+
+  }
+
   @Test
   @DisplayName("A delivered user task and its business case reach the cockpit, enriched by the application")
   public void aDeliveredUserTaskReachesTheCockpit() {
@@ -270,15 +291,26 @@ public class PeaCockpitTest {
   public void aTerminatedUserTaskIsReportedAsCompleted() {
 
     final var aggregate = aStartedWorkflow("Cleo");
+    // a report may carry milliseconds only
+    final var beforeTheDelivery = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     aDeliveredUserTask(aggregate, "task-3");
     CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"task-3\"");
+    final var afterTheDelivery = Instant.now();
 
     engine
         .terminateTask(
             "task-3", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
             TaskInformation.COMPLETE);
 
-    assertNotNull(CockpitServer.awaitAnyRequest("/usertask/task-3/completed"));
+    // the report of the end says when the task was created, for the cockpit which gets the end
+    // before the creation. This engine names no creation time, so it is when the node first saw
+    // the task delivered
+    final var completed = CockpitServer.awaitAnyRequest("/usertask/task-3/completed");
+    assertNotNull(completed);
+    final var createdAt = startNamedBy(completed);
+    assertTrue(
+        !createdAt.isBefore(beforeTheDelivery) && !createdAt.isAfter(afterTheDelivery),
+        "the task was created at %s, outside of its delivery".formatted(createdAt));
 
   }
 

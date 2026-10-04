@@ -66,6 +66,13 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   private static final Logger logger = LoggerFactory.getLogger(PeaCockpitObserver.class);
 
+  /**
+   * The meta key under which an engine may say when it created a task, ISO-8601. The embedded
+   * Camunda 7 engine of the Process-Engine-API fills it. It is no key of the adapter's own list,
+   * so it is named here.
+   */
+  private static final String CREATION_DATE = "creationDate";
+
   private final PeaDeployedProcessesRegistry deployedProcesses;
 
   private final PeaDeliveredUserTasks deliveredUserTasks;
@@ -259,7 +266,30 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
         // provider is bound from them, and a variable no subscription asked for is not among
         // them, which the repository's GAPS.md spells out
         .variables(observation.payload())
+        .createdAt(createdAtOf(observation))
         .build();
+
+  }
+
+  /**
+   * When the task was created. The cockpit reads it only from the report of an end, for an end
+   * which arrives before the creation did. The remembered delivery carries it to that end.
+   * <p>
+   * An engine may say it in the meta map of the task, and the embedded Camunda 7 engine does. An
+   * engine which says nothing gets the time this node first saw the task delivered. A pull
+   * delivers the same task again and again, so a later delivery keeps the time of the first one.
+   */
+  private OffsetDateTime createdAtOf(
+      final PeaUserTaskObservation observation) {
+
+    final var toldByTheEngine = PeaTaskMeta.timestamp(observation.taskInformation(), CREATION_DATE);
+    if (toldByTheEngine != null) {
+      return toldByTheEngine;
+    }
+    return deliveredUserTasks
+        .of(observation.taskId())
+        .map(delivered -> delivered.details().createdAt())
+        .orElseGet(OffsetDateTime::now);
 
   }
 
