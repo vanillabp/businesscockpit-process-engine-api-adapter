@@ -172,8 +172,8 @@ the BPMS, so a task the engine withdrew some other way stays in it. The identifi
 mostly there. The Process-Engine-API adapter writes the engine's id of the
 workflow into a record where the engine named the process instance in its delivery. It writes the
 BPMN element where the engine named it, or where the deployed model has only one user task with that
-form. A field the adapter leaves empty is answered the way a delivery answers it, and decision 9 in
-`DECISIONS.md` says how. The in-memory engine of the tests names no process instance, so its records
+form. A field the adapter leaves empty is answered the way a delivery answers it, and decisions 9 and 15
+in `DECISIONS.md` say how. The in-memory engine of the tests names no process instance, so its records
 name no workflow.
 
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine

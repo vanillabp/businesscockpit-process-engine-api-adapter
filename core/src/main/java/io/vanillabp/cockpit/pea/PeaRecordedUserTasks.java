@@ -158,7 +158,7 @@ public class PeaRecordedUserTasks {
    * form reference on more than one user task. Both are empty in a record written before the
    * adapter filled them. An empty field is answered the way a delivery answers it: the element
    * out of what the adapter deployed, and the workflow by the aggregate the case is shown for
-   * (decision 6 in the repository's DECISIONS.md). Decision 9 says what a record holds.
+   * (decision 6 in the repository's DECISIONS.md). Decision 9 says what a record holds, and decision 15 which of its fields name the workflow and the element.
    * <p>
    * The version of the process is not in the record for anybody. A delivery log holds what a
    * delivery was, not what the engine said about the model behind it, and the platform writes
