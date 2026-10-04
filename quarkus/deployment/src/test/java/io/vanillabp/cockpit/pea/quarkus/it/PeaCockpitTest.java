@@ -22,6 +22,7 @@ import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
@@ -247,13 +248,17 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Fritz");
     final var workflowId = awaitTheStartedWorkflowOf(aggregate);
     // an engine like the reference one, which names the instance it answered the start with in
-    // every task it delivers. The in-memory engine names none unless it is told to
+    // every task it delivers. The in-memory engine names none unless it is told to. It names a
+    // version tag as well: without one the case has no version, and decision 16 in the
+    // repository's DECISIONS.md reports no change then
     engine
         .deliverTask(
             "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
                 .of("id", String.valueOf(aggregate.getId())),
             Map
-                .of(CommonRestrictions.PROCESS_INSTANCE_ID, workflowId));
+                .of(
+                    CommonRestrictions.PROCESS_INSTANCE_ID, workflowId, PeaTaskMeta.PROCESS_VERSION_TAG,
+                    "1.0.0"));
     CockpitServer.awaitRequestOf("/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowId));
     engine
         .terminateTask(
