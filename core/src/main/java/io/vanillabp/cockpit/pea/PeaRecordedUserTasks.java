@@ -22,10 +22,11 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * half reads it for what it carries: that a task was delivered, with which outcome it ended, and
  * when.
  * <p>
- * What it does NOT carry is what the engine said about the task. A record holds identifiers and
- * an outcome, and not one field of the memory: no name, no assignee, no candidates, no dates, no
- * variables. So this is a second source next to the memory and not a replacement for it. Which
- * of the two answers where both can is decision 9 in the repository's DECISIONS.md.
+ * What it does NOT carry is what the engine said about the task. A record holds identifiers, an
+ * outcome and the version of the process. It holds not one field of the memory: no name, no
+ * assignee, no candidates, no dates, no variables. So this is a second source next to the
+ * memory and not a replacement for it. Which of the two answers where both can is decision 9 in
+ * the repository's DECISIONS.md.
  * <p>
  * Two tasks are missing from the log by design. A user task no <code>&#64;WorkflowTask</code>
  * method of the application claims is never recorded, because a record carries the outcome of a
@@ -161,12 +162,13 @@ public class PeaRecordedUserTasks {
    * (decision 6 in the repository's DECISIONS.md). Decision 9 says what a record holds, and
    * decision 15 which of its fields name the workflow and the element.
    * <p>
-   * The version of the process is not in the record for anybody. A delivery log holds what a
-   * delivery was, not what the engine said about the model behind it, and the platform writes
-   * the same fields for every BPMS. So a task read back out of the log names no version, and a
-   * details provider which names one does not run for it. On this BPMS that changes little,
-   * because a version only ever arrives with a delivery this node saw itself; entry 12 in the
-   * repository's GAPS.md says what it costs.
+   * The version of the process is read out of the record too. VanillaBP writes down the version
+   * the adapter named with the delivery. On this BPMS that is the version tag the engine put into
+   * the meta map of the task, so a task read back out of the log names the version its delivery
+   * named. A record names none where the engine filled no tag. It names none either where it was
+   * written before the platform kept the version, or where the application's own store keeps no
+   * version. The bridge decides what a missing version means, as
+   * decision 17 says.
    */
   private UserTaskReference referenceOf(
       final String adapterId,
@@ -189,7 +191,7 @@ public class PeaRecordedUserTasks {
         ? record.bpmnElementId()
         : elementIdOf(element);
     return new UserTaskReference(
-        adapterId, record.workflowModuleId(), record.bpmnProcessId(), null, record
+        adapterId, record.workflowModuleId(), record.bpmnProcessId(), record.processVersion(), record
             .workflowAggregateId(), workflowId, record.taskId(), taskDefinition, bpmnElementId);
 
   }

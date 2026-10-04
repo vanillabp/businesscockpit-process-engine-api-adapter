@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import io.vanillabp.integration.spi.DeliveryRecordKind;
 import io.vanillabp.integration.spi.TaskDelivery;
 import io.vanillabp.integration.spi.TaskDeliveryLog;
 
@@ -44,6 +45,28 @@ public class TestDeliveryLog implements TaskDeliveryLog {
   }
 
   /**
+   * Writes down a delivery which is still open and names the version of its process, the way
+   * VanillaBP writes one where the engine put a version tag into the meta map of the task. The
+   * record names neither the workflow nor the BPMN element, like {@link #anOpenTask}.
+   *
+   * @param adapterId The configured adapter id which delivered
+   * @param workflowAggregateId The business case
+   * @param taskId The engine's own id of the task
+   * @param processVersion The version the adapter named with the delivery
+   * @param recordedAt When the handler ran
+   */
+  public void anOpenTaskOfVersion(
+      final String adapterId,
+      final String workflowAggregateId,
+      final String taskId,
+      final String processVersion,
+      final Instant recordedAt) {
+
+    anOpenTaskNaming(adapterId, workflowAggregateId, taskId, null, null, processVersion, recordedAt);
+
+  }
+
+  /**
    * Writes down a delivery which is still open and names the workflow and the BPMN element, the
    * way the Process-Engine-API adapter writes one where the engine names the process instance.
    *
@@ -62,10 +85,36 @@ public class TestDeliveryLog implements TaskDeliveryLog {
       final String bpmnElementId,
       final Instant recordedAt) {
 
+    anOpenTaskNaming(adapterId, workflowAggregateId, taskId, workflowId, bpmnElementId, null, recordedAt);
+
+  }
+
+  /**
+   * Writes down a delivery which is still open and names the workflow, the BPMN element and the
+   * version of the process.
+   *
+   * @param adapterId The configured adapter id which delivered
+   * @param workflowAggregateId The business case
+   * @param taskId The engine's own id of the task
+   * @param workflowId The engine's own id of the workflow, or <code>null</code>
+   * @param bpmnElementId The BPMN element of the task, or <code>null</code>
+   * @param processVersion The version the adapter named with the delivery, or <code>null</code>
+   * @param recordedAt When the handler ran
+   */
+  public void anOpenTaskNaming(
+      final String adapterId,
+      final String workflowAggregateId,
+      final String taskId,
+      final String workflowId,
+      final String bpmnElementId,
+      final String processVersion,
+      final Instant recordedAt) {
+
     records
         .add(
             new TaskDelivery(
-                taskId, adapterId, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, workflowAggregateId, workflowId, TestModels.USER_TASK_FORM, bpmnElementId, taskId, "COMPLETION_PENDING", null, null, recordedAt, null));
+                taskId, adapterId, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, workflowAggregateId, workflowId, TestModels.USER_TASK_FORM, bpmnElementId, taskId, "COMPLETION_PENDING", null, null, recordedAt, null, null, DeliveryRecordKind.TASK_DELIVERY
+                    .name(), processVersion));
 
   }
 
