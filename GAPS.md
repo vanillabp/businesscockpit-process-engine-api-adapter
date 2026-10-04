@@ -177,11 +177,13 @@ in `DECISIONS.md` say how. The in-memory engine of the tests names no process in
 name no workflow.
 
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
-answered a start with, and `WorkflowElection#workflowIdOf` reads it. So a case whose workflow
+answered a start with, and `WorkflowElection#workflowStartOf` reads it. So a case whose workflow
 VanillaBP started is found even while it has no open user task, and `aggregateChanged` updates it.
-That needs a delivery of the workflow which this node still remembers, because only a delivery says
-which version it runs on. Without one the change is not reported, and the log says why.
-Why the open tasks still answer first is decision 14.
+That needs the version the workflow runs on, and only a delivery says it on this BPMS. VanillaBP
+writes it into its note where a delivery of that workflow carried it, and otherwise a delivery this
+node still remembers answers. Without either the change is not reported, and the log says why.
+Why the open tasks still answer first is decision 14, and where the version comes from is
+decision 16.
 
 So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
 did not write down, is still a case this half cannot find again. That is a workflow started before
