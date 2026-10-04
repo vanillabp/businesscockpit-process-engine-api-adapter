@@ -182,8 +182,8 @@ VanillaBP started is found even while it has no open user task, and `aggregateCh
 That needs the version the workflow runs on, and only a delivery says it on this BPMS. VanillaBP
 writes it into its note where a delivery of that workflow carried it, and otherwise a delivery this
 node still remembers answers. Without either the change is not reported, and the log says why.
-Why the open tasks still answer first is decision 14, and where the version comes from is the entry
-in `DECISIONS.pending/1415.md`.
+Why the open tasks still answer first is decision 14, and where the version comes from is
+decision 16.
 
 So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
 did not write down, is still a case this half cannot find again. That is a workflow started before
