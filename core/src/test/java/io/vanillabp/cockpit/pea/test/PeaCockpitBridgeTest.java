@@ -20,6 +20,7 @@ import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
+import io.vanillabp.integration.extension.spi.election.WorkflowStart;
 import io.vanillabp.integration.test.utils.CapturedOutput;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaAdapter;
@@ -527,6 +528,112 @@ public class PeaCockpitBridgeTest {
             .stream()
             .map(WorkflowReference::workflowId)
             .toList());
+
+  }
+
+  @Test
+  @DisplayName("A business case without an open user task is reported under the version VanillaBP wrote down")
+  public void aStartWithItsVersionIsReportedUnderThatVersion(
+      final CapturedOutput output) {
+
+    // nothing on this node: no delivery, no memory. VanillaBP took the version from a delivery
+    // row of that workflow, for example one another node processed
+    election.started("4715", new WorkflowStart(TestModels.ADAPTER_ID, "instance-5", TestModels.VERSION_TAG, true));
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4715");
+
+    assertEquals(List.of("instance-5"), found.stream().map(WorkflowReference::workflowId).toList());
+    assertEquals(TestModels.VERSION_TAG, found.getFirst().processVersion());
+    final var prefill = bridge.prefilledWorkflowDetails(found.getFirst()).orElseThrow();
+    assertEquals(
+        TestModels.VERSION_TAG,
+        prefill.bpmnProcessVersion(),
+        "the case shows the version that picked its details provider, not what this release deployed");
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4715'")),
+        output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A start VanillaBP says no version will come for is not reported without one either")
+  public void aStartWhoseVersionNeverComesIsNotReported(
+      final CapturedOutput output) {
+
+    // "never" is also the answer for a note without an adapter and for an adapter which said
+    // nothing about versions, so it does not prove that no details provider names a version
+    election.started("4716", new WorkflowStart(null, "instance-6", null, false));
+
+    assertTrue(
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4716")
+            .isEmpty());
+    assertTrue(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4716'")),
+        output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A start without a version is reported under the version a remembered delivery named")
+  public void aStartWithoutAVersionTakesTheOneOfTheMemory() {
+
+    aDeliveredUserTask(observer, "task-7", "4717", "instance-7", TestModels.VERSION_TAG);
+    deliveredUserTasks.ended("task-7");
+    election.started("4717", new WorkflowStart(TestModels.ADAPTER_ID, "instance-7", null, false));
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4717");
+
+    assertEquals(TestModels.VERSION_TAG, found.getFirst().processVersion());
+
+  }
+
+  @Test
+  @DisplayName("A note of a start on another adapter is no workflow of this engine")
+  public void aNoteOfAnotherAdapterIsLeftOut(
+      final CapturedOutput output) {
+
+    election.started("4718", new WorkflowStart("another-engine", "instance-8", TestModels.VERSION_TAG, true));
+
+    assertTrue(
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4718")
+            .isEmpty());
+    assertTrue(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(NOTHING_IS_KNOWN) && line.contains("'4718'")),
+        output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A change after the end of a workflow is reported to the cockpit, and nothing reaches the engine")
+  public void aChangeAfterTheEndIsReported() {
+
+    // the only task ended, and so did the workflow. The note of the start lives longer, and since
+    // the election reads it, aggregateChanged reaches this bridge after the end as well
+    aDeliveredUserTask(observer, "task-9", "4719", "instance-9", TestModels.VERSION_TAG);
+    deliveredUserTasks.ended("task-9");
+    election.started("4719", new WorkflowStart(TestModels.ADAPTER_ID, "instance-9", TestModels.VERSION_TAG, true));
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4719");
+    final var prefill = bridge.prefilledWorkflowDetails(found.getFirst()).orElseThrow();
+
+    // this bridge holds no client of the engine at all, so a report is all a change can become
+    assertEquals("instance-9", found.getFirst().workflowId());
+    assertEquals("4719", prefill.businessId());
+    assertEquals(TestModels.VERSION_TAG, prefill.bpmnProcessVersion());
 
   }
 
