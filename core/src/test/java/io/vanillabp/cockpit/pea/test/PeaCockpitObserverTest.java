@@ -1,10 +1,12 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -190,6 +192,31 @@ public class PeaCockpitObserverTest {
    * assigned or updated. Prompt 230 WP2 carries that change to the mock; until then the
    * end-to-end tests assert that a repeated delivery reaches the cockpit at all.
    */
+  @Test
+  @DisplayName("A task is created when the engine says, or else when this node first saw it delivered")
+  public void aTaskKeepsTheTimeItWasCreated() {
+
+    observer
+        .userTaskDelivered(
+            delivery("task-1", TaskInformation.CREATE, Map.of("creationDate", "2026-09-09T12:00:00Z")));
+    assertEquals(
+        "2026-09-09T12:00Z", String.valueOf(deliveredUserTasks.of("task-1").orElseThrow().details().createdAt()));
+
+    final var beforeTheDelivery = OffsetDateTime.now();
+    observer.userTaskDelivered(delivery("task-2", TaskInformation.CREATE, Map.of()));
+    final var firstSeen = deliveredUserTasks.of("task-2").orElseThrow().details().createdAt();
+    assertFalse(firstSeen.isBefore(beforeTheDelivery), "the task was created before it was delivered");
+
+    observer
+        .userTaskDelivered(
+            delivery("task-2", TaskInformation.ASSIGN, Map.of(PeaTaskMeta.ASSIGNEE, "james")));
+    assertEquals(
+        firstSeen,
+        deliveredUserTasks.of("task-2").orElseThrow().details().createdAt(),
+        "a later delivery of the same task moved the time it was created");
+
+  }
+
   @Test
   @DisplayName("A task delivered again because it changed is reported as an update")
   public void aRedeliveredUserTaskIsAnUpdate() {
