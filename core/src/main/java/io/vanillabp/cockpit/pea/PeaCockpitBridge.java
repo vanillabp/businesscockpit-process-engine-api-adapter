@@ -179,14 +179,14 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * The version the cockpit SHOWS for a business case, which is the version it shows for the user
    * tasks of that case. Only a delivery carries the version tag of this BPMS, so the last task of
    * the workflow this node was given answers. Where this node holds none, the version the
-   * reference names answers, which is the one VanillaBP wrote down for the workflow and the one
-   * that picked the details provider.
+   * reference names answers. That is the one VanillaBP wrote down for the workflow or for one of
+   * its user tasks, and the one that picked the details provider.
    * <p>
    * Falling back to what this application deployed is the normal case and not an exception, which
    * is worth saying because it reads like dead code. A node remembers a bounded number of
-   * deliveries (<code>vanillabp.cockpit.process-engine-api.remembered-user-tasks</code>), so every
-   * business case whose tasks were pushed out of that memory is answered with the deployment key,
-   * even where its tasks once carried a tag. So is every case this node never saw a task of.
+   * deliveries (<code>vanillabp.cockpit.process-engine-api.remembered-user-tasks</code>). So a
+   * business case whose tasks were pushed out of that memory is answered with the deployment key
+   * where its reference names no version. So is a case this node never saw a task of.
    * Entry 5 in the repository's GAPS.md says what that costs.
    */
   private String shownVersionOf(
@@ -207,9 +207,11 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
   /**
    * The workflows of one business case, each under the version of the user task it was found
-   * through. A task this node was delivered carries the version the engine named with it, and a
-   * task only the delivery log knows carries none, because the log holds no version. Both are
-   * the honest answer: there is no catalogue to ask what a running workflow was started on.
+   * through. A task this node was delivered carries the version the engine named with it. A task
+   * only the delivery log knows carries the version VanillaBP wrote into its record, which is the
+   * version the delivery named. Both are the honest answer: there is no catalogue to ask what a
+   * running workflow was started on. A task of the log whose record names no version is answered
+   * by {@link #versionOfARecordedTask}.
    * <p>
    * A case with no open task is answered by what VanillaBP wrote down when it started the
    * workflow. The version is the one VanillaBP wrote down with it, which it took from a delivery of
@@ -230,18 +232,9 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
       final String bpmnProcessId,
       final String workflowAggregateId) {
 
-    final var workflows = new LinkedHashMap<String, WorkflowReference>();
-    openTasksOfAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId)
-        .forEach(
-            userTask -> workflows
-                .putIfAbsent(
-                    userTask.workflowId(),
-                    new WorkflowReference(
-                        adapterId, workflowModuleId, bpmnProcessId, userTask
-                            .processVersion(), workflowAggregateId, userTask
-                                .workflowId())));
-    if (!workflows.isEmpty()) {
-      return List.copyOf(workflows.values());
+    final var openTasks = openTasksOfAggregate(workflowModuleId, bpmnProcessId, workflowAggregateId);
+    if (!openTasks.isEmpty()) {
+      return workflowsOfTheOpenTasks(openTasks, workflowAggregateId);
     }
     final var started = startedByVanillaBp(workflowModuleId, bpmnProcessId, workflowAggregateId);
     if (started.isEmpty()) {
@@ -263,6 +256,97 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         .of(
             new WorkflowReference(
                 adapterId, workflowModuleId, bpmnProcessId, version, workflowAggregateId, workflowId));
+
+  }
+
+  /**
+   * The workflows the open user tasks of a business case belong to, one per workflow id, in the
+   * order of the tasks.
+   * <p>
+   * A task this node was delivered names its workflow with the version the engine named, even
+   * where that is none. That is what the report of its delivery said, so an update under the same
+   * version changes nothing the cockpit shows. The memory's tasks come first, so a workflow the
+   * memory knows is answered by the memory, as before.
+   * <p>
+   * A task only the log knows is different. Where no version can be found for it, the workflow
+   * is left out with a warning, once per case. The record cannot tell an engine which fills no
+   * tag from a record which lost it, and the version picks the details provider. So a report
+   * without one could replace the details the cockpit shows with an empty map, which is the harm
+   * decision 14 in the repository's DECISIONS.md is about. Why this holds for such a task as well
+   * is in {@code DECISIONS.pending/1441.md}.
+   */
+  private List<WorkflowReference> workflowsOfTheOpenTasks(
+      final List<UserTaskReference> openTasks,
+      final String workflowAggregateId) {
+
+    final var workflows = new LinkedHashMap<String, WorkflowReference>();
+    final var workflowsWithoutAVersion = new LinkedHashMap<String, UserTaskReference>();
+    for (final var userTask : openTasks) {
+      final var workflowId = userTask.workflowId();
+      if (workflows.containsKey(workflowId)) {
+        continue;
+      }
+      final var deliveredToThisNode = remembers(userTask.userTaskId());
+      final var version = deliveredToThisNode
+          ? userTask.processVersion()
+          : versionOfARecordedTask(userTask);
+      if (!deliveredToThisNode && (version == null)) {
+        workflowsWithoutAVersion.putIfAbsent(workflowId, userTask);
+        continue;
+      }
+      workflows
+          .put(
+              workflowId,
+              new WorkflowReference(
+                  adapterId, userTask.workflowModuleId(), userTask
+                      .bpmnProcessId(), version, workflowAggregateId, workflowId));
+    }
+    workflowsWithoutAVersion
+        .values()
+        .stream()
+        .filter(userTask -> !workflows.containsKey(userTask.workflowId()))
+        .forEach(this::sayThatTheVersionOfARecordedTaskIsUnknown);
+    return List.copyOf(workflows.values());
+
+  }
+
+  /**
+   * The version of the workflow of a user task only the delivery log knows.
+   * <p>
+   * The memory answers first, where it holds another task of the same workflow, finished or not.
+   * It answers with the version tag that task carried and not with the version it shows, because
+   * a deployment key picks no details provider which names a version. Then the record answers,
+   * because VanillaBP wrote the version of the delivery into it.
+   * Then the note VanillaBP wrote when it started the workflow, as decision 16 in the repository's
+   * DECISIONS.md reads it. The note is taken where it names the same workflow, and where the
+   * record named no workflow, so that the task stands under the aggregate's id. A note is about
+   * the one workflow VanillaBP started last for the case, and that is the workflow such a task
+   * belongs to.
+   *
+   * @return The version, or <code>null</code> where none of the three names one
+   */
+  private String versionOfARecordedTask(
+      final UserTaskReference userTask) {
+
+    final var tagInTheMemory = deliveredUserTasks
+        .versionTagOfWorkflow(
+            adapterId, userTask.workflowModuleId(), userTask.bpmnProcessId(), userTask
+                .workflowId());
+    if (hasAVersion(tagInTheMemory)) {
+      return tagInTheMemory;
+    }
+    if (hasAVersion(userTask.processVersion())) {
+      return userTask.processVersion();
+    }
+    return startedByVanillaBp(
+        userTask.workflowModuleId(), userTask.bpmnProcessId(), userTask.workflowAggregateId())
+        .filter(
+            start -> userTask.workflowId().equals(start.workflowId()) || userTask
+                .workflowId()
+                .equals(userTask.workflowAggregateId()))
+        .map(WorkflowStart::processVersion)
+        .filter(PeaCockpitBridge::hasAVersion)
+        .orElse(null);
 
   }
 
@@ -493,6 +577,51 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
             bpmnProcessId,
             workflowModuleId,
             workflowId);
+
+  }
+
+  /**
+   * Says that the change of a business case is not reported for one of its workflows, because
+   * its open user task is known only from the delivery log, and nothing names its version.
+   * <p>
+   * It shares the key of {@link #sayThatTheVersionIsUnknown}, because both say the same thing
+   * about the same case: its version is unknown, and so its change is not reported. It is said
+   * once per business case.
+   */
+  private void sayThatTheVersionOfARecordedTaskIsUnknown(
+      final UserTaskReference userTask) {
+
+    final var aggregate = "version|%s|%s|%s"
+        .formatted(userTask.workflowModuleId(), userTask.bpmnProcessId(), userTask.workflowAggregateId());
+    if (!aggregatesReportedAsUnknown.add(aggregate)) {
+      logger
+          .debug(
+              "Process-Engine-API[{}]: still no version known of workflow '{}' of aggregate '{}'",
+              adapterId,
+              userTask.workflowId(),
+              userTask.workflowAggregateId());
+      return;
+    }
+    logger
+        .warn(
+            """
+                Process-Engine-API[{}]: the change of workflow aggregate '{}' (BPMN process '{}' of \
+                workflow module '{}') was not reported to the Business Cockpit for its workflow '{}', \
+                because the version of that workflow is unknown. This node knows its open user task \
+                '{}' only from VanillaBP's delivery log, and the record of that task names no \
+                version. The engine may fill no version tag, the record may have been written before \
+                VanillaBP kept the version, or the application's own store of the delivery log may \
+                keep none. This node holds no delivery of that workflow, and VanillaBP's note of the \
+                start names no version either. The version picks the @WorkflowDetailsProvider \
+                method, so a report without one would replace the details the cockpit shows with \
+                nothing. The cockpit keeps what it shows until the engine delivers the next user \
+                task of this workflow to this node.""",
+            adapterId,
+            userTask.workflowAggregateId(),
+            userTask.bpmnProcessId(),
+            userTask.workflowModuleId(),
+            userTask.workflowId(),
+            userTask.userTaskId());
 
   }
 

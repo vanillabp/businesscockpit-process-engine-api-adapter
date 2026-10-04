@@ -1,7 +1,6 @@
 package io.vanillabp.cockpit.pea.quarkus.it;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.spi.UserTaskReference;
+import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
@@ -23,6 +23,7 @@ import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
@@ -108,10 +109,26 @@ public class RestartedNodeTest {
       final TestAggregate aggregate,
       final String taskId) {
 
+    aDeliveredUserTask(aggregate, taskId, null);
+
+  }
+
+  /**
+   * Like {@link #aDeliveredUserTask(TestAggregate, String)}, with the version tag the engine
+   * writes into the meta map of the task, or without one.
+   */
+  private void aDeliveredUserTask(
+      final TestAggregate aggregate,
+      final String taskId,
+      final String versionTag) {
+
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of("id", String.valueOf(aggregate.getId())));
+                .of("id", String.valueOf(aggregate.getId())),
+            versionTag == null
+                ? Map.of()
+                : Map.of(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag));
     CockpitServer.awaitRequest("/usertask/created", "\"userTaskId\":\"%s\"".formatted(taskId));
 
   }
@@ -133,7 +150,7 @@ public class RestartedNodeTest {
   public void aFreshNodeKnowsWhatWasReported() throws Exception {
 
     final var aggregate = aStartedWorkflow("Nora");
-    aDeliveredUserTask(aggregate, "restart-1");
+    aDeliveredUserTask(aggregate, "restart-1", TestWorkflowService.VERSION_TAG);
 
     final var open = openUserTasksOf(aFreshNode(), aggregate);
 
@@ -151,13 +168,44 @@ public class RestartedNodeTest {
         open.getFirst().workflowId(),
         "the in-memory engine names no process instance, so the case is shown under its aggregate");
 
-    assertFalse(
+    assertEquals(
+        TestWorkflowService.VERSION_TAG,
+        open.getFirst().processVersion(),
+        "VanillaBP wrote the version tag of the delivery into the record");
+
+    assertEquals(
+        List.of(TestWorkflowService.VERSION_TAG),
         aFreshNode()
             .workflowsOfAggregate(
                 MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, String
                     .valueOf(aggregate.getId()))
-            .isEmpty(),
-        "so the business case is found again as well, and a change of it is reported");
+            .stream()
+            .map(WorkflowReference::processVersion)
+            .toList(),
+        "so the business case is found again as well, and a change of it is reported under its version");
+
+  }
+
+  @Test
+  @DisplayName("A fresh node does not report a case whose record names no version")
+  public void aFreshNodeDoesNotReportACaseWithoutAVersion() throws Exception {
+
+    final var aggregate = aStartedWorkflow("Lea");
+    aDeliveredUserTask(aggregate, "restart-4");
+
+    final var node = aFreshNode();
+
+    assertEquals(
+        List.of("restart-4"),
+        openUserTasksOf(node, aggregate).stream().map(UserTaskReference::userTaskId).toList(),
+        "the task is known again");
+    assertEquals(
+        List.of(),
+        node
+            .workflowsOfAggregate(
+                MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, String
+                    .valueOf(aggregate.getId())),
+        "the engine filled no version tag, and a report without a version could empty the details the cockpit shows");
 
   }
 

@@ -1,10 +1,12 @@
 package io.vanillabp.cockpit.pea.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,10 +23,12 @@ import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
+import io.vanillabp.integration.extension.spi.election.WorkflowStart;
 import io.vanillabp.integration.test.utils.CapturedOutput;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
+import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
  * What the cockpit reads back once the memory of this node cannot answer any more.
@@ -44,6 +48,12 @@ public class PeaBridgeReadsTheDeliveryLogTest {
    * like the record of an engine which names no process instance.
    */
   private static final String WORKFLOW_ID = "instance-1";
+
+  /**
+   * Words of the sentence which says that the change of a case was not reported, because its open
+   * user task is known only from the delivery log and nothing names its version.
+   */
+  private static final String VERSION_IS_UNKNOWN = "was not reported to the Business Cockpit for its workflow";
 
   private PeaDeployedProcessesRegistry deployedProcesses;
 
@@ -102,12 +112,28 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   private void aDeliveredUserTask(
       final String taskId) {
 
+    aDeliveredUserTask(taskId, null);
+
+  }
+
+  /**
+   * A user task the engine delivered to this node, with the version tag the engine wrote into
+   * its meta map, or without one.
+   */
+  private void aDeliveredUserTask(
+      final String taskId,
+      final String versionTag) {
+
+    final var meta = new LinkedHashMap<String, String>();
+    meta.put(CommonRestrictions.PROCESS_INSTANCE_ID, WORKFLOW_ID);
+    if (versionTag != null) {
+      meta.put(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag);
+    }
     observer
         .userTaskDelivered(
             new PeaUserTaskObservation(
                 TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, TestModels.USER_TASK_FORM, AGGREGATE_ID, new TaskInformation(
-                    taskId, Map.of(CommonRestrictions.PROCESS_INSTANCE_ID, WORKFLOW_ID)), Map
-                        .of()));
+                    taskId, meta), Map.of()));
 
   }
 
@@ -127,7 +153,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   public void aTaskOfAnEmptyMemoryIsReadFromTheLog() {
 
     deliveryLog
-        .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", Instant.now());
+        .anOpenTaskOfVersion(
+            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", TestModels.VERSION_TAG, Instant.now());
 
     assertEquals(List.of("task-1"), openUserTaskIds());
     assertEquals(
@@ -157,7 +184,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
 
     deliveryLog
         .anOpenTaskNaming(
-            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", WORKFLOW_ID, TestModels.USER_TASK_ELEMENT, Instant
+            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", WORKFLOW_ID, TestModels.USER_TASK_ELEMENT,
+            TestModels.VERSION_TAG, Instant
                 .now());
 
     assertEquals(
@@ -198,19 +226,135 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   }
 
   @Test
-  @DisplayName("A task read out of the log names no version, so a provider naming one does not run for it")
-  public void aTaskOfTheLogNamesNoVersion() {
+  @DisplayName("A task read out of the log names the version its record names, and so does its business case")
+  public void aTaskOfTheLogNamesTheVersionOfItsRecord(
+      final CapturedOutput output) {
 
     deliveryLog
-        .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", Instant.now());
+        .anOpenTaskOfVersion(
+            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", TestModels.VERSION_TAG, Instant.now());
 
-    assertNull(
+    assertEquals(
+        TestModels.VERSION_TAG,
         bridge
             .userTaskOfAggregate(
                 TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID, "task-1")
             .orElseThrow()
             .processVersion(),
-        "the platform writes the same fields for every BPMS, and a version of a process is not among them");
+        "VanillaBP wrote the version tag of the delivery into the record");
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID);
+    assertEquals(List.of(TestModels.VERSION_TAG), found.stream().map(WorkflowReference::processVersion).toList());
+    assertEquals(
+        TestModels.VERSION_TAG,
+        bridge.prefilledWorkflowDetails(found.getFirst()).orElseThrow().bpmnProcessVersion(),
+        "the case shows the version that picks its details provider, not what this release deployed");
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'%s'".formatted(AGGREGATE_ID))),
+        output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A business case known only from a record without a version is not reported, and the log says why")
+  public void aTaskOfTheLogWithoutAVersionIsNotReported(
+      final CapturedOutput output) {
+
+    // a case of its own, because the output captured here is the one of the whole class
+    deliveryLog
+        .anOpenTask(TestModels.ADAPTER_ID, "4712", "task-2", Instant.now());
+
+    assertNull(
+        bridge
+            .userTaskOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4712", "task-2")
+            .orElseThrow()
+            .processVersion());
+    assertTrue(
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4712")
+            .isEmpty(),
+        "a report without a version passes over every details provider which names one, and the cockpit would show empty details");
+    bridge.workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4712");
+    assertEquals(
+        1,
+        output
+            .getAll()
+            .lines()
+            .filter(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'4712'"))
+            .count(),
+        () -> "the sentence is said once per business case: "
+            + output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A record without a version takes the version of VanillaBP's note of the start")
+  public void aTaskOfTheLogWithoutAVersionTakesTheOneOfTheStart() {
+
+    // the record names no workflow, so the task stands under the aggregate's id, and the note
+    // names the engine's id of the one workflow VanillaBP started for the case
+    deliveryLog
+        .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", Instant.now());
+    election.started(AGGREGATE_ID, new WorkflowStart(TestModels.ADAPTER_ID, WORKFLOW_ID, TestModels.VERSION_TAG, true));
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID);
+
+    assertEquals(
+        List.of(AGGREGATE_ID),
+        found.stream().map(WorkflowReference::workflowId).toList(),
+        "the task names the id the cockpit shows the case under, so it stays");
+    assertEquals(TestModels.VERSION_TAG, found.getFirst().processVersion());
+
+  }
+
+  @Test
+  @DisplayName("Where the memory knows the version tag of the workflow, the memory answers before the record")
+  public void theMemoryNamesTheVersionBeforeTheRecord() {
+
+    aDeliveredUserTask("task-1", TestModels.VERSION_TAG);
+    deliveredUserTasks.ended("task-1");
+    deliveryLog
+        .anOpenTaskNaming(
+            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-2", WORKFLOW_ID, null, "a-tag-of-the-record", Instant
+                .now());
+
+    assertEquals(
+        List.of(TestModels.VERSION_TAG),
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID)
+            .stream()
+            .map(WorkflowReference::processVersion)
+            .toList(),
+        "the memory heard what the engine said, and it answers first wherever it can");
+
+  }
+
+  @Test
+  @DisplayName("A task this node was delivered without a version tag is still reported under none")
+  public void aDeliveredTaskWithoutAVersionIsStillReported(
+      final CapturedOutput output) {
+
+    aDeliveredUserTask("task-1");
+    deliveryLog
+        .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-2", Instant.now());
+
+    final var found = bridge
+        .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID);
+
+    assertEquals(List.of(WORKFLOW_ID), found.stream().map(WorkflowReference::workflowId).toList());
+    assertNull(
+        found.getFirst().processVersion(),
+        "the report of the delivery named no version either, so an update under none changes nothing");
+    assertFalse(
+        output
+            .getAll()
+            .lines()
+            .anyMatch(line -> line.contains(VERSION_IS_UNKNOWN) && line.contains("'%s'".formatted(AGGREGATE_ID))),
+        output.getAll());
 
   }
 

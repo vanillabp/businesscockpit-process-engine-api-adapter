@@ -124,7 +124,9 @@ engine fills it.
 key otherwise. A workflow still running on what an earlier release deployed is shown with what this
 release deployed. A business case and its user tasks show the same answer, as long as this node
 still holds a delivery of that case. Once the last one was pushed out of its memory, the case
-shows the deployment key again, even where its tasks carried a tag.
+shows the deployment key again, even where its tasks carried a tag. The exception is a case found
+through a record of VanillaBP's delivery log or through its note of the start, where that record or
+note names the tag.
 
 **What would close it:** a repository API, which answers process definitions by key with their
 version and their resources.
@@ -184,6 +186,13 @@ writes it into its note where a delivery of that workflow carried it, and otherw
 node still remembers answers. Without either the change is not reported, and the log says why.
 Why the open tasks still answer first is decision 14, and where the version comes from is
 decision 16.
+
+A task only the delivery log knows names the version VanillaBP wrote into its record, which is
+the version tag its delivery carried. Where the record names none, the note of the start answers,
+and where that names none either, the change of the case is not reported, and the log says why.
+A record without a version cannot tell an engine which fills no tag from a record which lost it.
+`DECISIONS.pending/1441.md` says why the change is then left out rather than reported without a
+version.
 
 So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
 did not write down, is still a case this half cannot find again. That is a workflow started before
@@ -315,6 +324,8 @@ generation of a model, and VanillaBP chooses between them the way it chooses a `
 definitions to count and no version numbers (entry 5). What reaches this half is the
 `processDefinitionVersionTag` an engine writes into the meta map of a delivered task, where it keeps one.
 So the reference of a user task and of the business case it appears with carries that tag, or nothing.
+A task this node knows only from VanillaBP's delivery log carries the same tag, because VanillaBP writes
+the version of a delivery into its record.
 
 One way of writing a version survives that. `version = "ride-2026-09"` is compared to the reported tag as
 text, so a method written that way runs for the deliveries carrying that tag. Everything else needs the
@@ -341,6 +352,11 @@ BPMS nobody can ask for its versions. A delivery carrying NO version draws nothi
 normal state of this BPMS. An engine which fills no version tag leaves every version-named provider idle
 without a word. So an application which cut its providers by version loses that enrichment here, and the
 only sign of it is a cockpit showing less than the application wrote.
+
+One case is answered the other way round. A business case whose open user task this node knows only from
+VanillaBP's delivery log, and whose record names no version, is not reported when the application changes
+it. A report could then pass over a provider which names a version, and replace what the cockpit shows with
+empty details. The log says so once per case. `DECISIONS.pending/1441.md` says why.
 
 **What would close it:** what entry 5 asks for, both halves of it. A repository API answering the process
 definitions of a key with their versions is the catalogue, and a version in the meta map of a delivery is

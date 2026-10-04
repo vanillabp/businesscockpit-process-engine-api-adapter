@@ -154,6 +154,49 @@ public class PeaDeliveredUserTasksTest {
   }
 
   @Test
+  @DisplayName("The version tag of a workflow is what the engine named, and never what this release deployed")
+  public void theVersionTagOfAWorkflowIsWhatTheEngineNamed() {
+
+    final var remembered = new PeaDeliveredUserTasks(10);
+
+    remembered
+        .remember(
+            new DeliveredUserTask(
+                new UserTaskReference(
+                    TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "ride-2026-09", "4711", "instance-1", "task-1", TestModels.USER_TASK_FORM, TestModels.USER_TASK_ELEMENT), UserTaskDetailsPrefill
+                        .builder().bpmnProcessVersion("ride-2026-09").build()));
+    remembered.ended("task-1");
+
+    assertEquals(
+        "ride-2026-09",
+        remembered
+            .versionTagOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "a task the engine took away still says what its business case runs on");
+
+    remembered.remember(userTask("task-2", TestModels.DEPLOYMENT_KEY));
+
+    assertEquals(
+        TestModels.DEPLOYMENT_KEY,
+        remembered
+            .versionOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "a person reads what this release deployed where the engine filled no tag");
+    assertNull(
+        remembered
+            .versionTagOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-1"),
+        "the task delivered last carried no tag, and a deployment key picks no details provider");
+
+    assertNull(
+        remembered
+            .versionTagOfWorkflow(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "instance-2"),
+        "another business case of the same process is another case");
+
+  }
+
+  @Test
   @DisplayName("A workflow no delivery of this node belongs to has no version")
   public void aWorkflowWithoutADeliveryHasNoVersion() {
 

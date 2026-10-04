@@ -205,6 +205,41 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
+   * The version tag the engine wrote into the meta map of the last user task of one workflow
+   * this node was delivered. It is the version a details provider is picked by. So it differs
+   * from {@link #versionOfWorkflow} in one point: where the engine wrote no tag, the answer is
+   * <code>null</code> and not what this application deployed. A deployment key picks no provider
+   * which names a version.
+   * <p>
+   * Like in {@link #versionOfWorkflow}, a task the engine has taken away counts, and the task
+   * delivered last wins.
+   *
+   * @param adapterId The configured adapter id which got the delivery
+   * @param workflowModuleId The workflow module
+   * @param bpmnProcessId The plain BPMN process id
+   * @param workflowId The engine's own id of the workflow
+   * @return The tag, or <code>null</code> where this node holds no task of that workflow or
+   *         where the last one carried no tag
+   */
+  public String versionTagOfWorkflow(
+      final String adapterId,
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowId) {
+
+    synchronized (byTaskId) {
+      String tag = null;
+      for (final var task : byTaskId.values()) {
+        if (isOfWorkflow(task, adapterId, workflowModuleId, bpmnProcessId, workflowId)) {
+          tag = task.reference().processVersion();
+        }
+      }
+      return tag;
+    }
+
+  }
+
+  /**
    * Whether the cockpit was already told about a workflow. That is what makes a workflow reported
    * with its first user task rather than with every one.
    * <p>
