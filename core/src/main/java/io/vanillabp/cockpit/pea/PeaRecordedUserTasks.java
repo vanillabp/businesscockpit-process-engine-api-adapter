@@ -151,12 +151,14 @@ public class PeaRecordedUserTasks {
   /**
    * How the cockpit addresses the task a record is about.
    * <p>
-   * Two of the identifiers are not in the record on this BPMS. The Process-Engine-API
-   * adapter names neither the BPMN element of a delivery nor the engine's own id of the
-   * workflow, so the record carries neither, and both are answered the way a delivery answers
-   * them: the element out of what the adapter deployed, and the workflow by the aggregate it is
-   * shown for (decision 6 in the repository's DECISIONS.md). An adapter which does name them
-   * wins, because the record is read first.
+   * The BPMN element and the engine's own id of the workflow are read out of the record first,
+   * because the record holds what the adapter said while the delivery was handled. Each of the
+   * two can still be empty. The workflow is empty where the engine named no process instance in
+   * the delivery. The element is empty where the engine named none and the deployed model has the
+   * form reference on more than one user task. Both are empty in a record written before the
+   * adapter filled them. An empty field is answered the way a delivery answers it: the element
+   * out of what the adapter deployed, and the workflow by the aggregate the case is shown for
+   * (decision 6 in the repository's DECISIONS.md). Decision 9 says what a record holds.
    * <p>
    * The version of the process is not in the record for anybody. A delivery log holds what a
    * delivery was, not what the engine said about the model behind it, and the platform writes

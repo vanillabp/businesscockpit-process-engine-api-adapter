@@ -145,11 +145,11 @@ public class RestartedNodeTest {
     assertEquals(
         TestWorkflowService.BPMN_TASK_ID,
         open.getFirst().bpmnTaskId(),
-        "the record names no BPMN element on this BPMS, so it comes from what the adapter deployed");
+        "the adapter wrote the BPMN element into the record, read out of the model it deployed");
     assertEquals(
         String.valueOf(aggregate.getId()),
         open.getFirst().workflowId(),
-        "and it names no workflow either, so the case is shown under its aggregate");
+        "the in-memory engine names no process instance, so the case is shown under its aggregate");
 
     assertFalse(
         aFreshNode()

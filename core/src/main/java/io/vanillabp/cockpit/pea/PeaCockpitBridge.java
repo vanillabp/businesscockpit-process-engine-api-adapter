@@ -368,9 +368,11 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * Puts a task of the delivery log under the workflow a delivery of the same business case
    * named.
    * <p>
-   * A record written on this BPMS names no workflow, so the reader falls back to the aggregate's
-   * id. Where a delivery of the same case is in the memory, the engine's own id for that workflow
-   * is known, and the two answers must not stand next to each other: the cockpit would show one
+   * A record names the workflow where the engine named it in the delivery. A record of an engine
+   * which named none, or one written before the adapter filled the field, names no workflow, and
+   * the reader falls back to the aggregate's id. Where a delivery of the same case is in the
+   * memory, the engine's own id for that workflow may still be known, and the two answers must
+   * not stand next to each other: the cockpit would show one
    * business case twice, once under each id. The memory's answer wins here for the same reason it
    * wins everywhere else, and a case with no delivery in the memory keeps the aggregate's id, as
    * decision 6 in the repository's DECISIONS.md says it should.

@@ -22,6 +22,11 @@ public class TestDeliveryLog implements TaskDeliveryLog {
   /**
    * Writes down a delivery which is still open, the way VanillaBP writes one while it hands a
    * user task to the application.
+   * <p>
+   * The record names neither the workflow nor the BPMN element. That is a record of an engine
+   * which names no process instance and no element in its delivery, where the adapter could not
+   * read the element out of the model either, or a record written before the adapter filled
+   * these fields. It is the record which leaves the most to this extension.
    *
    * @param adapterId The configured adapter id which delivered
    * @param workflowAggregateId The business case
@@ -34,13 +39,33 @@ public class TestDeliveryLog implements TaskDeliveryLog {
       final String taskId,
       final Instant recordedAt) {
 
+    anOpenTaskNaming(adapterId, workflowAggregateId, taskId, null, null, recordedAt);
+
+  }
+
+  /**
+   * Writes down a delivery which is still open and names the workflow and the BPMN element, the
+   * way the Process-Engine-API adapter writes one where the engine names the process instance.
+   *
+   * @param adapterId The configured adapter id which delivered
+   * @param workflowAggregateId The business case
+   * @param taskId The engine's own id of the task
+   * @param workflowId The engine's own id of the workflow, or <code>null</code>
+   * @param bpmnElementId The BPMN element of the task, or <code>null</code>
+   * @param recordedAt When the handler ran
+   */
+  public void anOpenTaskNaming(
+      final String adapterId,
+      final String workflowAggregateId,
+      final String taskId,
+      final String workflowId,
+      final String bpmnElementId,
+      final Instant recordedAt) {
+
     records
         .add(
             new TaskDelivery(
-                taskId, adapterId, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, workflowAggregateId,
-                // the Process-Engine-API adapter names neither the workflow nor the BPMN
-                // element, so a record written on this BPMS carries neither
-                null, TestModels.USER_TASK_FORM, null, taskId, "COMPLETION_PENDING", null, null, recordedAt, null));
+                taskId, adapterId, TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, workflowAggregateId, workflowId, TestModels.USER_TASK_FORM, bpmnElementId, taskId, "COMPLETION_PENDING", null, null, recordedAt, null));
 
   }
 

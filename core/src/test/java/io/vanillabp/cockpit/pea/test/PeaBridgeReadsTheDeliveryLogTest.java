@@ -39,7 +39,10 @@ public class PeaBridgeReadsTheDeliveryLogTest {
 
   private static final String AGGREGATE_ID = "4711";
 
-  /** What the engine calls the running instance, which a record of a delivery never carries. */
+  /**
+   * What the engine calls the running instance. The records of most tests here do not carry it,
+   * like the record of an engine which names no process instance.
+   */
   private static final String WORKFLOW_ID = "instance-1";
 
   private PeaDeployedProcessesRegistry deployedProcesses;
@@ -93,8 +96,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
 
   /**
    * A user task the engine delivered to this node, which is what fills the memory. This engine
-   * names the running instance, so the memory knows a workflow id a delivery record never
-   * carries.
+   * names the running instance, so the memory knows a workflow id the records of these tests
+   * mostly do not carry.
    */
   private void aDeliveredUserTask(
       final String taskId) {
@@ -134,7 +137,7 @@ public class PeaBridgeReadsTheDeliveryLogTest {
             .stream()
             .map(WorkflowReference::workflowId)
             .toList(),
-        "the record names no workflow on this BPMS, so the case is shown under its aggregate");
+        "the record names no workflow, so the case is shown under its aggregate");
 
     final var one = bridge
         .userTaskOfAggregate(
@@ -144,7 +147,34 @@ public class PeaBridgeReadsTheDeliveryLogTest {
     assertEquals(
         TestModels.USER_TASK_ELEMENT,
         one.bpmnTaskId(),
-        "the record names no BPMN element on this BPMS, so it comes from what the adapter deployed");
+        "the record names no BPMN element, so it comes from what the adapter deployed");
+
+  }
+
+  @Test
+  @DisplayName("A record which names the workflow and the BPMN element is read as it was written")
+  public void aRecordNamingItsWorkflowIsShownUnderThatWorkflow() {
+
+    deliveryLog
+        .anOpenTaskNaming(
+            TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", WORKFLOW_ID, TestModels.USER_TASK_ELEMENT, Instant
+                .now());
+
+    assertEquals(
+        List.of(WORKFLOW_ID),
+        bridge
+            .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID)
+            .stream()
+            .map(WorkflowReference::workflowId)
+            .toList(),
+        "the adapter wrote the engine's id of the workflow into the record, and the case is shown under it");
+    final var one = bridge
+        .userTaskOfAggregate(
+            TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, AGGREGATE_ID, "task-1")
+        .orElseThrow();
+    assertEquals(WORKFLOW_ID, one.workflowId());
+    assertEquals(TestModels.USER_TASK_ELEMENT, one.bpmnTaskId());
+    assertEquals(TestModels.USER_TASK_FORM, one.taskDefinition());
 
   }
 

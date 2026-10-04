@@ -168,10 +168,13 @@ wins where both can answer.
 What the log cannot do is what this entry asks for. It holds deliveries, so it names a user task
 only where a `@WorkflowTask` method of the application ran for it, and a task nobody wrote a method
 for was never recorded. It holds a record until the application's completion of that task reaches
-the BPMS, so a task the engine withdrew some other way stays in it. And on this BPMS a record names
-neither the BPMN element of the task nor the engine's own id of the workflow, because the
-Process-Engine-API adapter fills neither; this extension answers both out of what the adapter
-deployed.
+the BPMS, so a task the engine withdrew some other way stays in it. The identifiers of a record are
+mostly there. The Process-Engine-API adapter writes the engine's id of the
+workflow into a record where the engine named the process instance in its delivery. It writes the
+BPMN element where the engine named it, or where the deployed model has only one user task with that
+form. A field the adapter leaves empty is answered the way a delivery answers it, and decision 9 in
+`DECISIONS.md` says how. The in-memory engine of the tests names no process instance, so its records
+name no workflow.
 
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
 answered a start with, and `WorkflowElection#workflowIdOf` reads it. So a case whose workflow
