@@ -82,6 +82,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   private final Supplier<BusinessCockpitEventPublisher> publisher;
 
   /**
+   * Builds the observer which the adapter calls for every user task it delivers and every task
+   *which ends.
+   *
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks Where a delivery is remembered, for the report built from it and
    *          for the reads which come later

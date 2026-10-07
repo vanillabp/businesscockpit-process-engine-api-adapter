@@ -70,6 +70,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
   private final Set<String> aggregatesReportedAsUnknown;
 
   /**
+   * Builds the bridge for one configured adapter id, out of the sources it answers from.
+   *
    * @param adapterId The configured adapter id this bridge serves
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param deliveredUserTasks What this node has seen

@@ -17,6 +17,16 @@ class PeaCockpitProcessor {
   private static final String FEATURE = "vanillabp-business-cockpit-process-engine-api";
 
   /**
+   * Quarkus builds this class while it builds the application, to run its build step. It holds no
+   * state of its own.
+   */
+  PeaCockpitProcessor() {
+
+  }
+
+  /**
+   * Announces the extension and makes the runtime's producer a bean.
+   *
    * @param featureProducer Where the feature is announced, so that a booting application lists
    *          the extension
    * @return The producer class, as a bean nothing may remove

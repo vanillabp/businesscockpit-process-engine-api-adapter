@@ -43,6 +43,8 @@ public class PeaRecordedUserTasks {
   private final PeaDeployedProcessesRegistry deployedProcesses;
 
   /**
+   * Builds the reader of the delivery log.
+   *
    * @param handlers VanillaBP's answer to which workflow aggregate serves a BPMN process, which
    *          is what the log of that aggregate is resolved by
    * @param deliveryLogs The platform's resolver, which says which store holds the records of an

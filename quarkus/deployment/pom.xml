@@ -109,6 +109,16 @@
         </executions>
       </plugin>
       <plugin>
+        <!-- the build steps are package private, as Quarkus allows, and the generated
+             accessor is left out of the check at the root. Without 'package' the check
+             would find nothing to read and stop with an error. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <show>package</show>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <systemPropertyVariables>
