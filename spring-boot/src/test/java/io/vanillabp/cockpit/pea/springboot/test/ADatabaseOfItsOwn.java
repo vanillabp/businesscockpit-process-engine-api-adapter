@@ -24,6 +24,12 @@ import org.springframework.test.context.MergedContextConfiguration;
  * class gets its own database without asking for it. The test's <code>application.yaml</code>
  * builds the URL from {@link #DATABASE_NAME_KEY} and has no default for it, so a context booted
  * some other way and without a URL of its own does not start, instead of sharing a database.
+ * <p>
+ * The Camunda 7 half of the cockpit names its test databases the same way. The Camunda 8 half
+ * sets no URL at all. It sets <code>spring.datasource.generate-unique-name</code>, and Spring gives
+ * every context a database with a random name. Both ways stop two test classes from sharing a
+ * database, so the difference is on purpose and not a bug. This repository keeps the factory
+ * because one test has to know the URL of its own database, see {@link RestartedNodeTest}.
  */
 public class ADatabaseOfItsOwn implements ContextCustomizerFactory {
 

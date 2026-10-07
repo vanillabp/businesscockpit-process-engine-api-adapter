@@ -37,6 +37,14 @@ import jakarta.inject.Singleton;
 public class PeaCockpitProducer {
 
   /**
+   * Quarkus builds this class to call its producer methods and its startup observer. It holds
+   * no state of its own.
+   */
+  public PeaCockpitProducer() {
+
+  }
+
+  /**
    * Reads this half's setting while the application starts.
    * <p>
    * A CDI producer runs when somebody first asks for what it produces. For the memory of the
@@ -97,6 +105,8 @@ public class PeaCockpitProducer {
   }
 
   /**
+   * The versions of the BPMN processes this application deployed, as the adapter recorded them.
+   *
    * @param registry What the Process-Engine-API adapter recorded while deploying
    * @return The versions of the deployed processes
    */

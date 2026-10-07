@@ -40,6 +40,14 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 public class PeaCockpitAutoConfiguration {
 
   /**
+   * Spring Boot builds this class while it applies the auto-configuration. It holds no state
+   * of its own, the beans come from its methods.
+   */
+  public PeaCockpitAutoConfiguration() {
+
+  }
+
+  /**
    * The memory of what a delivered user task said, sized by the application.
    * <p>
    * The configured value is read here, while the application starts, rather than when the first
@@ -83,6 +91,8 @@ public class PeaCockpitAutoConfiguration {
   }
 
   /**
+   * The versions of the BPMN processes this application deployed, as the adapter recorded them.
+   *
    * @param registry What the Process-Engine-API adapter recorded while deploying
    * @return The versions of the deployed processes
    */

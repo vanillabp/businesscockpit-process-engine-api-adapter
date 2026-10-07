@@ -46,6 +46,8 @@ public class PeaDeliveredUserTasks {
                                   boolean ended) {
 
     /**
+     * Remembers a task which is still open.
+     *
      * @param reference How the cockpit addresses the task
      * @param details What the engine said about it
      */
@@ -70,6 +72,8 @@ public class PeaDeliveredUserTasks {
   private final Map<String, Boolean> reportedWorkflows;
 
   /**
+   * Builds an empty memory which holds at most the given number of user tasks.
+   *
    * @param capacity How many user tasks a node remembers at once; the oldest is forgotten when
    *          the next one arrives
    */
@@ -96,6 +100,8 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
+   * Looks up what this node remembers about one user task.
+   *
    * @param userTaskId The engine's own id of the task
    * @return What was remembered about it, or empty where this node never saw it or has
    *         forgotten it

@@ -23,6 +23,8 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 public interface PeaProcessVersions {
 
   /**
+   * Says which version of a BPMN process this application deployed.
+   *
    * @param adapterId The configured adapter id which deployed the process
    * @param workflowModuleId The workflow module
    * @param bpmnProcessId The plain BPMN process id
@@ -34,6 +36,8 @@ public interface PeaProcessVersions {
       String bpmnProcessId);
 
   /**
+   * Reads the versions out of what the adapter recorded while it deployed the processes.
+   *
    * @param registry What the VanillaBP Process-Engine-API adapter recorded while deploying
    * @return The versions it recorded
    */

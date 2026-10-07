@@ -16,6 +16,10 @@ import io.vanillabp.cockpit.extension.test.support.CockpitServer;
  * So the database is named after the test class. <code>business-cockpit.yaml</code> builds the URL
  * from {@link #DATABASE_NAME_KEY} and has no default for it, so a test class which boots the
  * application some other way does not start, instead of sharing a database.
+ * <p>
+ * The Spring Boot tests of this repository name their databases the same way. Their class
+ * <code>ADatabaseOfItsOwn</code> says why the Camunda 8 half of the cockpit does it differently,
+ * and why both ways are fine.
  */
 public final class TestApplication {
 

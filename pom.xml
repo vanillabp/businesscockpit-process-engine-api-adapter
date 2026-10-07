@@ -212,6 +212,24 @@
           </executions>
         </plugin>
         <plugin>
+          <!-- the release parent runs javadoc in every build with 'doclint=all' and lets
+               warnings pass. Here a warning breaks the build, so a missing comment shows up
+               the day it is written and not in a count months later. Version and the rest of
+               the configuration come from the parent. -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <failOnWarnings>true</failOnWarnings>
+            <!-- the Quarkus extension processor writes an accessor class next to every class
+                 with build steps, and generated code has no comments. Nobody reads it and it
+                 is not published. This is the only file left out: every other gap is closed by
+                 writing the missing comment. -->
+            <sourceFileExcludes>
+              <sourceFileExclude>**/*$$accessor.java</sourceFileExclude>
+            </sourceFileExcludes>
+          </configuration>
+        </plugin>
+        <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.16.0</version>
@@ -220,8 +238,9 @@
             <compilerArgs>
               <!-- javac is the only javadoc check which reads a package private class. The
                    javadoc plugin of the parent opens what a release publishes, so it starts
-                   at protected. Every group is checked here except 'missing': a comment
-                   which was never written is a warning, not a broken build. -->
+                   at protected. Every group is checked here except 'missing', because a
+                   package private class needs no comment. A missing comment on what is
+                   published breaks the javadoc check above. -->
               <arg>-Xdoclint:all,-missing</arg>
             </compilerArgs>
             <annotationProcessorPaths>
