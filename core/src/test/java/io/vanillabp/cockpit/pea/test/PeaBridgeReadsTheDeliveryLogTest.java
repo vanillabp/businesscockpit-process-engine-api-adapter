@@ -92,7 +92,7 @@ public class PeaBridgeReadsTheDeliveryLogTest {
 
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
     observer = new PeaCockpitObserver(
-        deployedProcesses, deliveredUserTasks, (
+        deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
             bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);

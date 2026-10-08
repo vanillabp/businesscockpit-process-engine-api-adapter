@@ -20,6 +20,7 @@ import io.vanillabp.cockpit.pea.PeaProcessVersions;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
 import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
+import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
@@ -111,6 +112,8 @@ public class PeaCockpitAutoConfiguration {
    *
    * @param registry What the Process-Engine-API adapter recorded while deploying, which is where
    *          the name of a process and the BPMN element behind a form reference come from
+   * @param workflowTaskWiring VanillaBP's answer to whether a <code>&#64;WorkflowService</code>
+   *          claims a BPMN process, which is what decides whether a delivery is reported
    * @param deliveredUserTasks The memory of what a delivery said
    * @param versions The versions of the deployed processes
    * @param publisher Where an observed event is reported. It is resolved on the first event
@@ -121,12 +124,13 @@ public class PeaCockpitAutoConfiguration {
   @Bean
   public PeaCockpitObserver businessCockpitPeaUserTaskObserver(
       final PeaDeployedProcessesRegistry registry,
+      final WorkflowTaskWiring workflowTaskWiring,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
       final ObjectProvider<BusinessCockpitEventPublisher> publisher) {
 
     return new PeaCockpitObserver(
-        registry, deliveredUserTasks, versions, publisher::getObject);
+        registry, workflowTaskWiring, deliveredUserTasks, versions, publisher::getObject);
 
   }
 
