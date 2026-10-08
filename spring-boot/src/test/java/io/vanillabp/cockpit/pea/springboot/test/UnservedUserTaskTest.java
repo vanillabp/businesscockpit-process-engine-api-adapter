@@ -32,6 +32,11 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * the same, the details provider included, so a difference in what the cockpit is told can only
  * come from the missing method.
  * <p>
+ * The VanillaBP core ends the start for a task without a method unless the application marks it
+ * with <code>implemented-externally=true</code>, and a details provider does not count as a
+ * method. So the test's <code>application.yaml</code> marks the unserved task, and
+ * {@link UnmarkedUserTaskTest} shows that the start ends without that line.
+ * <p>
  * The measurement was asked for by story 1299, which weighs the memory of this extension
  * (decision 3 in the repository's DECISIONS.md) against the delivery log of the platform. That
  * log is written where a handler was invoked, so it holds the served task and not the other one.

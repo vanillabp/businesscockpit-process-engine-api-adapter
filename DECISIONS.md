@@ -582,3 +582,29 @@ engine said about it, and the log holds none of that. So a task only the log kno
 all, whatever its version (entry 10 in the repository's GAPS.md). The version of its reference
 reaches no `@UserTaskDetailsProvider` method today. It is correct all the same, so that a later
 source of the content finds it.
+
+## 18. A details provider does not serve a user task, so a task only a task list works on is marked
+
+VanillaBP now ends the start when a task of a claimed BPMN process has no `@WorkflowTask` method
+and is not marked with `implemented-externally=true`. This holds for a user task as well. The rule
+lives in the core, in `adapter-platform-integration`. Before it, a user task without a method
+passed, and the Process-Engine-API adapter only named it in the log.
+
+The question for this extension was whether a `@UserTaskDetailsProvider` method counts as serving
+a user task. It does not. The provider says what the cockpit shows about a task. Nothing in it works
+the task off, and a task with only a provider is still a task a task list works on. So an
+application marks such a task like any other task which something else serves.
+
+The test applications on both platforms follow this. The taxi ride has two user tasks without a
+method, `Inspect` and `Pay`. Each is marked on its own, at the task, by its element id. A line for
+the whole workflow or the whole module would cover them too. It would also cover a third user task
+which somebody adds to the model and forgets the method for, and that is the mistake the start
+should catch.
+
+`UnservedUserTaskTest` still measures what the cockpit hears about a task no method claims, now
+with the task marked. `UnmarkedUserTaskTest` on both platforms takes the line away for one task and
+shows that the start ends and names the line to add.
+
+Nothing in the extension's code changed. No entry of this log says otherwise: the memory still
+answers for a task no method claims, and the delivery log still holds only the tasks a handler was
+called for, as decision 3 and decision 9 say.
