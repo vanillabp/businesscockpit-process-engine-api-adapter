@@ -28,6 +28,10 @@ import jakarta.transaction.UserTransaction;
  * It is the twin of the Spring Boot test of the same name. It exists because the two platforms
  * collect the observers of an application in ways of their own, and a platform-neutral half being
  * right says nothing about a platform's glue ever calling it.
+ * <p>
+ * The unserved task is marked with <code>implemented-externally=true</code> in
+ * <code>business-cockpit.yaml</code>, because without that line the start ends. That is what
+ * {@link UnmarkedUserTaskTest} shows.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

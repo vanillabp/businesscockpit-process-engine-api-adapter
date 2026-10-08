@@ -26,6 +26,11 @@ vanillabp:
       workflows:
         TaxiRide:
           allow-full-sync-with-bpms: true
+          tasks:
+            Inspect:
+              implemented-externally: true
+            Pay:
+              implemented-externally: true
       cockpit:
         workflow-module-uri: http://localhost:8081/pea-cockpit
         ui-uri-type: WEBPACK_MF_REACT

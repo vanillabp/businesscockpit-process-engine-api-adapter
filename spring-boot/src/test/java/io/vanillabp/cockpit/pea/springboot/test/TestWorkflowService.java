@@ -49,12 +49,18 @@ public class TestWorkflowService {
    */
   public static final String UNSERVED_TASK_DEFINITION = "inspect-the-car";
 
-  /** The BPMN element id of the user task nothing claims. */
+  /**
+   * The BPMN element id of the user task nothing claims. The test configuration marks the task
+   * with <code>implemented-externally=true</code> under this id, because the start ends for a task
+   * without a method otherwise.
+   */
   public static final String UNSERVED_BPMN_TASK_ID = "Inspect";
 
   /**
    * The external form reference of the third user task. Its details provider names a version, so
-   * it only runs for a delivery which says which version of the model it came from.
+   * it only runs for a delivery which says which version of the model it came from. No
+   * <code>&#64;WorkflowTask</code> method claims this task either, so the test configuration marks
+   * it as well.
    */
   public static final String VERSIONED_TASK_DEFINITION = "pay-the-fare";
 
