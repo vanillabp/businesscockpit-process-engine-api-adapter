@@ -94,18 +94,25 @@ than by imitation.
 **The cockpit needs** the process variables a `@UserTaskDetailsProvider` method reads through its
 `@TaskParam` parameters.
 
-**The API offers** `SubscribeForTaskCmd.payloadDescription`, which the VanillaBP adapter fills from
-what the application's `@WorkflowTask` methods need
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:306`,
-called at `:1223`). The cockpit's own annotations are not part of that derivation, and a second
-subscription cannot ask for more (entry 1).
+**The API offers** `SubscribeForTaskCmd.payloadDescription`, which the VanillaBP adapter fills
+with the variable holding the aggregate's id and the `@TaskParam` names of the application's
+`@WorkflowTask` methods
+(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:312`,
+called at `:1442` and `:1492`). It gets the names from the platform's
+`WorkflowTaskWiring#taskParameterNames`, and the platform answers that from its `@WorkflowTask`
+methods alone
+(`adapter-platform-integration/migration-adapter/runtime/src/main/java/io/vanillabp/integration/adapter/migration/workflowtask/WorkflowTaskRegistry.java:1602`).
+The cockpit's own annotations are not part of that set, and a second subscription cannot ask for
+more (entry 1).
 
 **What it costs:** a `@TaskParam` of a details provider receives `null` unless the same variable is
-read by a workflow task of the same module.
+read by a workflow task of the same module. A details provider reads its data from the workflow
+aggregate it is given, the same way a workflow task does.
 
-**What would close it:** on the adapter's side, letting an observer add to the derived payload
-description. Today the way out is `vanillabp.adapters.<id>.fetch-variables: all`, which asks the
-engine for everything.
+**What would close it:** a way for an extension to add names to the set. Neither the engine
+adapter nor the platform has one: `PeaUserTaskObserver` only receives deliveries, and
+`ExtensionHandlers` does not take part in the set. No setting of the engine adapter asks for more
+([what a subscription asks for](https://github.com/vanillabp/process-engine-api-adapter/wiki/Configuration#what-a-subscription-asks-for)).
 
 ## 5. No process definitions, no versions
 
