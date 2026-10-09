@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea.springboot.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -259,6 +260,42 @@ public class PeaCockpitTest {
     // builds the report and writes the entry, and another writer of the same case can refuse
     // that commit through the version attribute. Entry and write are gone together then, so a
     // test waiting for that write waits on something it does not control.
+
+  }
+
+  @Test
+  @DisplayName("A details provider gets a variable no workflow task of its module reads")
+  public void aDetailsProviderGetsAVariableNoWorkflowTaskReads() {
+
+    final var aggregate = aStartedWorkflow("Paula");
+
+    // the subscription asks the engine for what the cockpit reads as well. Nothing else would:
+    // the only workflow task of this user task reads no variable at all
+    final var askedFor = engine
+        .getSubscriptions()
+        .stream()
+        .filter(subscription -> subscription
+            .taskDescriptionKey()
+            .equals(TestWorkflowService.TASK_DEFINITION))
+        .map(InMemoryProcessEngine.ActiveSubscription::payloadDescription)
+        .toList();
+    assertFalse(askedFor.isEmpty(), "nothing subscribed to the user task");
+    assertTrue(
+        askedFor.stream().allMatch(names -> names.contains(TestWorkflowService.PASSENGER_VARIABLE)),
+        "the subscriptions ask for "
+            + askedFor);
+
+    // the engine narrows the payload to what was asked for, the way a real engine does
+    engine
+        .deliverTask(
+            "task-passenger", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
+                .of(
+                    "id", String.valueOf(aggregate.getId()), TestWorkflowService.PASSENGER_VARIABLE,
+                    "Paul"));
+
+    final var userTask = CockpitServer
+        .awaitRequest("/usertask/created", "\"userTaskId\":\"task-passenger\"");
+    assertTrue(userTask.body().contains("\"passenger\":\"Paul\""), userTask.body());
 
   }
 

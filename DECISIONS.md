@@ -642,3 +642,29 @@ no listener to install, so there is nothing to leave out for a process nobody cl
 `OnlyClaimedProcessesTest` on both platforms boots an application whose file carries a claimed
 process, a process the claimed one calls, and a process nobody claims, and delivers a task of somebody
 else's process as well.
+
+## 20. A details provider gets its `@TaskParam` values from the adapter's one subscription
+
+This extension opens no subscription of its own and asks the engine for no variable. A
+`@TaskParam` of a details provider is filled from the payload of the adapter's delivery, which the
+observer hands to the cockpit as it came.
+
+That payload now carries what the details providers read. The platform collects the `@TaskParam`
+names of every method an extension registered a contract for, and answers them through
+`WorkflowTaskWiring#extensionTaskParameterNames`. The Process-Engine-API adapter adds those names to
+what its subscription asks for, with the element id and the task definition as keys. Both
+repositories wrote that down in their own logs: decision 122 of `adapter-platform-integration` and
+decision 20 of `process-engine-api-adapter`.
+
+One thing has to hold for this. The cockpit registers its contract for details providers before the
+adapter deploys and subscribes. It does so while the application starts, on Spring Boot and on
+Quarkus alike. A contract registered later would not change a
+subscription which is already open.
+
+A second subscription was never a way out. The engine hands a task to one subscription only (entry
+1 in the repository's `GAPS.md`), so a subscription of this extension would take the task away
+from the application.
+
+`PeaCockpitTest` on both platforms holds this. The details provider of the first user task reads a
+variable which no `@WorkflowTask` method reads. The test asserts that the subscription asks for it
+and that the report the cockpit receives carries its value. This closes entry 4 in `GAPS.md`.
