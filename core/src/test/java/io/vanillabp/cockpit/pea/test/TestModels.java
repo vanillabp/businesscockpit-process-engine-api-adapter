@@ -2,12 +2,15 @@ package io.vanillabp.cockpit.pea.test;
 
 import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.integration.extension.spi.handler.HandlerCall;
 import io.vanillabp.integration.extension.spi.handler.HandlerContract;
@@ -176,6 +179,62 @@ public final class TestModels {
           final String activityId) {
 
         return Optional.empty();
+
+      }
+
+    };
+
+  }
+
+  /**
+   * VanillaBP's answer to which BPMN processes a <code>&#64;WorkflowService</code> of the
+   * application claims, where the test's own process is the only one.
+   *
+   * @return The answer
+   */
+  public static WorkflowTaskWiring claimingTheRide() {
+
+    return claiming(BPMN_PROCESS_ID);
+
+  }
+
+  /**
+   * VanillaBP's answer to which BPMN processes a <code>&#64;WorkflowService</code> of the
+   * application claims. It answers the way the core does: a claimed process has the name of
+   * its aggregate's id, and every other process has none.
+   *
+   * @param claimedBpmnProcessIds The processes a workflow service claims
+   * @return The answer
+   */
+  public static WorkflowTaskWiring claiming(
+      final String... claimedBpmnProcessIds) {
+
+    final var claimed = Set.of(claimedBpmnProcessIds);
+    return new WorkflowTaskWiring() {
+
+      @Override
+      public void validateTaskWiring(
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final Collection<BpmnTaskSpec> tasks) {
+
+      }
+
+      @Override
+      public void validateNoUnwiredWorkflowTaskMethods(
+          final String workflowModuleId) {
+
+      }
+
+      @Override
+      public String resolveWorkflowAggregateIdName(
+          final String workflowModuleId,
+          final String bpmnProcessId) {
+
+        if (MODULE_ID.equals(workflowModuleId) && claimed.contains(bpmnProcessId)) {
+          return "id";
+        }
+        throw new IllegalStateException("No @WorkflowService claims '%s'".formatted(bpmnProcessId));
 
       }
 

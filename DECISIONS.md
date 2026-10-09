@@ -608,3 +608,37 @@ shows that the start ends and names the line to add.
 Nothing in the extension's code changed. No entry of this log says otherwise: the memory still
 answers for a task no method claims, and the delivery log still holds only the tasks a handler was
 called for, as decision 3 and decision 9 say.
+
+## 19. A process no `@WorkflowService` claims is not reported
+
+This extension follows the rule which `adapter-platform-integration` decided for processes nobody
+claims.
+
+The platform sorts the BPMN processes an engine runs into three kinds. A process is claimed when a
+`@WorkflowService` class of the application names it, in `bpmnProcess` or in `secondaryBpmnProcesses`.
+A process called by a call activity counts as claimed when the service of the caller names it there. A
+process can also travel in the file of a claimed one without being claimed. The core ends the start for
+it unless the application marks it with
+`vanillabp.workflow-modules.<module>.workflows.<process>.implemented-externally=true`. And a process
+can belong to somebody else and run on the same engine. For the last two, VanillaBP changes nothing in
+the BPMN, opens no subscription and reports nothing.
+
+This extension follows the rule. The observer reports a delivered user task only when
+`WorkflowTaskWiring#isClaimedByAWorkflowService` says yes for its workflow module and BPMN process.
+It gets `WorkflowTaskWiring` as a bean, on Spring Boot and on Quarkus. It does not ask the election,
+and it does not catch the exception of `resolveWorkflowAggregateIdName` itself.
+
+Before, the outcome was already mostly the same, but by accident. The Process-Engine-API adapter
+opens no subscription for a process nobody claims. A task of such a process can still arrive, because a
+subscription matches a task by its form reference and two processes may show the same form. A process
+of somebody else was then passed over because this application never deployed it. A process which came
+with the application's own file was passed over only because the adapter could not name its aggregate.
+Now the observer asks the question itself, and both cases stop at the same check.
+
+This extension adds nothing to a BPMN file and registers no listener, on any process. This BPMS has
+no listener to install, so there is nothing to leave out for a process nobody claims.
+
+`PeaCockpitObserverTest` holds the process nobody claims and the secondary process at the observer.
+`OnlyClaimedProcessesTest` on both platforms boots an application whose file carries a claimed
+process, a process the claimed one calls, and a process nobody claims, and delivers a task of somebody
+else's process as well.

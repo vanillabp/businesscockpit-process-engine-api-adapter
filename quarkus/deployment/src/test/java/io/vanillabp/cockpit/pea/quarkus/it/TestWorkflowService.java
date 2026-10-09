@@ -28,11 +28,31 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 @WorkflowService(
     workflowAggregateClass = TestAggregate.class,
-    bpmnProcess = @BpmnProcess(bpmnProcessId = TestWorkflowService.BPMN_PROCESS_ID))
+    bpmnProcess = @BpmnProcess(bpmnProcessId = TestWorkflowService.BPMN_PROCESS_ID),
+    secondaryBpmnProcesses = @BpmnProcess(bpmnProcessId = TestWorkflowService.CALLED_BPMN_PROCESS_ID))
 public class TestWorkflowService {
 
   /** The BPMN process of the test. */
   public static final String BPMN_PROCESS_ID = "TaxiRide";
+
+  /**
+   * The BPMN process the ride calls with a call activity. This service claims it as a secondary
+   * process, so its user task belongs to the case of the ride.
+   */
+  public static final String CALLED_BPMN_PROCESS_ID = "CarCheck";
+
+  /** The external form reference of the user task of the called process. */
+  public static final String CALLED_TASK_DEFINITION = "check-the-brakes";
+
+  /**
+   * A BPMN process which travels in the file of the ride and which no workflow service of this
+   * application claims. The test configuration marks it with
+   * <code>implemented-externally=true</code>, because the start ends for it otherwise.
+   */
+  public static final String UNCLAIMED_BPMN_PROCESS_ID = "RideReview";
+
+  /** The external form reference of the user task only the process nobody claims has. */
+  public static final String UNCLAIMED_TASK_DEFINITION = "rate-the-driver";
 
   /** The external form reference of the user task, which is what the cockpit calls its task definition. */
   public static final String TASK_DEFINITION = "approve-the-ride";

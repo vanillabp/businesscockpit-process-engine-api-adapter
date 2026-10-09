@@ -17,6 +17,7 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks.DeliveredUserTask;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
 import io.vanillabp.pea.deployment.PeaDeployedProcesses.DeployedProcess;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
@@ -50,6 +51,13 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * which fails there is gone. Decision 12 in the repository's DECISIONS.md holds the measurement
  * behind both.
  * <p>
+ * Only a BPMN process a <code>&#64;WorkflowService</code> of the application claims is reported.
+ * A process which merely travels in the same file, and a process of somebody else which the
+ * engine runs as well, never reach the cockpit. The adapter opens no subscription for either of
+ * them, but a delivery of theirs may still arrive here: a subscription matches a task by its
+ * task definition, and another process may use the same one. See decision 19 in the repository's
+ * DECISIONS.md.
+ * <p>
  * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
  * through name-clash avoidance before it builds an observation. So nothing here spells an id a
  * second time. Two identifiers may be missing, and both times it is the adapter saying so rather
@@ -75,6 +83,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   private final PeaDeployedProcessesRegistry deployedProcesses;
 
+  private final WorkflowTaskWiring workflowTaskWiring;
+
   private final PeaDeliveredUserTasks deliveredUserTasks;
 
   private final PeaProcessVersions versions;
@@ -86,6 +96,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    *which ends.
    *
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
+   * @param workflowTaskWiring VanillaBP's answer to whether a <code>&#64;WorkflowService</code>
+   *          of the application claims a BPMN process
    * @param deliveredUserTasks Where a delivery is remembered, for the report built from it and
    *          for the reads which come later
    * @param versions What the adapter recorded about the deployed processes
@@ -95,11 +107,13 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    */
   public PeaCockpitObserver(
       final PeaDeployedProcessesRegistry deployedProcesses,
+      final WorkflowTaskWiring workflowTaskWiring,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
       final Supplier<BusinessCockpitEventPublisher> publisher) {
 
     this.deployedProcesses = Objects.requireNonNull(deployedProcesses, "deployedProcesses");
+    this.workflowTaskWiring = Objects.requireNonNull(workflowTaskWiring, "workflowTaskWiring");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.publisher = Objects.requireNonNull(publisher, "publisher");
@@ -119,6 +133,18 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
               "Process-Engine-API[{}]: not reporting user task '{}': the delivery named no BPMN process",
               observation.adapterId(),
               observation.taskId());
+      return;
+    }
+    // a process no @WorkflowService claims is not a business case of this application, even
+    // where it came with the application's own files (see decision 19)
+    if (!workflowTaskWiring.isClaimedByAWorkflowService(observation.workflowModuleId(), bpmnProcessId)) {
+      logger
+          .debug(
+              "Process-Engine-API[{}]: not reporting user task '{}': no @WorkflowService of workflow module '{}' claims BPMN process '{}'",
+              observation.adapterId(),
+              observation.taskId(),
+              observation.workflowModuleId(),
+              bpmnProcessId);
       return;
     }
     // the deployment of the engine which delivered the task is the one to ask. Two configured

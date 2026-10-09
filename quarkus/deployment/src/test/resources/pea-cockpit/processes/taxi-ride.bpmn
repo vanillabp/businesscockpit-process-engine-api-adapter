@@ -37,9 +37,67 @@
       <bpmn:incoming>ToPay</bpmn:incoming>
       <bpmn:outgoing>ToEnd</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:sequenceFlow id="ToEnd" sourceRef="Pay" targetRef="End" />
+    <bpmn:sequenceFlow id="ToCheck" sourceRef="Pay" targetRef="CheckTheCar" />
+    <!-- calls a process of its own, which the workflow service of the ride claims as a secondary
+         process, so its user task is reported like one of the ride -->
+    <bpmn:callActivity id="CheckTheCar" name="Check the car">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="CarCheck" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToCheck</bpmn:incoming>
+      <bpmn:outgoing>ToEnd</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="ToEnd" sourceRef="CheckTheCar" targetRef="End" />
     <bpmn:endEvent id="End">
       <bpmn:incoming>ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmn:process id="CarCheck" name="A check of the car" isExecutable="true">
+    <bpmn:startEvent id="CheckStart">
+      <bpmn:outgoing>ToBrakes</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="ToBrakes" sourceRef="CheckStart" targetRef="CheckTheBrakes" />
+    <bpmn:userTask id="CheckTheBrakes" name="Check the brakes">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="check-the-brakes" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToBrakes</bpmn:incoming>
+      <bpmn:outgoing>ToCheckEnd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToCheckEnd" sourceRef="CheckTheBrakes" targetRef="CheckEnd" />
+    <bpmn:endEvent id="CheckEnd">
+      <bpmn:incoming>ToCheckEnd</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <!-- travels in this file, but no @WorkflowService of the application claims it. The application
+       marks it as served by somebody else. Its first user task shows the same form as the
+       approval of the ride, so the engine hands a task of it to the subscription of the ride -->
+  <bpmn:process id="RideReview" name="A review of the ride" isExecutable="true">
+    <bpmn:startEvent id="ReviewStart">
+      <bpmn:outgoing>ToReview</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="ToReview" sourceRef="ReviewStart" targetRef="Review" />
+    <bpmn:userTask id="Review" name="Review the ride">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="approve-the-ride" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToReview</bpmn:incoming>
+      <bpmn:outgoing>ToRate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToRate" sourceRef="Review" targetRef="Rate" />
+    <bpmn:userTask id="Rate" name="Rate the driver">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:formDefinition externalReference="rate-the-driver" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>ToRate</bpmn:incoming>
+      <bpmn:outgoing>ToReviewEnd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="ToReviewEnd" sourceRef="Rate" targetRef="ReviewEnd" />
+    <bpmn:endEvent id="ReviewEnd">
+      <bpmn:incoming>ToReviewEnd</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
 </bpmn:definitions>

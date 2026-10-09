@@ -60,7 +60,7 @@ public class PeaCockpitBridgeTest {
     deliveredUserTasks = new PeaDeliveredUserTasks(10);
     deliveryLog = new TestDeliveryLog();
     observer = new PeaCockpitObserver(
-        deployedProcesses, deliveredUserTasks, (
+        deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
             bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
@@ -310,7 +310,7 @@ public class PeaCockpitBridgeTest {
     final var deployedProcesses = TestModels.deployed();
     final var oneDeliveryAtATime = new PeaDeliveredUserTasks(1);
     final var narrowObserver = new PeaCockpitObserver(
-        deployedProcesses, oneDeliveryAtATime, (
+        deployedProcesses, TestModels.claimingTheRide(), oneDeliveryAtATime, (
             adapterId,
             workflowModuleId,
             bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);

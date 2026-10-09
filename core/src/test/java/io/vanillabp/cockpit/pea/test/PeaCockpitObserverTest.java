@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +24,9 @@ import io.vanillabp.cockpit.extension.spi.UserTaskEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
+import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
+import io.vanillabp.pea.PeaBpmnModel;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
@@ -64,7 +67,7 @@ public class PeaCockpitObserverTest {
       final PeaDeployedProcessesRegistry deployedProcesses) {
 
     return new PeaCockpitObserver(
-        deployedProcesses, deliveredUserTasks, (
+        deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
             bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
@@ -340,6 +343,77 @@ public class PeaCockpitObserverTest {
 
     assertTrue(publisher.userTasks().isEmpty());
     assertTrue(publisher.workflows().isEmpty());
+
+  }
+
+  /**
+   * The module's file carries a second process. It was deployed with the file and is recorded
+   * like the first one, which is why the record of the deployment cannot tell the two apart.
+   *
+   * @param bpmnProcessId The id of the second process
+   * @return What the adapter recorded while it deployed both
+   */
+  private static PeaDeployedProcessesRegistry deployedWithASecondProcess(
+      final String bpmnProcessId) {
+
+    final var deployedProcesses = TestModels.deployed();
+    deployedProcesses
+        .forAdapter(TestModels.ADAPTER_ID)
+        .record(
+            TestModels.MODULE_ID, new PeaBpmnModel(
+                "a-ride.bpmn", TestModels.BPMN.getBytes(StandardCharsets.UTF_8), bpmnProcessId, "A second process", List
+                    .of(), List.of(BpmnTaskSpec.userTask("review", TestModels.USER_TASK_FORM, "Review the ride"))),
+            TestModels.DEPLOYMENT_KEY);
+    return deployedProcesses;
+
+  }
+
+  private static PeaUserTaskObservation aDeliveryOf(
+      final String bpmnProcessId) {
+
+    return new PeaUserTaskObservation(
+        TestModels.ADAPTER_ID, TestModels.MODULE_ID, bpmnProcessId, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+            "task-1", Map.of(PeaTaskMeta.BPMN_TASK_ID, "review")), Map.of());
+
+  }
+
+  @Test
+  @DisplayName("A task of a process deployed with the module but claimed by no workflow service is passed over")
+  public void aTaskOfAProcessNobodyClaimsIsPassedOver() {
+
+    final var observerOfTwoProcesses = new PeaCockpitObserver(
+        deployedWithASecondProcess("AReview"), TestModels.claimingTheRide(), deliveredUserTasks, (
+            adapterId,
+            workflowModuleId,
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
+
+    observerOfTwoProcesses.userTaskDelivered(aDeliveryOf("AReview"));
+
+    assertTrue(
+        publisher.userTasks().isEmpty(),
+        "the process came with the application's file, but no @WorkflowService claims it");
+    assertTrue(publisher.workflows().isEmpty());
+    assertTrue(deliveredUserTasks.of("task-1").isEmpty(), "nothing is remembered for a later read");
+
+  }
+
+  @Test
+  @DisplayName("A task of a process a workflow service claims as a secondary process is reported")
+  public void aTaskOfASecondaryProcessIsReported() {
+
+    final var observerOfTwoProcesses = new PeaCockpitObserver(
+        deployedWithASecondProcess("ARideCheck"), TestModels.claiming(TestModels.BPMN_PROCESS_ID,
+            "ARideCheck"), deliveredUserTasks, (
+                adapterId,
+                workflowModuleId,
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
+
+    observerOfTwoProcesses.userTaskDelivered(aDeliveryOf("ARideCheck"));
+
+    assertEquals(1, publisher.userTasks().size());
+    assertEquals("ARideCheck", publisher.userTasks().getFirst().bpmnProcessId());
+    assertEquals("review", publisher.userTasks().getFirst().bpmnTaskId());
+    assertEquals(1, publisher.workflows().size());
 
   }
 

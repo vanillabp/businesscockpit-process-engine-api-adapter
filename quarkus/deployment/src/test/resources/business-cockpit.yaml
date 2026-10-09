@@ -28,6 +28,12 @@ vanillabp:
               implemented-externally: true
             Pay:
               implemented-externally: true
+        CarCheck:
+          tasks:
+            CheckTheBrakes:
+              implemented-externally: true
+        RideReview:
+          implemented-externally: true
       cockpit:
         workflow-module-uri: http://localhost:8081/pea-cockpit
         ui-uri-type: WEBPACK_MF_REACT
