@@ -292,8 +292,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
         .dueDate(PeaTaskMeta.timestamp(taskInformation, PeaTaskMeta.DUE_DATE))
         .followUpDate(PeaTaskMeta.timestamp(taskInformation, PeaTaskMeta.FOLLOW_UP_DATE))
         // the variables the subscription asked the engine for. A '@TaskParam' of a details
-        // provider is bound from them, and a variable no subscription asked for is not among
-        // them, which the repository's GAPS.md spells out
+        // provider is bound from them. The subscription names only what a workflow task of the
+        // module reads, so any other variable is missing, which the repository's GAPS.md
+        // spells out
         .variables(observation.payload())
         .createdAt(createdAtOf(observation))
         .build();
