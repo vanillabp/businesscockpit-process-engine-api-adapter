@@ -94,6 +94,13 @@ public class TestWorkflowService {
   /** What the provider of the third user task writes, so that a test can see whether it ran. */
   public static final String FARE_DETAIL = "priced by the provider";
 
+  /**
+   * The process variable only the details provider of the first user task reads. No
+   * <code>&#64;WorkflowTask</code> method of this application reads it, so the engine delivers it
+   * only because the subscription asks for what the cockpit reads as well.
+   */
+  public static final String PASSENGER_VARIABLE = "passenger";
+
   /** The task ids the <code>&#64;WorkflowTask</code> method of this service was called for. */
   public static final List<String> SERVED_NOTIFICATIONS = new CopyOnWriteArrayList<>();
 
@@ -140,7 +147,7 @@ public class TestWorkflowService {
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param prefilled What the engine knew about the task
    * @param event What happened to the task
-   * @param passenger A variable of the delivered payload
+   * @param passenger A variable of the delivered payload which no workflow task reads
    * @return The very object it was given
    */
   @UserTaskDetailsProvider(taskDefinition = TASK_DEFINITION)
@@ -148,7 +155,7 @@ public class TestWorkflowService {
       final TestAggregate aggregate,
       final PrefilledUserTaskDetails prefilled,
       @DetailsEvent final DetailsEvent.Event event,
-      @TaskParam("passenger") final String passenger) {
+      @TaskParam(PASSENGER_VARIABLE) final String passenger) {
 
     if (APPROVALS_TO_FAIL.getAndUpdate(left -> left > 0
         ? left - 1
@@ -160,7 +167,7 @@ public class TestWorkflowService {
         .setDetails(
             Map
                 .of(
-                    "customer", aggregate.getCustomer(), "event", event.name(), "passenger", String
+                    "customer", aggregate.getCustomer(), "event", event.name(), PASSENGER_VARIABLE, String
                         .valueOf(passenger)));
     prefilled.setCandidateGroups(List.of("drivers"));
     return prefilled;

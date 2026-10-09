@@ -12,7 +12,8 @@ never reused. An entry which is closed keeps its number and says so, because a c
 "gap 7" outlives the file. The first two needed no change to the Process-Engine-API at all. They
 were work in
 [vanillabp/process-engine-api-adapter](https://github.com/vanillabp/process-engine-api-adapter), and
-that work is done: entry 1 is closed, and entry 2 is closed as far as the adapter reaches.
+that work is done: entry 1 is closed, and entry 2 is closed as far as the adapter reaches. Entry 4
+was closed the same way later, by the adapter and the platform together.
 
 The file which says the same thing from the adapter's side is that repository's own `GAPS.md`. This
 one adds what a cockpit needs on top of what a workflow application needs.
@@ -89,30 +90,29 @@ cockpit user sees a task with a name from the BPMN and nothing else.
 to `REASON` and `RETRIES`. Then an engine adapter fills what a task list needs by contract rather
 than by imitation.
 
-## 4. The payload of a delivery is narrowed to what the workflow tasks asked for
+## 4. The payload of a delivery is narrowed to what the workflow tasks asked for - CLOSED by the adapter
 
-**The cockpit needs** the process variables a `@UserTaskDetailsProvider` method reads through its
+**Closed** in `io.vanillabp:process-engine-api-adapter` and `adapter-platform-integration`. The
+platform wrote it down as its decision 122, the Process-Engine-API adapter as its decision 20, and
+this repository as decision 20 in its own `DECISIONS.md`.
+
+**The cockpit needed** the process variables a `@UserTaskDetailsProvider` method reads through its
 `@TaskParam` parameters.
 
-**The API offers** `SubscribeForTaskCmd.payloadDescription`, which the VanillaBP adapter fills
-with the variable holding the aggregate's id and the `@TaskParam` names of the application's
-`@WorkflowTask` methods
-(`process-engine-api-adapter/core/src/main/java/io/vanillabp/pea/deployment/PeaDeploymentService.java:312`,
-called at `:1442` and `:1492`). It gets the names from the platform's
-`WorkflowTaskWiring#taskParameterNames`, and the platform answers that from its `@WorkflowTask`
-methods alone
-(`adapter-platform-integration/migration-adapter/runtime/src/main/java/io/vanillabp/integration/adapter/migration/workflowtask/WorkflowTaskRegistry.java:1602`).
-The cockpit's own annotations are not part of that set, and a second subscription cannot ask for
-more (entry 1).
+**The API offers** `SubscribeForTaskCmd.payloadDescription`. The VanillaBP adapter fills it with the
+variable holding the aggregate's id and the `@TaskParam` names of the application's `@WorkflowTask`
+methods. A second subscription cannot ask for more, because the engine hands a task to one
+subscription only (entry 1). So a `@TaskParam` of a details provider received `null`, unless a
+workflow task of the same module read the same variable.
 
-**What it costs:** a `@TaskParam` of a details provider receives `null` unless the same variable is
-read by a workflow task of the same module. A details provider reads its data from the workflow
-aggregate it is given, the same way a workflow task does.
-
-**What would close it:** a way for an extension to add names to the set. Neither the engine
-adapter nor the platform has one: `PeaUserTaskObserver` only receives deliveries, and
-`ExtensionHandlers` does not take part in the set. No setting of the engine adapter asks for more
-([what a subscription asks for](https://github.com/vanillabp/process-engine-api-adapter/wiki/Configuration#what-a-subscription-asks-for)).
+**What closed it:** the platform now answers `WorkflowTaskWiring#extensionTaskParameterNames`. It
+collects the `@TaskParam` names of every method an extension registered a contract for, and the
+cockpit's details providers are such methods. The adapter adds these names to what its one
+subscription asks the engine for. It asks with the element id and with the task definition, the two
+keys a details provider can be found by. The cockpit registers its contract while the application
+starts, before the adapter deploys and subscribes, on Spring Boot and on Quarkus alike.
+`PeaCockpitTest` on both platforms delivers a variable which only a details provider reads, and the
+report the cockpit receives carries its value.
 
 ## 5. No process definitions, no versions
 
