@@ -55,8 +55,8 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * A process which merely travels in the same file, and a process of somebody else which the
  * engine runs as well, never reach the cockpit. The adapter opens no subscription for either of
  * them, but a delivery of theirs may still arrive here: a subscription matches a task by its
- * task definition, and another process may use the same one. The decision is in
- * {@code DECISIONS.pending/1451.md}.
+ * task definition, and another process may use the same one. See decision 19 in the repository's
+ * DECISIONS.md.
  * <p>
  * The adapter hands over PLAIN identifiers, because it translates what an engine reports back
  * through name-clash avoidance before it builds an observation. So nothing here spells an id a
@@ -136,7 +136,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
       return;
     }
     // a process no @WorkflowService claims is not a business case of this application, even
-    // where it came with the application's own files (DECISIONS.pending/1451.md)
+    // where it came with the application's own files (see decision 19)
     if (!workflowTaskWiring.isClaimedByAWorkflowService(observation.workflowModuleId(), bpmnProcessId)) {
       logger
           .debug(
