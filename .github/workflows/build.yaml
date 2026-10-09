@@ -1,6 +1,6 @@
 name: Build
 # A pull request builds and tests. Publishing is the job of
-# deploy-to-github-packages.yaml, which has a concurrency group of its own.
+# publish-snapshots.yaml, which has a concurrency group of its own.
 "on":
   pull_request:
   workflow_dispatch:
@@ -16,9 +16,8 @@ concurrency:
   #
   # With the ref in the group name, a build waits only for another build of the same
   # pull request, and there the newest commit keeps its run. Sharing the group with the
-  # publish workflow was never needed for this build: it runs 'install' with read
-  # access to the registry and uploads nothing, so it can neither overwrite a snapshot
-  # nor be overwritten by one.
+  # publish workflow was never needed for this build: it runs 'install' and uploads
+  # nothing, so it can neither overwrite a snapshot nor be overwritten by one.
   group: businesscockpit-process-engine-api-adapter-pr-build-${{ github.ref }}
   cancel-in-progress: false
 permissions:
@@ -28,9 +27,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v7
+      # the Maven the publish of main runs with, see publish-snapshots.yaml for why it is not
+      # the 3.10 of the runner image
+      - name: Use Maven 3.9
+        run: |
+          curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz \
+            | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/apache-maven-3.9.16/bin" >> "$GITHUB_PATH"
       - uses: actions/setup-java@v6
         with:
           java-version: 25.0.4+101.0.LTS
@@ -41,12 +46,10 @@ jobs:
       # second run, the compiler does not, and every javac warning is reported twice. It
       # stays 'install' because the Quarkus tests load modules from the local repository.
       - name: Build and test
-        run: mvn -s $GITHUB_WORKSPACE/.github/workflows/github-packages-settings.xml
-          --batch-mode --no-transfer-progress --update-snapshots install
-        env:
-          USER_NAME: "${{ secrets.VANILLABP_USER_NAME }}"
-          USER_TOKEN: "${{ secrets.VANILLABP_USER_TOKEN }}"
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        # The snapshots this build reads, of the platform, of the Process-Engine-API adapter and
+        # of the cockpit, come from the snapshot repository of Maven Central, without a login.
+        # So the build needs no secret, and a pull request from a fork builds like any other.
+        run: mvn --batch-mode --no-transfer-progress --update-snapshots install
       # what a failing test printed is in these reports, and for a test booting its
       # application in a forked JVM it is ONLY in that application's own log file
       - name: Upload the test reports of a failed build

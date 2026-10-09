@@ -111,8 +111,14 @@ name-clash avoidance before it builds an observation.
 mvn install
 ```
 
-Snapshots go to GitHub Packages through the pipeline described below. Releases go to Maven Central
-under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business Cockpit.
+The build reads the snapshots of the platform, of the Process-Engine-API adapter and of the cockpit
+from the snapshot repository of Maven Central, `https://central.sonatype.com/repository/maven-snapshots/`.
+The parent `io.vanillabp:release-parent` names that repository, and reading it needs no login and no
+token.
+
+Snapshots of this repository go to the same place through the pipeline described below. Releases go
+to Maven Central under the groupId `io.vanillabp.businesscockpit`, like the rest of the Business
+Cockpit.
 
 ## Test coverage
 
@@ -157,7 +163,7 @@ run of spaces between two words, or two words a line continuation glued into one
 
 ## What CI runs
 
-`build.yaml` builds and tests a pull request. `deploy-to-github-packages.yaml` publishes the
+`build.yaml` builds and tests a pull request. `publish-snapshots.yaml` publishes the
 snapshot, and only for a push to `main`: the snapshot coordinates are shared, so what the other
 repositories compile against has to be what `main` holds rather than whichever branch was pushed
 last. The build runs in a group per pull request and the publish in a group of its own. That way a
@@ -173,7 +179,7 @@ joins the publish's group, so it never takes the place of a waiting publish. A r
 one issue with the label `nightly-build`, and a night which is still red is a comment on that
 issue. A green night after a red one is a comment too, and somebody closes the issue by hand.
 
-`deploy-to-github-packages.yaml` also publishes the two coverage reports to GitHub Pages, which is
+`publish-snapshots.yaml` also publishes the two coverage reports to GitHub Pages, which is
 what the badges at the top of this page link to. `deploy` runs every phase the pull-request build
 runs, so the number covers the whole test suite.
 
