@@ -25,6 +25,7 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
+import io.vanillabp.integration.test.utils.CapturedOutput;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.PeaBpmnModel;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
@@ -191,8 +192,7 @@ public class PeaCockpitObserverTest {
   /**
    * A repeated delivery is what the cockpit shows as a change of a task, and it is asserted here
    * rather than through a booted application: the in-memory engine the adapter ships delivers a
-   * task without a reason and with a meta map of one entry, so it cannot say that a task was
-   * assigned or updated. Prompt 230 WP2 carries that change to the mock; until then the
+   * task without a reason, so it cannot say that a task was assigned or updated. Prompt 230 WP2 carries that change to the mock; until then the
    * end-to-end tests assert that a repeated delivery reaches the cockpit at all.
    */
   @Test
@@ -486,6 +486,80 @@ public class PeaCockpitObserverTest {
     assertEquals("instance-of-the-ride", publisher.userTasks().getFirst().workflowId());
     assertEquals(TestModels.BPMN_PROCESS_ID, publisher.workflows().getFirst().bpmnProcessId());
     assertEquals("instance-of-the-ride", publisher.workflows().getFirst().workflowId());
+
+  }
+
+  /** How the warning about two different ids names the instance of the task. */
+  private static final String TWO_IDS = "but it delivers a user task of that workflow as one of process instance '%s'";
+
+  private static PeaUserTaskObservation aDeliveryOf(
+      final String taskId,
+      final String bpmnProcessId,
+      final String processInstanceId) {
+
+    return new PeaUserTaskObservation(
+        TestModels.ADAPTER_ID, TestModels.MODULE_ID, bpmnProcessId, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+            taskId, Map.of(PeaTaskMeta.BPMN_TASK_ID, "review", CommonRestrictions.PROCESS_INSTANCE_ID,
+                processInstanceId)), Map
+                    .of());
+
+  }
+
+  private static long linesAbout(
+      final CapturedOutput output,
+      final String processInstanceId) {
+
+    return output
+        .getAll()
+        .lines()
+        .filter(line -> line.contains(TWO_IDS.formatted(processInstanceId)))
+        .count();
+
+  }
+
+  @Test
+  @DisplayName("A task in another instance than the one the start named is said out loud, once per instance")
+  public void aTaskInAnotherInstanceThanTheStartIsSaidOnce(
+      final CapturedOutput output) {
+
+    // the ride calls nothing which shares its aggregate, so this task is no step. Its engine
+    // names another instance than the one it answered the start with
+    final var observer = anObserverOfARideCallingACheck(false);
+    observer.userTaskDelivered(aDeliveryOf("task-1", TestModels.BPMN_PROCESS_ID, "instance-of-a-broken-engine"));
+    observer.userTaskDelivered(aDeliveryOf("task-2", TestModels.BPMN_PROCESS_ID, "instance-of-a-broken-engine"));
+
+    assertEquals(1, linesAbout(output, "instance-of-a-broken-engine"), output.getAll());
+    // the task is still reported, under the id it names
+    assertEquals("instance-of-a-broken-engine", publisher.userTasks().getFirst().workflowId());
+    assertEquals(2, publisher.userTasks().size());
+
+  }
+
+  @Test
+  @DisplayName("A task of a called step names another instance than the start, and that is no reason to warn")
+  public void aTaskOfACalledStepIsNoReasonToWarn(
+      final CapturedOutput output) {
+
+    anObserverOfARideCallingACheck(true)
+        .userTaskDelivered(aDeliveryOf("task-1", "ARideCheck", "instance-of-a-called-check"));
+    // the same for a called process with an aggregate of its own: VanillaBP never started it
+    anObserverOfARideCallingACheck(false)
+        .userTaskDelivered(aDeliveryOf("task-2", "ARideCheck", "instance-of-a-check-of-its-own"));
+
+    assertEquals(0, linesAbout(output, "instance-of-a-called-check"), output.getAll());
+    assertEquals(0, linesAbout(output, "instance-of-a-check-of-its-own"), output.getAll());
+
+  }
+
+  @Test
+  @DisplayName("A task in the instance the start named is no reason to warn")
+  public void aTaskInTheStartedInstanceIsNoReasonToWarn(
+      final CapturedOutput output) {
+
+    anObserverOfARideCallingACheck(false)
+        .userTaskDelivered(aDeliveryOf("task-1", TestModels.BPMN_PROCESS_ID, "instance-of-the-ride"));
+
+    assertEquals(0, linesAbout(output, "instance-of-the-ride"), output.getAll());
 
   }
 

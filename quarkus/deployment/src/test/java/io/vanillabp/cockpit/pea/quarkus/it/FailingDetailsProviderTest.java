@@ -97,6 +97,8 @@ public class FailingDetailsProviderTest {
       final TestAggregate aggregate,
       final String taskId) {
 
+    // the id as text matches no start variable, so this engine names no instance, like one
+    // which keeps no instance id in its tasks. The case stands under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

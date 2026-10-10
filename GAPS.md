@@ -182,8 +182,8 @@ mostly there. The Process-Engine-API adapter writes the engine's id of the
 workflow into a record where the engine named the process instance in its delivery. It writes the
 BPMN element where the engine named it, or where the deployed model has only one user task with that
 form. A field the adapter leaves empty is answered the way a delivery answers it, and decisions 9 and 15
-in `DECISIONS.md` say how. The in-memory engine of the tests names no process instance, so its records
-name no workflow.
+in `DECISIONS.md` say how. The in-memory engine of the tests names the instance it started, so its
+records name that workflow (decision 22).
 
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
 answered a start with, and `WorkflowElection#workflowStartOf` reads it. So a case whose workflow

@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import dev.bpmcrafters.processengineapi.CommonRestrictions;
 import dev.bpmcrafters.processengineapi.task.TaskInformation;
 import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
@@ -39,6 +38,10 @@ import jakarta.transaction.UserTransaction;
  * <p>
  * It runs the same way through as the Spring Boot test of this repository. It exists because a
  * platform-neutral half being right says nothing about a platform's glue ever calling it.
+ * <p>
+ * The engine names the instance of a task by the variables the workflow was started with, so a
+ * task carries the aggregate's id with its real type. A test which hands it over as text plays an
+ * engine which names no instance at all.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput
@@ -70,32 +73,37 @@ public class PeaCockpitTest {
   @Inject
   WorkflowElection election;
 
+  /**
+   * Starts a workflow and waits until the start reached the engine. Only then can the engine tell
+   * which instance a task belongs to.
+   */
   private TestAggregate aStartedWorkflow(
       final String customer) throws Exception {
 
     transaction.begin();
+    final TestAggregate started;
     try {
       final var aggregate = new TestAggregate();
       aggregate.setCustomer(customer);
-      final var started = workflowService.processes().startWorkflow(aggregate);
+      started = workflowService.processes().startWorkflow(aggregate);
       transaction.commit();
-      return started;
     } catch (final RuntimeException e) {
       transaction.rollback();
       throw e;
     }
+    awaitTheStartedWorkflowOf(started);
+    return started;
 
   }
 
   /**
-   * The identifier the cockpit shows a business case under. This engine names no process
-   * instance, so it is the workflow aggregate's id - decision 6 in the repository's
-   * DECISIONS.md.
+   * The identifier the cockpit shows a business case under. This engine names the instance it
+   * answered the start with in every task of it, so it is the id VanillaBP wrote down at the start.
    */
-  private static String workflowIdOf(
-      final TestAggregate aggregate) {
+  private String workflowIdOf(
+      final TestAggregate aggregate) throws InterruptedException {
 
-    return String.valueOf(aggregate.getId());
+    return awaitTheStartedWorkflowOf(aggregate);
 
   }
 
@@ -110,7 +118,46 @@ public class PeaCockpitTest {
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
+                .of("id", aggregate.getId()));
+
+  }
+
+  /**
+   * Like {@link #aDeliveredUserTask}, as an engine delivers it which names no process instance.
+   * The Process-Engine-API promises the same id at the start and in a task, but it does not make
+   * an engine name one in a task at all. The in-memory engine names the instance whose start
+   * variables a task carries with the same value and type. The aggregate's id as text matches no
+   * start, so the task names no instance.
+   */
+  private void aDeliveredUserTaskWhichNamesNoInstance(
+      final TestAggregate aggregate,
+      final String taskId) {
+
+    engine
+        .deliverTask(
+            taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
                 .of("id", String.valueOf(aggregate.getId())));
+
+  }
+
+  /**
+   * Changes the customer of a case and reports the change to the cockpit.
+   */
+  private void changeTheCustomer(
+      final TestAggregate aggregate,
+      final String customer) throws Exception {
+
+    transaction.begin();
+    try {
+      final var loaded = aggregates.byId(aggregate.getId());
+      loaded.setCustomer(customer);
+      aggregates.save(loaded);
+      workflowService.businessCockpit().aggregateChanged(loaded);
+      transaction.commit();
+    } catch (final RuntimeException e) {
+      transaction.rollback();
+      throw e;
+    }
 
   }
 
@@ -183,9 +230,7 @@ public class PeaCockpitTest {
     engine
         .deliverTask(
             "task-passenger", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of(
-                    "id", String.valueOf(aggregate.getId()), TestWorkflowService.PASSENGER_VARIABLE,
-                    "Paul"));
+                .of("id", aggregate.getId(), TestWorkflowService.PASSENGER_VARIABLE, "Paul"));
 
     final var userTask = CockpitServer
         .awaitRequest("/usertask/created", "\"userTaskId\":\"task-passenger\"");
@@ -205,8 +250,8 @@ public class PeaCockpitTest {
     // the engine repeats a delivery whenever something about the task changed - its assignee,
     // its candidates or its data - and the cockpit is told again. WHICH of the two it is told,
     // created or updated, is decided by the reason the engine names, and the in-memory engine
-    // this test runs against names none: it delivers with a meta map of one entry and no
-    // reason, so a repeated delivery arrives here as a second creation. That the kind follows
+    // this test runs against names none: it delivers with no reason, so a repeated delivery
+    // arrives here as a second creation. That the kind follows
     // the reason is asserted in the unit tests of the neutral module, and prompt 230 WP2
     // carries the change which would let this engine drive it.
     aDeliveredUserTask(aggregate, "task-6");
@@ -288,6 +333,30 @@ public class PeaCockpitTest {
 
   }
 
+  @Test
+  @DisplayName("On an engine which names no instance, a changed aggregate updates the case under the aggregate's id")
+  public void aggregateChangedUpdatesACaseOfAnEngineWhichNamesNoInstance() throws Exception {
+
+    final var aggregate = aStartedWorkflow("Hanna");
+    final var aggregateId = String.valueOf(aggregate.getId());
+    aDeliveredUserTaskWhichNamesNoInstance(aggregate, "task-8");
+    // the case appears under the aggregate's id (decision 6), not under the id of the start
+    CockpitServer.awaitRequestOf("/workflow/created", "\"workflowId\":\"%s\"".formatted(aggregateId));
+    CockpitServer.forgetRequests();
+
+    changeTheCustomer(aggregate, "Hanna the second");
+
+    // the open task answers before the id of the start, so the update goes to the case the
+    // cockpit knows. See decision 22 in the repository's DECISIONS.md
+    final var updated = CockpitServer.awaitAnyRequest("/workflow/%s/updated".formatted(aggregateId));
+    assertTrue(updated.body().contains("\"customer\":\"Hanna the second\""), updated.body());
+    CockpitServer.awaitQuiet();
+    assertTrue(
+        CockpitServer.matching("/workflow/%s/updated".formatted(workflowIdOf(aggregate))).isEmpty(),
+        "the change went out under the id of the start as well, which the cockpit does not know");
+
+  }
+
   /**
    * Waits for the id VanillaBP writes down once phase two of the start reached the engine.
    *
@@ -317,19 +386,15 @@ public class PeaCockpitTest {
   public void aggregateChangedUpdatesAWorkflowWithoutAnOpenTask() throws Exception {
 
     final var aggregate = aStartedWorkflow("Fritz");
-    final var workflowId = awaitTheStartedWorkflowOf(aggregate);
-    // an engine like the reference one, which names the instance it answered the start with in
-    // every task it delivers. The in-memory engine names none unless it is told to. It names a
-    // version tag as well: without one the case has no version, and decision 16 in the
+    final var workflowId = workflowIdOf(aggregate);
+    // the engine names the instance it answered the start with, as every task of it does. It
+    // names a version tag as well: without one the case has no version, and decision 16 in the
     // repository's DECISIONS.md reports no change then
     engine
         .deliverTask(
             "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of("id", String.valueOf(aggregate.getId())),
-            Map
-                .of(
-                    CommonRestrictions.PROCESS_INSTANCE_ID, workflowId, PeaTaskMeta.PROCESS_VERSION_TAG,
-                    "1.0.0"));
+                .of("id", aggregate.getId()),
+            Map.of(PeaTaskMeta.PROCESS_VERSION_TAG, "1.0.0"));
     CockpitServer.awaitRequestOf("/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowId));
     engine
         .terminateTask(

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
 import io.vanillabp.integration.extension.spi.election.WorkflowElection;
+import io.vanillabp.integration.extension.spi.election.WorkflowStart;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 
 /**
@@ -26,8 +27,7 @@ import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
  * <li>Which declared processes share the task's workflow aggregate. The core answers it
  * (<code>WorkflowTaskWiring#workflowsShareTheWorkflowAggregate</code>), the same answer the Camunda
  * 7 and Camunda 8 adapters use for their call activities. Nothing is decided here. A process which
- * shares its aggregate with no other declared process is a case of its own, and nothing else is
- * read.</li>
+ * shares its aggregate with no other declared process is a case of its own.</li>
  * <li>Which instance VanillaBP started for the aggregate. That is the note of the start, read under
  * the first process which shares the aggregate, in the order the application declared them. The
  * primary process of a workflow service comes first, so that is the process whose start row
@@ -40,6 +40,12 @@ import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
  * <p>
  * What was found is remembered per process instance, because each delivery would read the note
  * again. A called instance does not change its caller.
+ * <p>
+ * A task which is no step of a called process is checked against the note of its own process as
+ * well. The Process-Engine-API promises that the id a start answers with is the id the tasks of
+ * that instance name. Where the note names another instance, the engine breaks that promise, and
+ * the cockpit would show the case under two ids. That is said once per instance, with the first
+ * task of it. See decision 22 in the repository's DECISIONS.md.
  */
 public class PeaBusinessCases {
 
@@ -127,6 +133,11 @@ public class PeaBusinessCases {
       }
     }
     final var found = theCaseOf(adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, processInstanceId);
+    if (found == null) {
+      // the task is not a step of a called process, so its instance should be the started one
+      checkTheStartNamesTheSameInstance(
+          adapterId, workflowModuleId, bpmnProcessId, workflowAggregateId, processInstanceId);
+    }
     synchronized (casesByInstance) {
       casesByInstance.put(key, found);
     }
@@ -169,6 +180,50 @@ public class PeaBusinessCases {
       return null;
     }
     return new BusinessCase(start.get().workflowId(), caller.get(), start.get().processVersion());
+
+  }
+
+  /**
+   * Says that the start of a workflow and a task of it name two different instances.
+   * <p>
+   * It is called once per instance, for a task which is no step of a called process. Where
+   * VanillaBP wrote down no start of the task's own process, or the engine named no instance in
+   * the task, there is nothing to compare. A called process VanillaBP never started has no note
+   * of its own, so it is never compared.
+   */
+  private void checkTheStartNamesTheSameInstance(
+      final String adapterId,
+      final String workflowModuleId,
+      final String bpmnProcessId,
+      final String workflowAggregateId,
+      final String processInstanceId) {
+
+    final var started = election
+        .workflowStartOf(workflowModuleId, bpmnProcessId, workflowAggregateId)
+        .filter(written -> (written.adapterId() == null) || written.adapterId().equals(adapterId))
+        .map(WorkflowStart::workflowId)
+        .filter(Objects::nonNull);
+    if (started.isEmpty() || started.get().equals(processInstanceId)) {
+      return;
+    }
+    logger
+        .warn(
+            """
+                Process-Engine-API[{}]: the engine started the workflow of aggregate '{}' (BPMN \
+                process '{}' of workflow module '{}') as process instance '{}', but it delivers a \
+                user task of that workflow as one of process instance '{}'. The Process-Engine-API \
+                promises that both are the same id. The cockpit shows the case under the id of \
+                the task, and a change reported while the case has no open user task goes out \
+                under the id of the start, which the cockpit does not know. Ask the maintainers of \
+                the engine adapter to name the same process instance in both places. This is also \
+                said where VanillaBP started a second workflow for the same aggregate while a task \
+                of the first one is still open.""",
+            adapterId,
+            workflowAggregateId,
+            bpmnProcessId,
+            workflowModuleId,
+            started.get(),
+            processInstanceId);
 
   }
 
