@@ -89,6 +89,8 @@ public class DetailsProviderVersionTest {
       final String taskId,
       final String versionTag) {
 
+    // the id as text matches no start variable, so this engine names no instance, like one
+    // which keeps no instance id in its tasks. The case stands under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.VERSIONED_TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -160,6 +162,8 @@ public class DetailsProviderVersionTest {
 
     final var aggregate = aStartedWorkflow("Udo");
 
+    // the id as text matches no start variable, so this engine names no instance, like one
+    // which keeps no instance id in its tasks. The case stands under the aggregate's id
     engine
         .deliverTask(
             "approve-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

@@ -23,6 +23,7 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
@@ -53,6 +54,9 @@ public class RestartedNodeTest {
   /** How long the test gives VanillaBP to stamp the record of a completed task. */
   private static final Duration STAMP_TIMEOUT = Duration.ofSeconds(30);
 
+  /** How long the test gives VanillaBP to write down the start of a workflow. */
+  private static final Duration START_TIMEOUT = Duration.ofSeconds(30);
+
   /**
    * The database {@link ADatabaseOfItsOwn} gives this class. The restarted node is booted outside
    * the test framework, so it is told the same URL by hand.
@@ -81,6 +85,10 @@ public class RestartedNodeTest {
 
   @Autowired
   private PeaRecordedUserTasks recordedUserTasks;
+
+  /** VanillaBP's election, which says what id it wrote down when it started a workflow. */
+  @Autowired
+  private WorkflowElection election;
 
   /**
    * Waits until VanillaBP has written down that the task is closed.
@@ -141,15 +149,51 @@ public class RestartedNodeTest {
 
   }
 
+  /**
+   * Starts a workflow and waits until the start reached the engine. Only then can the engine tell
+   * which instance a task belongs to.
+   */
   private TestAggregate aStartedWorkflow(
       final String customer) {
 
-    return transactions
+    final var started = transactions
         .execute(status -> {
           final var aggregate = new TestAggregate();
           aggregate.setCustomer(customer);
           return workflowService.processes().startWorkflow(aggregate);
         });
+    workflowIdOf(started);
+    return started;
+
+  }
+
+  /**
+   * Waits for the id VanillaBP writes down once phase two of the start reached the engine.
+   *
+   * @param aggregate The case whose workflow was started
+   * @return The engine's id of the workflow
+   */
+  private String workflowIdOf(
+      final TestAggregate aggregate) {
+
+    final var giveUpAt = System.currentTimeMillis() + START_TIMEOUT.toMillis();
+    while (System.currentTimeMillis() < giveUpAt) {
+      final var workflowId = election
+          .workflowIdOf(MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, aggregate.getId());
+      if (workflowId.isPresent()) {
+        return workflowId.get();
+      }
+      try {
+        Thread.sleep(50);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("interrupted while waiting for the start of aggregate "
+            + aggregate.getId(), e);
+      }
+    }
+    throw new AssertionError(
+        "VanillaBP wrote down no start of the workflow of aggregate %s within %s"
+            .formatted(aggregate.getId(), START_TIMEOUT));
 
   }
 
@@ -178,7 +222,7 @@ public class RestartedNodeTest {
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of("id", String.valueOf(aggregate.getId())),
+                .of("id", aggregate.getId()),
             versionTag == null
                 ? Map.of()
                 : Map.of(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag));
@@ -222,9 +266,9 @@ public class RestartedNodeTest {
           open.getFirst().bpmnTaskId(),
           "the adapter wrote the BPMN element into the record, read out of the model it deployed");
       assertEquals(
-          String.valueOf(aggregate.getId()),
+          workflowIdOf(aggregate),
           open.getFirst().workflowId(),
-          "the in-memory engine names no process instance, so the case is shown under its aggregate");
+          "the engine named the instance it started, and the adapter wrote it into the record");
 
       assertEquals(
           TestWorkflowService.VERSION_TAG,

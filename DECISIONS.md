@@ -398,7 +398,7 @@ Where this is referred to, each in its own words rather than by number:
 - decision 11 and decision 12 keep their text. `FailingDetailsProviderTest` holds their behaviour
   and asserts the same things as before, it only waits for the right report now
 
-## 14. A business case without an open user task is found by the workflow VanillaBP started - what a start written down with its version reports narrowed by decision 16
+## 14. A business case without an open user task is found by the workflow VanillaBP started - what a start written down with its version reports narrowed by decision 16, the in-memory engine corrected by decision 22
 
 Decided on 2026-10-03.
 
@@ -457,7 +457,9 @@ and a workflow without any user task still never appears, because nothing report
 What changes is that a case which once had a user task keeps receiving its updates after its tasks
 are done.
 
-## 15. A delivery record names the workflow and the BPMN element where the adapter can
+Decision 22 corrects what this entry says about the API's promise and the in-memory engine.
+
+## 15. A delivery record names the workflow and the BPMN element where the adapter can - the in-memory engine corrected by decision 22
 
 Decided on 2026-10-04 for story 1420.
 
@@ -489,6 +491,8 @@ report of its delivery.
 
 The rest of decision 9 stands. A record still holds no field of the content, and the memory still
 answers first where it holds the task.
+
+Decision 22 corrects what this entry says about the in-memory engine.
 
 ## 16. A business case without an open user task takes its version from VanillaBP's note of the start
 
@@ -669,7 +673,7 @@ from the application.
 variable which no `@WorkflowTask` method reads. The test asserts that the subscription asks for it
 and that the report the cockpit receives carries its value. This closes entry 4 in `GAPS.md`.
 
-## 21. A task of a called process belongs to the caller's case where both share the workflow aggregate
+## 21. A task of a called process belongs to the caller's case where both share the workflow aggregate - the note of the task's own process read by decision 22
 
 Decision 6 reports a business case with its first user task, under the process instance the engine
 names. Until now that was the instance the task sits in, so every called process became a case of
@@ -717,3 +721,45 @@ delivers it, and `aggregateChanged` does not report it again. That is the gap st
 `PeaCockpitObserverTest` shows the three cases: a step, a called process with an aggregate of its
 own, and a task of the instance VanillaBP started. `PeaCockpitTest` shows the step on a booted
 application.
+
+## 22. The id of a start is the id its tasks name, and a task which names another one is said out loud
+
+Decided on 2026-10-10 for story 1421.
+
+**The promise.** The Process-Engine-API promises that the `instanceId` a start answers with is the
+`processInstanceId` the tasks of that instance name in their meta map. Its maintainers confirmed
+this on 2026-10-05 (bpm-crafters/process-engine-api issue 318): an engine which names another id has
+a bug. Decision 14 said that the API does not promise it. That was true when it was written, and it
+is not true any more.
+
+**The in-memory engine keeps it.** Decisions 14 and 15 say that the in-memory engine of the tests
+names no process instance in its tasks. It does now. It names the instance whose start variables a
+task carries, with the same value and the same type. A task which matches no start still names
+none. The tests of this repository hand over the aggregate's id with its real type, so their cases
+stand under the id of the start. A few tests hand it over as text on purpose, which plays an engine
+that names no instance.
+
+**A task which names another instance is said out loud.** `PeaBusinessCases` compares the instance
+a task names with the note VanillaBP wrote down when it started the task's own process. Where both
+are known and they differ, it logs a warning. It does so once per instance, with the first task of
+it, because the answer for an instance is remembered. A step of a called process is never compared:
+its instance is another one by design (decision 21). A called process VanillaBP never started has
+no note, and a task which names no instance has nothing to compare. Both stay silent. So a task
+which is no step now costs one read of a note, even where its process shares its aggregate with
+nobody and decision 21 read nothing. That is one read per instance, the same as a step costs.
+
+The warning also comes where VanillaBP started a second workflow for the same aggregate while a task
+of the first is still open. The note names the last start. The text says so.
+
+**The open tasks still answer first.** `workflowsOfAggregate` asks the open tasks before the note
+of the start (decision 14). On an engine which keeps the promise both give the same id, so the order
+changes nothing there. It still matters for an engine which names no instance in its tasks. The
+promise is about the id where one is named. It does not make an engine name one. Such an engine
+shows its cases under the aggregate's id (decision 6), while the note names the engine's instance.
+The order keeps a change of such a case under the id the cockpit knows. It also protects against an
+engine which breaks the promise.
+
+We tried the other order. With the note asked first, `PeaCockpitTest` of the Spring Boot module
+failed only in the test with an engine which names no instance: the update went out under the id of
+the start, which the cockpit does not know. Every test with an engine which names the instance
+passed. So the order stays.

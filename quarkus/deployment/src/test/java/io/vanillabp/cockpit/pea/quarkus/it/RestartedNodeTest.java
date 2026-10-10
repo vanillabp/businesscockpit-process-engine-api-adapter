@@ -3,6 +3,7 @@ package io.vanillabp.cockpit.pea.quarkus.it;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -83,20 +84,50 @@ public class RestartedNodeTest {
 
   }
 
+  /**
+   * Starts a workflow and waits until the start reached the engine. Only then can the engine tell
+   * which instance a task belongs to.
+   */
   private TestAggregate aStartedWorkflow(
       final String customer) throws Exception {
 
     transaction.begin();
+    final TestAggregate started;
     try {
       final var aggregate = new TestAggregate();
       aggregate.setCustomer(customer);
-      final var started = workflowService.processes().startWorkflow(aggregate);
+      started = workflowService.processes().startWorkflow(aggregate);
       transaction.commit();
-      return started;
     } catch (final RuntimeException e) {
       transaction.rollback();
       throw e;
     }
+    workflowIdOf(started);
+    return started;
+
+  }
+
+  /**
+   * Waits for the id VanillaBP writes down once phase two of the start reached the engine.
+   *
+   * @param aggregate The case whose workflow was started
+   * @return The engine's id of the workflow
+   */
+  private String workflowIdOf(
+      final TestAggregate aggregate) throws InterruptedException {
+
+    final var giveUpAt = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+    while (System.nanoTime() < giveUpAt) {
+      final var workflowId = election
+          .workflowIdOf(MODULE_ID, TestWorkflowService.BPMN_PROCESS_ID, aggregate.getId());
+      if (workflowId.isPresent()) {
+        return workflowId.get();
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError(
+        "VanillaBP wrote down no start of the workflow of aggregate %s within 30 seconds"
+            .formatted(aggregate.getId()));
 
   }
 
@@ -125,7 +156,7 @@ public class RestartedNodeTest {
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
-                .of("id", String.valueOf(aggregate.getId())),
+                .of("id", aggregate.getId()),
             versionTag == null
                 ? Map.of()
                 : Map.of(PeaTaskMeta.PROCESS_VERSION_TAG, versionTag));
@@ -164,9 +195,9 @@ public class RestartedNodeTest {
         open.getFirst().bpmnTaskId(),
         "the adapter wrote the BPMN element into the record, read out of the model it deployed");
     assertEquals(
-        String.valueOf(aggregate.getId()),
+        workflowIdOf(aggregate),
         open.getFirst().workflowId(),
-        "the in-memory engine names no process instance, so the case is shown under its aggregate");
+        "the engine named the instance it started, and the adapter wrote it into the record");
 
     assertEquals(
         TestWorkflowService.VERSION_TAG,

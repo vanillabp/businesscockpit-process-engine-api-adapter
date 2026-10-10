@@ -43,7 +43,7 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * {@link WorkflowElection#workflowStartOf} reads that note without asking the engine. It answers
  * for a business case which has no open user task at the moment, such as a workflow which is busy
  * with a service task. Why it comes after the tasks, and what an empty answer means, is decision
- * 14.
+ * 14. Why it still comes after them on an engine which keeps the id of the start is decision 22.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -223,7 +223,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * no details provider which names a version. Where there is no tag either, the workflow is left
    * out with a warning, because a report without a version would empty the details the cockpit
    * shows. The tasks come first, because they name the id the cockpit already shows the case under
-   * (decision 14).
+   * (decision 14). On an engine which keeps the promise of decision 22 both ids are the same. The
+   * order still serves an engine which names no instance in its tasks.
    * <p>
    * The same holds whether VanillaBP says that a version may still come or that it never will
    * ({@link WorkflowStart#versionsAreReported}). "Never" is also its answer for a note which names
