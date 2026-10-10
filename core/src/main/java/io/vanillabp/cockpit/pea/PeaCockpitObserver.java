@@ -91,6 +91,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   private final Supplier<BusinessCockpitEventPublisher> publisher;
 
+  private final PeaBusinessCases cases;
+
   /**
    * Builds the observer which the adapter calls for every user task it delivers and every task
    *which ends.
@@ -104,19 +106,22 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * @param publisher Where an observed event is handed to. It is asked for on the first event
    *          rather than up front, because this object is built while the application is still
    *          wiring itself together
+   * @param cases Which case a task of a called process belongs to
    */
   public PeaCockpitObserver(
       final PeaDeployedProcessesRegistry deployedProcesses,
       final WorkflowTaskWiring workflowTaskWiring,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
-      final Supplier<BusinessCockpitEventPublisher> publisher) {
+      final Supplier<BusinessCockpitEventPublisher> publisher,
+      final PeaBusinessCases cases) {
 
     this.deployedProcesses = Objects.requireNonNull(deployedProcesses, "deployedProcesses");
     this.workflowTaskWiring = Objects.requireNonNull(workflowTaskWiring, "workflowTaskWiring");
     this.deliveredUserTasks = Objects.requireNonNull(deliveredUserTasks, "deliveredUserTasks");
     this.versions = Objects.requireNonNull(versions, "versions");
     this.publisher = Objects.requireNonNull(publisher, "publisher");
+    this.cases = Objects.requireNonNull(cases, "cases");
 
   }
 
@@ -173,13 +178,22 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
     }
 
     final var element = elementOf(process, observation);
+    // a task of a called process which shares its caller's aggregate belongs to the caller's
+    // case. See decision 21 in the repository's DECISIONS.md
+    final var caller = cases
+        .callerOf(
+            observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, observation
+                .workflowAggregateId(),
+            PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.WORKFLOW_ID));
     final var reference = new UserTaskReference(
         observation.adapterId(), observation.workflowModuleId(), bpmnProcessId, reportedVersionOf(
             observation), observation
-                .workflowAggregateId(), workflowIdOf(observation), observation.taskId(), taskDefinitionOf(
-                    observation, element), element == null
-                        ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
-                        : element.activityId());
+                .workflowAggregateId(), caller
+                    .map(PeaBusinessCases.BusinessCase::workflowId)
+                    .orElseGet(() -> workflowIdOf(observation)), observation.taskId(), taskDefinitionOf(
+                        observation, element), element == null
+                            ? PeaTaskMeta.text(observation.taskInformation(), PeaTaskMeta.BPMN_TASK_ID)
+                            : element.activityId());
     // remembered BEFORE the event is handed over, and the order matters. The cockpit builds the
     // report inside the call below and asks the bridge what the delivery said, and the bridge has
     // nowhere else to read that from
@@ -189,7 +203,16 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                 reference, detailsOf(observation, process, element, shownVersionOf(
                     observation, bpmnProcessId))));
 
-    reportTheWorkflowOnceItsFirstTaskAppeared(reference);
+    reportTheWorkflowOnceItsFirstTaskAppeared(
+        caller
+            .map(
+                theCase -> new WorkflowReference(
+                    reference.adapterId(), reference.workflowModuleId(), theCase.bpmnProcessId(), versionOfTheCase(
+                        reference, theCase), reference.workflowAggregateId(), theCase.workflowId()))
+            .orElseGet(
+                () -> new WorkflowReference(
+                    reference.adapterId(), reference.workflowModuleId(), reference.bpmnProcessId(), reference
+                        .processVersion(), reference.workflowAggregateId(), reference.workflowId())));
 
     publisher
         .get()
@@ -244,26 +267,41 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * no other moment to report one. It is reported with the FIRST user task of a case rather than
    * with every one, because a case created again with every task of it is a case whose creation
    * date moves. That is decision 6 in the repository's DECISIONS.md. A case which the node has
-   * since pushed out of its memory is reported as created again.
+   * since pushed out of its memory is reported as created again. Where the first task sits in a
+   * called process which shares the caller's aggregate, the case is the caller's, and it is
+   * reported under the caller's process (decision 21).
    */
   private void reportTheWorkflowOnceItsFirstTaskAppeared(
-      final UserTaskReference userTask) {
+      final WorkflowReference workflow) {
 
-    if (deliveredUserTasks.workflowWasReported(userTask.adapterId(), userTask.workflowId())) {
+    if (deliveredUserTasks.workflowWasReported(workflow.adapterId(), workflow.workflowId())) {
       return;
     }
     publisher
         .get()
         .publishWorkflowEvent(
-            new WorkflowReference(
-                userTask.adapterId(), userTask.workflowModuleId(), userTask.bpmnProcessId(), userTask
-                    .processVersion(), userTask.workflowAggregateId(), userTask.workflowId()),
-            WorkflowEventKind.CREATED, "%s#created".formatted(userTask.workflowId()), OffsetDateTime
+            workflow, WorkflowEventKind.CREATED, "%s#created".formatted(workflow.workflowId()), OffsetDateTime
                 .now(),
             EventTransaction.NEW);
     // only now. A report which did not get written leaves the case unreported, so the next user
     // task of the case makes it appear, and so does the repeated delivery of this one
-    deliveredUserTasks.rememberWorkflowWasReported(userTask.adapterId(), userTask.workflowId());
+    deliveredUserTasks.rememberWorkflowWasReported(workflow.adapterId(), workflow.workflowId());
+
+  }
+
+  /**
+   * The version of the caller's case: what VanillaBP wrote down at its start, and otherwise the
+   * version this adapter deployed. A task of the called process names the version of the called
+   * model, which says nothing about the caller's.
+   */
+  private String versionOfTheCase(
+      final UserTaskReference userTask,
+      final PeaBusinessCases.BusinessCase theCase) {
+
+    if ((theCase.processVersion() != null) && !theCase.processVersion().isBlank()) {
+      return theCase.processVersion();
+    }
+    return versions.versionOf(userTask.adapterId(), userTask.workflowModuleId(), theCase.bpmnProcessId());
 
   }
 

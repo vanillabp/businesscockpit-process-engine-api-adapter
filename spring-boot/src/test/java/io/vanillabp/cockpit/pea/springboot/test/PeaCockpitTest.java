@@ -445,6 +445,43 @@ public class PeaCockpitTest {
   }
 
   @Test
+  @DisplayName("A task of a called process which shares the aggregate is filed under the caller's case")
+  public void aTaskOfACalledStepIsFiledUnderTheCallersCase() throws InterruptedException {
+
+    final var aggregate = aStartedWorkflow("Greta");
+    final var workflowId = awaitTheStartedWorkflowOf(aggregate);
+
+    // the first task of this case sits in the called process. The engine names the instance of
+    // the called process, which is not the one VanillaBP started. See decision 21 in the
+    // repository's DECISIONS.md
+    engine
+        .deliverTask(
+            "task-check", TestWorkflowService.CALLED_TASK_DEFINITION, TestWorkflowService.CALLED_BPMN_PROCESS_ID, Map
+                .of("id", String.valueOf(aggregate.getId())),
+            Map.of(CommonRestrictions.PROCESS_INSTANCE_ID, "the-called-instance"));
+
+    final var userTask = CockpitServer.awaitRequest("/usertask/created", "\"userTaskId\":\"task-check\"");
+    assertTrue(userTask.body().contains("\"workflowId\":\"%s\"".formatted(workflowId)), userTask.body());
+    assertTrue(
+        userTask.body().contains("\"bpmnProcessId\":\"%s\"".formatted(TestWorkflowService.CALLED_BPMN_PROCESS_ID)),
+        userTask.body());
+    // the case appears with that task, as the caller's case and under the caller's process
+    final var workflow = CockpitServer
+        .awaitRequest("/workflow/created", "\"workflowId\":\"%s\"".formatted(workflowId));
+    assertTrue(
+        workflow.body().contains("\"bpmnProcessId\":\"%s\"".formatted(TestWorkflowService.BPMN_PROCESS_ID)),
+        workflow.body());
+    CockpitServer.awaitQuiet();
+    assertTrue(
+        CockpitServer
+            .matching("/workflow/created")
+            .stream()
+            .noneMatch(request -> request.body().contains("the-called-instance")),
+        "the called process became a case of its own");
+
+  }
+
+  @Test
   @DisplayName("A user task is readable while this node holds it and gone afterwards")
   public void aUserTaskIsReadableWhileItIsHeld() {
 

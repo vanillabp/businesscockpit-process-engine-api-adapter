@@ -70,7 +70,7 @@ public class PeaCockpitObserverTest {
         deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher, TestModels.noCallers());
 
   }
 
@@ -385,7 +385,7 @@ public class PeaCockpitObserverTest {
         deployedWithASecondProcess("AReview"), TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher, TestModels.noCallers());
 
     observerOfTwoProcesses.userTaskDelivered(aDeliveryOf("AReview"));
 
@@ -406,7 +406,7 @@ public class PeaCockpitObserverTest {
             "ARideCheck"), deliveredUserTasks, (
                 adapterId,
                 workflowModuleId,
-                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher);
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher, TestModels.noCallers());
 
     observerOfTwoProcesses.userTaskDelivered(aDeliveryOf("ARideCheck"));
 
@@ -414,6 +414,78 @@ public class PeaCockpitObserverTest {
     assertEquals("ARideCheck", publisher.userTasks().getFirst().bpmnProcessId());
     assertEquals("review", publisher.userTasks().getFirst().bpmnTaskId());
     assertEquals(1, publisher.workflows().size());
+
+  }
+
+  private static PeaUserTaskObservation aDeliveryOf(
+      final String bpmnProcessId,
+      final String processInstanceId) {
+
+    return new PeaUserTaskObservation(
+        TestModels.ADAPTER_ID, TestModels.MODULE_ID, bpmnProcessId, TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+            "task-1", Map.of(PeaTaskMeta.BPMN_TASK_ID, "review", CommonRestrictions.PROCESS_INSTANCE_ID,
+                processInstanceId)), Map
+                    .of());
+
+  }
+
+  /**
+   * An observer of the ride and the check of the car the ride calls. VanillaBP wrote down the
+   * instance it started for the ride.
+   */
+  private PeaCockpitObserver anObserverOfARideCallingACheck(
+      final boolean sharingTheAggregate) {
+
+    final var election = new TestElection();
+    election.started("4711", "instance-of-the-ride");
+    return new PeaCockpitObserver(
+        deployedWithASecondProcess("ARideCheck"), TestModels.claiming(TestModels.BPMN_PROCESS_ID,
+            "ARideCheck"), deliveredUserTasks, (
+                adapterId,
+                workflowModuleId,
+                bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, () -> publisher, TestModels
+                    .theRideCalls("ARideCheck", sharingTheAggregate, election));
+
+  }
+
+  @Test
+  @DisplayName("A task of a called process which shares the aggregate is reported under the caller's case")
+  public void aTaskOfACalledStepBelongsToTheCallersCase() {
+
+    anObserverOfARideCallingACheck(true).userTaskDelivered(aDeliveryOf("ARideCheck", "instance-of-the-check"));
+
+    assertEquals(1, publisher.userTasks().size());
+    assertEquals("ARideCheck", publisher.userTasks().getFirst().bpmnProcessId());
+    assertEquals("instance-of-the-ride", publisher.userTasks().getFirst().workflowId());
+    // the case appears with this task, and it is the ride's case under the ride's process
+    assertEquals(1, publisher.workflows().size());
+    assertEquals(TestModels.BPMN_PROCESS_ID, publisher.workflows().getFirst().bpmnProcessId());
+    assertEquals("instance-of-the-ride", publisher.workflows().getFirst().workflowId());
+
+  }
+
+  @Test
+  @DisplayName("A task of a called process with an aggregate of its own is reported under its own case")
+  public void aTaskOfACalledProcessWithItsOwnAggregateIsACase() {
+
+    anObserverOfARideCallingACheck(false).userTaskDelivered(aDeliveryOf("ARideCheck", "instance-of-the-check"));
+
+    assertEquals("instance-of-the-check", publisher.userTasks().getFirst().workflowId());
+    assertEquals("ARideCheck", publisher.workflows().getFirst().bpmnProcessId());
+    assertEquals("instance-of-the-check", publisher.workflows().getFirst().workflowId());
+
+  }
+
+  @Test
+  @DisplayName("A task of the instance VanillaBP started is a task of that case")
+  public void aTaskOfTheStartedInstanceBelongsToIt() {
+
+    anObserverOfARideCallingACheck(true)
+        .userTaskDelivered(aDeliveryOf(TestModels.BPMN_PROCESS_ID, "instance-of-the-ride"));
+
+    assertEquals("instance-of-the-ride", publisher.userTasks().getFirst().workflowId());
+    assertEquals(TestModels.BPMN_PROCESS_ID, publisher.workflows().getFirst().bpmnProcessId());
+    assertEquals("instance-of-the-ride", publisher.workflows().getFirst().workflowId());
 
   }
 

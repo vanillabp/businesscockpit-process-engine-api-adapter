@@ -7,6 +7,7 @@ import io.quarkus.runtime.StartupEvent;
 import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitBpmsBridge;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
+import io.vanillabp.cockpit.pea.PeaBusinessCases;
 import io.vanillabp.cockpit.pea.PeaCockpitBridge;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
@@ -134,6 +135,8 @@ public class PeaCockpitProducer {
    * @param versions The versions of the deployed processes
    * @param publisher Where an observed event is reported, resolved on the first event rather
    *          than now
+   * @param handlers VanillaBP's list of the processes the application declares
+   * @param election VanillaBP's note of the instance it started for an aggregate
    * @return The observer
    */
   @Produces
@@ -144,10 +147,13 @@ public class PeaCockpitProducer {
       final WorkflowTaskWiring workflowTaskWiring,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
-      final Instance<BusinessCockpitEventPublisher> publisher) {
+      final Instance<BusinessCockpitEventPublisher> publisher,
+      final ExtensionHandlers handlers,
+      final WorkflowElection election) {
 
     return new PeaCockpitObserver(
-        registry, workflowTaskWiring, deliveredUserTasks, versions, publisher::get);
+        registry, workflowTaskWiring, deliveredUserTasks, versions, publisher::get, new PeaBusinessCases(
+            workflowTaskWiring, handlers, election));
 
   }
 

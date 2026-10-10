@@ -13,6 +13,7 @@ import org.springframework.core.env.EnumerablePropertySource;
 
 import io.vanillabp.cockpit.extension.config.CockpitSettings;
 import io.vanillabp.cockpit.extension.spi.BusinessCockpitEventPublisher;
+import io.vanillabp.cockpit.pea.PeaBusinessCases;
 import io.vanillabp.cockpit.pea.PeaCockpitObserver;
 import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks;
@@ -21,6 +22,7 @@ import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.config.MigrationAdapterProperties;
 import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
 import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
@@ -119,6 +121,8 @@ public class PeaCockpitAutoConfiguration {
    * @param publisher Where an observed event is reported. It is resolved on the first event
    *          rather than now: this bean is built while the application is still wiring itself
    *          together
+   * @param handlers VanillaBP's list of the processes the application declares
+   * @param election VanillaBP's note of the instance it started for an aggregate
    * @return The observer
    */
   @Bean
@@ -127,10 +131,13 @@ public class PeaCockpitAutoConfiguration {
       final WorkflowTaskWiring workflowTaskWiring,
       final PeaDeliveredUserTasks deliveredUserTasks,
       final PeaProcessVersions versions,
-      final ObjectProvider<BusinessCockpitEventPublisher> publisher) {
+      final ObjectProvider<BusinessCockpitEventPublisher> publisher,
+      final ExtensionHandlers handlers,
+      final WorkflowElection election) {
 
     return new PeaCockpitObserver(
-        registry, workflowTaskWiring, deliveredUserTasks, versions, publisher::getObject);
+        registry, workflowTaskWiring, deliveredUserTasks, versions, publisher::getObject, new PeaBusinessCases(
+            workflowTaskWiring, handlers, election));
 
   }
 
