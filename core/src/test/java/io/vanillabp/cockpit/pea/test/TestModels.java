@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import io.vanillabp.cockpit.pea.PeaBusinessCases;
 import io.vanillabp.cockpit.pea.PeaRecordedUserTasks;
 import io.vanillabp.integration.adapter.migration.processservice.TaskDeliveryLogResolver;
 import io.vanillabp.integration.adapter.spi.workflowtask.BpmnTaskSpec;
 import io.vanillabp.integration.adapter.spi.workflowtask.WorkflowTaskWiring;
+import io.vanillabp.integration.extension.spi.election.WorkflowElection;
 import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
 import io.vanillabp.integration.extension.spi.handler.HandlerCall;
 import io.vanillabp.integration.extension.spi.handler.HandlerContract;
@@ -183,6 +185,130 @@ public final class TestModels {
       }
 
     };
+
+  }
+
+  /**
+   * Which case a delivered task belongs to, where no process shares the aggregate of another
+   * one. Every task is then filed under the instance it sits in.
+   *
+   * @return The lookup
+   */
+  public static PeaBusinessCases noCallers() {
+
+    return new PeaBusinessCases(claimingTheRide(), handlersServing(null), new TestElection());
+
+  }
+
+  /**
+   * Which case a delivered task belongs to, where the ride calls a second process.
+   *
+   * @param calledBpmnProcessId The process the ride calls
+   * @param sharingTheAggregate Whether that process works on the ride's aggregate
+   * @param election What VanillaBP wrote down at the start of a ride
+   * @return The lookup
+   */
+  public static PeaBusinessCases theRideCalls(
+      final String calledBpmnProcessId,
+      final boolean sharingTheAggregate,
+      final WorkflowElection election) {
+
+    final var claimed = claiming(BPMN_PROCESS_ID, calledBpmnProcessId);
+    final var core = new WorkflowTaskWiring() {
+
+      @Override
+      public void validateTaskWiring(
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final Collection<BpmnTaskSpec> tasks) {
+
+      }
+
+      @Override
+      public void validateNoUnwiredWorkflowTaskMethods(
+          final String workflowModuleId) {
+
+      }
+
+      @Override
+      public String resolveWorkflowAggregateIdName(
+          final String workflowModuleId,
+          final String bpmnProcessId) {
+
+        return claimed.resolveWorkflowAggregateIdName(workflowModuleId, bpmnProcessId);
+
+      }
+
+      @Override
+      public boolean workflowsShareTheWorkflowAggregate(
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final String otherBpmnProcessId) {
+
+        return bpmnProcessId.equals(otherBpmnProcessId) || sharingTheAggregate;
+
+      }
+
+    };
+    final var handlers = handlersServing(Object.class);
+    final var declared = new ExtensionHandlers() {
+
+      @Override
+      public void register(
+          final HandlerContract contract) {
+
+      }
+
+      @Override
+      public boolean hasHandler(
+          final Class<? extends Annotation> annotationType,
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final List<String> lookupKeys,
+          final String processVersion) {
+
+        return false;
+
+      }
+
+      @Override
+      public Optional<Object> invoke(
+          final HandlerCall call) {
+
+        return Optional.empty();
+
+      }
+
+      @Override
+      public Optional<Class<?>> workflowAggregateOf(
+          final String workflowModuleId,
+          final String bpmnProcessId) {
+
+        return handlers.workflowAggregateOf(workflowModuleId, bpmnProcessId);
+
+      }
+
+      @Override
+      public List<String> bpmnProcessesOf(
+          final String workflowModuleId) {
+
+        // the primary process first, the way the core lists what an application declares
+        return List.of(BPMN_PROCESS_ID, calledBpmnProcessId);
+
+      }
+
+      @Override
+      public Optional<String> bpmnTaskNameOf(
+          final String workflowModuleId,
+          final String bpmnProcessId,
+          final String activityId) {
+
+        return Optional.empty();
+
+      }
+
+    };
+    return new PeaBusinessCases(core, declared, election);
 
   }
 

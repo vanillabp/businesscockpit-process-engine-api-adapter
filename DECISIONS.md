@@ -89,7 +89,7 @@ this repository drive it the way the adapter would. The startup says all this, r
 somebody with an empty cockpit and no explanation. The seam is described in this repository's
 `GAPS.md` and belongs to `vanillabp/process-engine-api-adapter`.
 
-## 6. A business case appears with its first user task, under the aggregate where nothing else identifies it
+## 6. A business case appears with its first user task, under the aggregate where nothing else identifies it - a task of a called step belongs to the caller's case since decision 21
 
 The Process-Engine-API reports neither the start nor the end of a workflow, and there is no
 instance query to ask afterwards. The only moment this extension learns that a business case
@@ -668,3 +668,52 @@ from the application.
 `PeaCockpitTest` on both platforms holds this. The details provider of the first user task reads a
 variable which no `@WorkflowTask` method reads. The test asserts that the subscription asks for it
 and that the report the cockpit receives carries its value. This closes entry 4 in `GAPS.md`.
+
+## 21. A task of a called process belongs to the caller's case where both share the workflow aggregate
+
+Decision 6 reports a business case with its first user task, under the process instance the engine
+names. Until now that was the instance the task sits in, so every called process became a case of
+its own, under its own process. Where a call activity came first, the case appeared under the called
+process. Camunda 7 and Camunda 8 show a called process as a step of the caller's case. Decision 61
+of `business-cockpit` (story 1472) says the same for all BPMS: notifications form one group per
+case, and only a process with its own aggregate forms a group of its own.
+
+**The rule is the one of Camunda 7 and Camunda 8.** A task of a called process which shares the
+workflow aggregate of its caller is a task of the caller's case. A called process with an aggregate
+of its own is a case of its own.
+
+**How the caller is found.** The Process-Engine-API has no call hierarchy. A delivery names the
+instance the task sits in and nothing above it. So the extension uses two answers of the core:
+
+- Which declared processes share the task's aggregate. It asks
+  `WorkflowTaskWiring#workflowsShareTheWorkflowAggregate` for every process
+  `ExtensionHandlers#bpmnProcessesOf` lists, the same answer the Camunda 7 and Camunda 8 adapters use
+  for their call activities. The extension builds no check of its own. A process which shares its
+  aggregate with no other process is a case of its own, and nothing else is read. A process the core
+  does not know shares nothing.
+- Which instance VanillaBP started for the aggregate. That is its note of the start, read with
+  `WorkflowElection#workflowStartOf` under the first process which shares the aggregate, in the
+  order the application declared them. The primary process of a workflow service comes first, and
+  that is the process the start row is written under.
+
+Where the task sits in the instance of the note, it belongs to that case. Where it sits in another
+instance, it sits in a called process: its `workflowId` is the instance of the note, and the case is
+reported under the caller's process, with the version VanillaBP wrote down or else the one this
+adapter deployed. The task itself keeps naming its own process (decision 29 of the Camunda 8
+cockpit adapter has the same rule).
+
+**Where nothing can tell the two apart,** the task stays under the instance it sits in, as before.
+That is a delivery without an instance id, where decision 6 files the task under the aggregate's id,
+and an aggregate whose start VanillaBP did not write down or whose note is older than
+`vanillabp.delivery.workflow-start-retention`.
+
+The answer is remembered per instance, because every delivery of a task would read the note again,
+and an instance does not change its caller. The class is `PeaBusinessCases`.
+
+**Not changed:** the bridge still answers the questions of the cockpit about an aggregate with the
+tasks of its primary process. A task of a called process reaches the cockpit when the engine
+delivers it, and `aggregateChanged` does not report it again. That is the gap story 1472 closed for Camunda 8, and it stays open here.
+
+`PeaCockpitObserverTest` shows the three cases: a step, a called process with an aggregate of its
+own, and a task of the instance VanillaBP started. `PeaCockpitTest` shows the step on a booted
+application.

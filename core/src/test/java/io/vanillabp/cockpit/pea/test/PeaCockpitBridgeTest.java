@@ -63,7 +63,7 @@ public class PeaCockpitBridgeTest {
         deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new, TestModels.noCallers());
     bridge = new PeaCockpitBridge(
         TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, TestModels
             .recorded(deployedProcesses, deliveryLog), (
@@ -313,7 +313,7 @@ public class PeaCockpitBridgeTest {
         deployedProcesses, TestModels.claimingTheRide(), oneDeliveryAtATime, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new, TestModels.noCallers());
     final var narrowBridge = new PeaCockpitBridge(
         TestModels.ADAPTER_ID, deployedProcesses, oneDeliveryAtATime, TestModels
             .recorded(deployedProcesses, deliveryLog), (

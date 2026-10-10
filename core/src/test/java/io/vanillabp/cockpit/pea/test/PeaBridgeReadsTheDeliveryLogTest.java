@@ -95,7 +95,7 @@ public class PeaBridgeReadsTheDeliveryLogTest {
         deployedProcesses, TestModels.claimingTheRide(), deliveredUserTasks, (
             adapterId,
             workflowModuleId,
-            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new);
+            bpmnProcessId) -> TestModels.DEPLOYMENT_KEY, RecordingPublisher::new, TestModels.noCallers());
     bridge = new PeaCockpitBridge(
         TestModels.ADAPTER_ID, deployedProcesses, deliveredUserTasks, recordedUserTasks, (
             adapterId,
