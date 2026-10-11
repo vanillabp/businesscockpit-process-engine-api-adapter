@@ -46,7 +46,7 @@ public final class PeaCockpitSettings {
 
   /**
    * Reads how many delivered user tasks a node remembers, and checks the value. Where nothing is
-   *configured, it is {@link #DEFAULT_REMEMBERED_USER_TASKS}.
+   * configured, it is {@link #DEFAULT_REMEMBERED_USER_TASKS}.
    *
    * @param settings What the application wrote below the cockpit's own sections
    * @return How many delivered user tasks a node is to remember

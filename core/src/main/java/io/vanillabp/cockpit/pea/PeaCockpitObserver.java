@@ -95,7 +95,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
 
   /**
    * Builds the observer which the adapter calls for every user task it delivers and every task
-   *which ends.
+   * which ends.
    *
    * @param deployedProcesses What the adapter deployed, one record per configured adapter id
    * @param workflowTaskWiring VanillaBP's answer to whether a <code>&#64;WorkflowService</code>

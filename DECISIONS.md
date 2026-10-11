@@ -462,8 +462,7 @@ Decision 22 corrects what this entry says about the API's promise and the in-mem
 
 Decided on 2026-10-04 for story 1420.
 
-This entry narrows decision 9. Whoever moves it into the log gives it the next free number N and
-adds "narrowed by decision N" to the headline of decision 9. The text of decision 9 stays as it is.
+This entry narrows decision 9. The text of decision 9 stays as it is.
 
 Decision 9 says that a record of the delivery log names neither the BPMN element nor the engine's
 own id of the workflow on this BPMS, because the Process-Engine-API adapter fills neither. That was
@@ -497,9 +496,7 @@ Decision 22 corrects what this entry says about the in-memory engine.
 
 Decided on 2026-10-04, while story 1415 was built.
 
-This entry narrows decision 14. Once it has its number, the headline of decision 14 gets the
-addition "- narrowed by decision NN, which takes the version from VanillaBP's note of the start
-first".
+This entry narrows decision 14.
 
 Decision 14 takes the version of a workflow found by its start from a delivery of that workflow
 which this node still remembers. Where there is none, the change is not reported, and a warning says
@@ -542,8 +539,7 @@ its end.
 
 Decided on 2026-10-04, while story 1441 was built.
 
-This entry narrows decision 9. Once it has its number, the headline of decision 9 gets the addition
-", and the version a record names read by decision NN". The text of decision 9 stays as it is.
+This entry narrows decision 9. The text of decision 9 stays as it is.
 
 Decision 9 says what a record of the delivery log holds: identifiers and an outcome, and no field of
 the memory. So the reader of the log named no version for a task it read back, and a business case
