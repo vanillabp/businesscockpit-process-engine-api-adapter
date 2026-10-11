@@ -27,20 +27,20 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine.CompletedTask;
 import io.vanillabp.pea.observation.PeaUserTaskObserverFailure;
 
 /**
- * What a details provider which throws costs, now that it throws while the engine's delivery
- * thread waits.
+ * Tests what a details provider which throws costs, now that it throws while the engine's
+ * delivery thread waits.
  * <p>
  * The cockpit builds the report of an event inside the call the BPMS makes, so the application's
  * provider runs there. This half used to swallow what the provider threw, because an observer of
- * the Process-Engine-API could not refuse a delivery. It can now: the adapter turns a failing
+ * the Process-Engine-API could not refuse a delivery. Now it can: the adapter turns a failing
  * observer into a failing delivery, and an engine behind this API offers a failed delivery again.
- * Decision 11 in the repository's DECISIONS.md holds the reasoning, and this test holds the
+ * Decision 11 in the repository's DECISIONS.md gives the reasons, and this test checks the
  * behaviour.
  * <p>
- * Three moments are told apart on purpose, because they cost different things. A DELIVERY is
+ * Three moments are kept apart on purpose, because they cost different things. A DELIVERY is
  * offered again. A COMPLETION travels in the outbox entry which carries the completion, so the
  * entry comes back. A CANCELATION is offered once, and a report lost there is lost for good.
- * Decision 12 holds what was measured on each of them.
+ * Decision 12 holds what was measured for each of them.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -78,7 +78,7 @@ public class FailingDetailsProviderTest {
 
   /**
    * A provider left broken would break every test which runs after this class, because the
-   * switch is a static of the application under test.
+   * switch is a static field of the application under test.
    */
   @AfterEach
   public void leaveAWorkingProvider() {
@@ -103,8 +103,8 @@ public class FailingDetailsProviderTest {
       final TestAggregate aggregate,
       final String taskId) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -119,8 +119,8 @@ public class FailingDetailsProviderTest {
     final var aggregate = aStartedWorkflow("Rosa");
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
 
-    // the engine hands a failed delivery back to whoever delivered, which is what an engine
-    // behind this API sees as well
+    // the engine hands a failed delivery back to the caller, and an engine behind this API sees
+    // the same
     final var failure = assertThrows(
         PeaUserTaskObserverFailure.class,
         () -> aDeliveredUserTask(aggregate, "broken-1"));
@@ -227,7 +227,7 @@ public class FailingDetailsProviderTest {
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
     // completing a user task is a phase-two operation, so the engine is asked after this
     // transaction committed, on a worker of the outbox. What the provider throws is that
-    // worker's business and never the caller's (decision 12)
+    // worker's problem and never the caller's (decision 12)
     transactions
         .executeWithoutResult(
             status -> workflowService
@@ -249,8 +249,8 @@ public class FailingDetailsProviderTest {
 
   /**
    * Whether the failure which reached the engine still carries what the application's details
-   * provider threw. How many wrappers there are between the two is nobody's promise, so the whole
-   * chain is read.
+   * provider threw. Nobody promises how many wrappers lie between the two, so the whole chain is
+   * read.
    */
   private static boolean saysWhatTheProviderThrew(
       final Throwable failure) {

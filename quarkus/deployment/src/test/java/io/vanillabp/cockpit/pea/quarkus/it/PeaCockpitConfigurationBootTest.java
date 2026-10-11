@@ -12,11 +12,11 @@ import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * That a number nobody can use is read while the application starts, on Quarkus too.
+ * Tests that a number nobody can use is found while the application starts, on Quarkus too.
  * <p>
- * A CDI producer runs when somebody first asks for what it produces, so without a reader at
- * startup the typo would surface on the engine's delivery thread on a working day. The extension
- * therefore reads the setting on Quarkus' own startup signal, and this test is what says so.
+ * A CDI producer runs when somebody first asks for what it produces. Without a reader at startup,
+ * the typo would show up on the engine's delivery thread on a working day. So the extension reads
+ * the setting on Quarkus' own startup event, and this test checks that it does.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

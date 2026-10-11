@@ -36,22 +36,22 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * The Business Cockpit on the Process-Engine-API, from the delivery of a user task to the
+ * Tests the Business Cockpit on the Process-Engine-API, from the delivery of a user task to the
  * request the cockpit server receives.
  * <p>
- * Nothing on that way is faked but the cockpit server and the engine. The workflow is started
- * through VanillaBP. The engine delivers a user task to the ADAPTER's own subscription, and the
- * adapter hands the delivery to the observer bean this extension contributes. The application's
- * details provider runs there and then, the finished report is written into the application's
- * outbox, and what arrives at the server is asserted.
+ * Only the cockpit server and the engine are fakes on that path. The workflow is started through
+ * VanillaBP. The engine delivers a user task to the ADAPTER's own subscription, and the adapter
+ * hands the delivery to the observer bean this extension contributes. The application's details
+ * provider runs right there. The finished report is written into the application's outbox, and
+ * the test checks what arrives at the server.
  * <p>
- * What the engine says about a task is what an in-memory engine says, which is little: the process
- * instance it answered the start with, and no assignee and no reason. That is deliberate here. What
- * the cockpit makes of a generous meta map is asserted in the unit tests of the neutral module, and
- * what only a booted application shows is that a delivery reaches this extension at all.
+ * The engine says little about a task, as an in-memory engine does: the process instance it
+ * answered the start with, and no assignee and no reason. That is on purpose. The unit tests of
+ * the neutral module check what the cockpit makes of a full meta map. Only a booted application
+ * shows that a delivery reaches this extension at all.
  * <p>
- * The engine names the instance of a task by the variables the workflow was started with, so a
- * task carries the aggregate's id with its real type. A test which hands it over as text plays an
+ * The engine finds the instance of a task by the variables the workflow was started with, so a
+ * task carries the aggregate's id with its real type. A test which passes the id as text plays an
  * engine which names no instance at all.
  */
 @SpringBootTest(classes = TestApplication.class)
@@ -62,9 +62,9 @@ public class PeaCockpitTest {
   private static final String ADAPTER_ID = "pea";
 
   /**
-   * How often the application repeats a transaction which read a conflict. Two would do for the
-   * one other writer there is; the third is there so that a repetition which itself meets the
-   * next report does not end the test.
+   * How often the application tries a transaction which ran into a conflict. Two tries would be
+   * enough for the one other writer. The third one is there so that a repetition which runs into
+   * the next report does not end the test.
    */
   private static final int ATTEMPTS_OF_THE_APPLICATION = 3;
 
@@ -104,15 +104,15 @@ public class PeaCockpitTest {
   }
 
   /**
-   * Changes one case and reports the change, the way an application whose workflow aggregate
-   * carries a version attribute has to do it: in a transaction which is repeated where somebody
-   * else wrote the same case in between.
+   * Changes one case and reports the change. An application whose workflow aggregate has a
+   * version attribute has to do it this way: in a transaction which is repeated if somebody else
+   * wrote the same case in between.
    * <p>
    * That somebody is the Business Cockpit itself. Its details provider reads the case while a
-   * report is built and writes it back when that transaction commits, so the two transactions
-   * overlap whenever an application changes a case a delivery is being reported for. Without the
-   * version attribute the later of the two writers wins silently; with it, one of them reads a
-   * conflict and repeats.
+   * report is built and writes it back when that transaction commits. So the two transactions
+   * overlap whenever an application changes a case while a delivery of it is being reported.
+   * Without the version attribute, the later of the two writers wins without a word. With it, one
+   * of them runs into a conflict and repeats.
    *
    * @param aggregateId The case to change
    * @param changeAndReport Changes the attached case and reports it to the cockpit
@@ -144,9 +144,9 @@ public class PeaCockpitTest {
   /**
    * Waits for a report of one kind which carries the value the application wrote.
    * <p>
-   * A report carrying the older value has two possible causes and they need different work: the
-   * report read the case too early, or the case itself lost the change. So a failure names what
-   * the case carries now as well - see the version attribute of {@link TestAggregate}.
+   * A report with the older value has two possible causes, and each needs a different fix: the
+   * report read the case too early, or the case itself lost the change. So a failure also names
+   * what the case holds now. See the version attribute of {@link TestAggregate}.
    *
    * @param pathSuffix What the report's path has to end with
    * @param expected What its body has to carry
@@ -194,8 +194,8 @@ public class PeaCockpitTest {
   }
 
   /**
-   * The identifier the cockpit shows a business case under. This engine names the instance it
-   * answered the start with in every task of it, so it is the id VanillaBP wrote down at the start.
+   * The id the cockpit shows a business case under. In every task of an instance, this engine
+   * names the id it answered the start with. So it is the id VanillaBP wrote down at the start.
    */
   private String workflowIdOf(
       final TestAggregate aggregate) {
@@ -205,7 +205,7 @@ public class PeaCockpitTest {
   }
 
   /**
-   * Makes the engine deliver a user task to the adapter's own subscription, the way a
+   * Makes the engine deliver a user task to the adapter's own subscription, as a
    * Process-Engine-API engine does when a workflow reaches one.
    */
   private void aDeliveredUserTask(
@@ -220,11 +220,11 @@ public class PeaCockpitTest {
   }
 
   /**
-   * Like {@link #aDeliveredUserTask}, as an engine delivers it which names no process instance.
-   * The Process-Engine-API promises the same id at the start and in a task, but it does not make
-   * an engine name one in a task at all. The in-memory engine names the instance whose start
-   * variables a task carries with the same value and type. The aggregate's id as text matches no
-   * start, so the task names no instance.
+   * Like {@link #aDeliveredUserTask}, but as an engine which names no process instance delivers
+   * it. The Process-Engine-API promises the same id at the start and in a task, but it does not
+   * force an engine to name one in a task at all. The in-memory engine names the instance whose
+   * start variables have the same value and type as the variables of the task. The aggregate's id
+   * as text matches no start, so the task names no instance.
    */
   private void aDeliveredUserTaskWhichNamesNoInstance(
       final TestAggregate aggregate,
@@ -238,8 +238,8 @@ public class PeaCockpitTest {
   }
 
   /**
-   * When the report of an end says its user task was created. Only the report of an end carries
-   * it.
+   * The time at which, according to the report of an end, its user task was created. Only the
+   * report of an end carries it.
    *
    * @param report The report as the cockpit server received it
    * @return The time the report names, as an instant
@@ -281,12 +281,12 @@ public class PeaCockpitTest {
     // the BPMN name is what the cockpit falls back to when nothing else produced a title
     assertTrue(userTask.body().contains("Approve the ride"), userTask.body());
 
-    // The customer in that body is what the details provider read off the case, so the report
-    // shows that the provider ran on the real aggregate. Whether the case KEEPS what that
-    // provider wrote into it is not asserted, on purpose. The write rides the transaction which
-    // builds the report and writes the entry, and another writer of the same case can refuse
-    // that commit through the version attribute. Entry and write are gone together then, so a
-    // test waiting for that write waits on something it does not control.
+    // The details provider read the customer in that body from the case, so the report shows
+    // that the provider ran on the real aggregate. Whether the case KEEPS what that provider
+    // wrote into it is not asserted, on purpose. The write is part of the transaction which builds
+    // the report and writes the entry. Another writer of the same case can make that commit fail
+    // through the version attribute. Then the entry and the write are both gone, so a test which
+    // waits for that write waits for something it does not control.
 
   }
 
@@ -296,8 +296,8 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Paula");
 
-    // the subscription asks the engine for what the cockpit reads as well. Nothing else would:
-    // the only workflow task of this user task reads no variable at all
+    // the subscription also asks the engine for what the cockpit reads. Nothing else would: the
+    // only workflow task of this user task reads no variable at all
     final var askedFor = engine
         .getSubscriptions()
         .stream()
@@ -312,7 +312,7 @@ public class PeaCockpitTest {
         "the subscriptions ask for "
             + askedFor);
 
-    // the engine narrows the payload to what was asked for, the way a real engine does
+    // the engine narrows the payload to what was asked for, as a real engine does
     engine
         .deliverTask(
             "task-passenger", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -334,12 +334,10 @@ public class PeaCockpitTest {
     CockpitServer.forgetRequests();
 
     // the engine repeats a delivery whenever something about the task changed: its assignee, its
-    // candidates or its data. The cockpit is told again. WHICH of the two it is told, created or
-    // updated, is decided by the reason the engine names. The in-memory engine this test runs
-    // against names none. It delivers with no reason, so a repeated delivery arrives here as a
-    // second creation. That the kind follows the reason is asserted in
-    // the unit tests of the neutral module, and prompt 230 WP2 carries the change which would let
-    // this engine drive it.
+    // candidates or its data. The cockpit is told again. The reason the engine names decides
+    // whether the cockpit hears "created" or "updated". This test delivers with no reason, so a
+    // repeated delivery arrives here as a second creation. The unit tests of the neutral module
+    // show that the kind follows the reason.
     aDeliveredUserTask(aggregate, "task-6");
 
     final var again = CockpitServer
@@ -364,9 +362,9 @@ public class PeaCockpitTest {
             "task-3", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
             TaskInformation.COMPLETE);
 
-    // the report of the end says when the task was created, for the cockpit which gets the end
-    // before the creation. This engine names no creation time, so it is when the node first saw
-    // the task delivered
+    // the report of the end says when the task was created, for a cockpit which gets the end
+    // before the creation. This engine names no creation time, so it is the time the node first
+    // saw the task delivered
     final var completed = CockpitServer.awaitAnyRequest("/usertask/task-3/completed");
     assertNotNull(completed);
     final var createdAt = startNamedBy(completed);
@@ -394,10 +392,10 @@ public class PeaCockpitTest {
           workflowService.businessCockpit().aggregateChanged(loaded);
         });
 
-    // the report carries what the application wrote, not what the case said before it. The
-    // report of the user task may still be under construction while this runs, and its details
-    // provider holds the case over this transaction. The version attribute of TestAggregate is
-    // what keeps that provider from writing the older reading back
+    // the report carries what the application wrote, not what the case held before. The report
+    // of the user task may still be built while this runs, and its details provider holds the
+    // case during this transaction. The version attribute of TestAggregate stops that provider
+    // from writing the older state back
     awaitReportCarrying(
         "/workflow/%s/updated".formatted(workflowIdOf(aggregate)),
         "\"customer\":\"Dora the second\"",
@@ -423,8 +421,8 @@ public class PeaCockpitTest {
           workflowService.businessCockpit().aggregateChanged(loaded);
         });
 
-    // the open task answers before the id of the start, so the update goes to the case the
-    // cockpit knows. See decision 22 in the repository's DECISIONS.md
+    // the open task wins over the id of the start, so the update goes to the case the cockpit
+    // knows. See decision 22 in the repository's DECISIONS.md
     awaitReportCarrying(
         "/workflow/%s/updated".formatted(aggregateId), "\"customer\":\"Hanna the second\"", aggregate);
     CockpitServer.awaitQuiet();
@@ -472,8 +470,8 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Fritz");
     final var workflowId = workflowIdOf(aggregate);
     // the engine names the instance it answered the start with, as every task of it does. It
-    // names a version tag as well: without one the case has no version, and decision 16 in the
-    // repository's DECISIONS.md reports no change then
+    // also names a version tag: without one the case has no version, and then decision 16 in the
+    // repository's DECISIONS.md reports no change
     engine
         .deliverTask(
             "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -507,8 +505,8 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Greta");
     final var workflowId = workflowIdOf(aggregate);
 
-    // the first task of this case sits in the called process. The engine names the instance of
-    // the called process, which is not the one VanillaBP started. See decision 21 in the
+    // the first task of this case is in the called process. The engine names the instance of the
+    // called process, which is not the one VanillaBP started. See decision 21 in the
     // repository's DECISIONS.md
     engine
         .deliverTask(

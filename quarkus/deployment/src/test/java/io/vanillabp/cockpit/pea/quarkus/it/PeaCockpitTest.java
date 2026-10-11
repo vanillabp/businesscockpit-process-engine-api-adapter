@@ -31,16 +31,16 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * The Process-Engine-API half of the Business Cockpit inside a booted Quarkus application. The
- * extension is enabled. The engine delivers a user task to the ADAPTER's own subscription, the
- * adapter hands it to the observer bean this extension contributes, and what the application
+ * Tests the Process-Engine-API half of the Business Cockpit inside a booted Quarkus application.
+ * The extension is enabled. The engine delivers a user task to the ADAPTER's own subscription.
+ * The adapter hands it to the observer bean this extension contributes, and what the application
  * enriched reaches the cockpit server. The bridge then answers what the cockpit reads back.
  * <p>
- * It runs the same way through as the Spring Boot test of this repository. It exists because a
- * platform-neutral half being right says nothing about a platform's glue ever calling it.
+ * It takes the same path as the Spring Boot test of this repository. It exists because a correct
+ * platform-neutral half does not prove that the platform code ever calls it.
  * <p>
- * The engine names the instance of a task by the variables the workflow was started with, so a
- * task carries the aggregate's id with its real type. A test which hands it over as text plays an
+ * The engine finds the instance of a task by the variables the workflow was started with, so a
+ * task carries the aggregate's id with its real type. A test which passes the id as text plays an
  * engine which names no instance at all.
  */
 @ExtendWith(SuppressOutputExtension.class)
@@ -97,8 +97,8 @@ public class PeaCockpitTest {
   }
 
   /**
-   * The identifier the cockpit shows a business case under. This engine names the instance it
-   * answered the start with in every task of it, so it is the id VanillaBP wrote down at the start.
+   * The id the cockpit shows a business case under. In every task of an instance, this engine
+   * names the id it answered the start with. So it is the id VanillaBP wrote down at the start.
    */
   private String workflowIdOf(
       final TestAggregate aggregate) throws InterruptedException {
@@ -108,7 +108,7 @@ public class PeaCockpitTest {
   }
 
   /**
-   * Makes the engine deliver a user task to the adapter's own subscription, the way a
+   * Makes the engine deliver a user task to the adapter's own subscription, as a
    * Process-Engine-API engine does when a workflow reaches one.
    */
   private void aDeliveredUserTask(
@@ -123,11 +123,11 @@ public class PeaCockpitTest {
   }
 
   /**
-   * Like {@link #aDeliveredUserTask}, as an engine delivers it which names no process instance.
-   * The Process-Engine-API promises the same id at the start and in a task, but it does not make
-   * an engine name one in a task at all. The in-memory engine names the instance whose start
-   * variables a task carries with the same value and type. The aggregate's id as text matches no
-   * start, so the task names no instance.
+   * Like {@link #aDeliveredUserTask}, but as an engine which names no process instance delivers
+   * it. The Process-Engine-API promises the same id at the start and in a task, but it does not
+   * force an engine to name one in a task at all. The in-memory engine names the instance whose
+   * start variables have the same value and type as the variables of the task. The aggregate's id
+   * as text matches no start, so the task names no instance.
    */
   private void aDeliveredUserTaskWhichNamesNoInstance(
       final TestAggregate aggregate,
@@ -162,8 +162,8 @@ public class PeaCockpitTest {
   }
 
   /**
-   * When the report of an end says its user task was created. Only the report of an end carries
-   * it.
+   * The time at which, according to the report of an end, its user task was created. Only the
+   * report of an end carries it.
    *
    * @param report The report as the cockpit server received it
    * @return The time the report names, as an instant
@@ -210,8 +210,8 @@ public class PeaCockpitTest {
 
     final var aggregate = aStartedWorkflow("Paula");
 
-    // the subscription asks the engine for what the cockpit reads as well. Nothing else would:
-    // the only workflow task of this user task reads no variable at all
+    // the subscription also asks the engine for what the cockpit reads. Nothing else would: the
+    // only workflow task of this user task reads no variable at all
     final var askedFor = engine
         .getSubscriptions()
         .stream()
@@ -226,7 +226,7 @@ public class PeaCockpitTest {
         "the subscriptions ask for "
             + askedFor);
 
-    // the engine narrows the payload to what was asked for, the way a real engine does
+    // the engine narrows the payload to what was asked for, as a real engine does
     engine
         .deliverTask(
             "task-passenger", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -247,13 +247,11 @@ public class PeaCockpitTest {
     CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"task-6\"");
     CockpitServer.forgetRequests();
 
-    // the engine repeats a delivery whenever something about the task changed - its assignee,
-    // its candidates or its data - and the cockpit is told again. WHICH of the two it is told,
-    // created or updated, is decided by the reason the engine names, and the in-memory engine
-    // this test runs against names none: it delivers with no reason, so a repeated delivery
-    // arrives here as a second creation. That the kind follows
-    // the reason is asserted in the unit tests of the neutral module, and prompt 230 WP2
-    // carries the change which would let this engine drive it.
+    // the engine repeats a delivery whenever something about the task changed: its assignee,
+    // its candidates or its data. The cockpit is told again. The reason the engine names decides
+    // whether the cockpit hears "created" or "updated". This test delivers with no reason, so a
+    // repeated delivery arrives here as a second creation. The unit tests of the neutral module
+    // show that the kind follows the reason.
     aDeliveredUserTask(aggregate, "task-6");
 
     final var again = CockpitServer
@@ -286,9 +284,9 @@ public class PeaCockpitTest {
             "task-2", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID,
             TaskInformation.COMPLETE);
 
-    // the report of the end says when the task was created, for the cockpit which gets the end
-    // before the creation. This engine names no creation time, so it is when the node first saw
-    // the task delivered
+    // the report of the end says when the task was created, for a cockpit which gets the end
+    // before the creation. This engine names no creation time, so it is the time the node first
+    // saw the task delivered
     final var completed = CockpitServer.awaitAnyRequest("/usertask/task-2/completed");
     assertNotNull(completed);
     final var createdAt = startNamedBy(completed);
@@ -346,8 +344,8 @@ public class PeaCockpitTest {
 
     changeTheCustomer(aggregate, "Hanna the second");
 
-    // the open task answers before the id of the start, so the update goes to the case the
-    // cockpit knows. See decision 22 in the repository's DECISIONS.md
+    // the open task wins over the id of the start, so the update goes to the case the cockpit
+    // knows. See decision 22 in the repository's DECISIONS.md
     final var updated = CockpitServer.awaitAnyRequest("/workflow/%s/updated".formatted(aggregateId));
     assertTrue(updated.body().contains("\"customer\":\"Hanna the second\""), updated.body());
     CockpitServer.awaitQuiet();
@@ -388,8 +386,8 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Fritz");
     final var workflowId = workflowIdOf(aggregate);
     // the engine names the instance it answered the start with, as every task of it does. It
-    // names a version tag as well: without one the case has no version, and decision 16 in the
-    // repository's DECISIONS.md reports no change then
+    // also names a version tag: without one the case has no version, and then decision 16 in the
+    // repository's DECISIONS.md reports no change
     engine
         .deliverTask(
             "task-7", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

@@ -29,18 +29,18 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * What this application still knows about a user task once the node which was given it is gone.
+ * Tests what this application still knows about a user task once the node which got it is gone.
  * <p>
  * The memory of a delivery lives in one node and dies with it. VanillaBP writes every delivery it
- * processed into the application's own database, so a node which starts fresh reads there which
- * tasks of a business case this application reported and which of them are over. The restart is
- * the real thing here: a second application context is booted on the same database, and
- * everything it knows it read out of that database.
+ * processed into the application's own database. So a node which starts fresh reads there which
+ * tasks of a business case this application reported, and which of them are over. The restart is
+ * real here: a second application context boots on the same database, and everything it knows
+ * comes from that database.
  * <p>
- * What the fresh node does NOT get back is what the engine said about the task. That is entry 10
- * in the repository's GAPS.md, and it is why this test asks the bridge and not the cockpit
- * server: the reports of the deliveries themselves were built and written before the restart, and
- * a report the fresh node would have to build has no details to build one from.
+ * The fresh node does NOT get back what the engine said about the task. That is entry 10 in the
+ * repository's GAPS.md. It is also why this test asks the bridge and not the cockpit server. The
+ * reports of the deliveries were built and written before the restart, and the fresh node has no
+ * details to build a new report from.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -93,10 +93,10 @@ public class RestartedNodeTest {
   /**
    * Waits until VanillaBP has written down that the task is closed.
    * <p>
-   * The record is stamped once the completion reached the engine, which is after the report of
-   * the end was written and therefore possibly after that report arrived at the cockpit server.
-   * So the test waits for the thing it is about to assert on rather than for something which
-   * usually happens first.
+   * The record is stamped once the completion reached the engine. That is after the report of the
+   * end was written, so it may also be after that report arrived at the cockpit server. So the
+   * test waits for the thing it is about to assert, and not for something which usually happens
+   * first.
    */
   private void awaitTheRecordOfTheTaskBeingStamped(
       final TestAggregate aggregate,
@@ -127,18 +127,17 @@ public class RestartedNodeTest {
   }
 
   /**
-   * Boots a second application context on the same database, which is what a restarted node is:
-   * the tables are the ones which were there, and every memory of the process which wrote them
-   * is gone.
+   * Boots a second application context on the same database. That is what a restarted node is:
+   * the tables are still there, and all memory of the process which wrote them is gone.
    * <p>
-   * The schema is not created a second time. A fresh context creating it would drop the workflow
-   * aggregates this test started, and a restarted application does not do that either.
+   * The schema is not created a second time. If the fresh context created it, it would drop the
+   * workflow aggregates this test started, and a restarted application does not do that either.
    */
   private ConfigurableApplicationContext aRestartedNode() {
 
-    // as command line arguments rather than as default properties: the test's own
-    // application.yaml wins over the latter, and the schema it asks for would drop the workflow
-    // aggregates this test started
+    // as command line arguments and not as default properties: the test's own application.yaml
+    // wins over default properties, and the schema it asks for would drop the workflow aggregates
+    // this test started
     return new SpringApplicationBuilder(TestApplication.class)
         .web(WebApplicationType.NONE)
         .run(
@@ -198,9 +197,9 @@ public class RestartedNodeTest {
   }
 
   /**
-   * Makes the engine deliver a user task the application has a <code>&#64;WorkflowTask</code>
-   * method for. VanillaBP writes a record while that method runs, and a delivery nobody
-   * processes leaves none.
+   * Makes the engine deliver a user task which has a <code>&#64;WorkflowTask</code> method in the
+   * application. VanillaBP writes a record while that method runs. A delivery nobody processes
+   * leaves no record.
    */
   private void aDeliveredUserTask(
       final TestAggregate aggregate,

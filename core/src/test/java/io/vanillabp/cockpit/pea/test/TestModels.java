@@ -40,20 +40,20 @@ public final class TestModels {
 
   public static final String USER_TASK_NAME = "Approve the ride";
 
-  /** What the engine answered when the adapter deployed the file, the only version there is. */
+  /** The engine's answer when the adapter deployed the file. It is the only version there is. */
   public static final String DEPLOYMENT_KEY = "deployment-7";
 
   /**
-   * The version tag an engine writes into the meta map of a delivered task, where it keeps one.
-   * It is the only thing this BPMS ever reports as the version of a process, and it is what a
-   * details provider naming a version has to be written against here.
+   * The version tag an engine writes into the meta map of a delivered task, if it keeps one. This
+   * BPMS reports nothing else as the version of a process. So a details provider which names a
+   * version has to name this one here.
    */
   public static final String VERSION_TAG = "ride-2026-09";
 
   /**
    * The BPMN file as a modeller would leave it. The adapter deploys these bytes and reads the two
-   * names out of them on the way, so what the model carries below is what the cockpit shows and
-   * nothing here opens the file again.
+   * names from them while it does. So the cockpit shows what the model below carries, and nothing
+   * here opens the file again.
    */
   public static final String BPMN = """
       <?xml version="1.0" encoding="UTF-8"?>
@@ -120,7 +120,7 @@ public final class TestModels {
   }
 
   /**
-   * VanillaBP's handlers, answering the one question this extension asks them.
+   * VanillaBP's handlers. They answer the one question this extension asks them.
    *
    * @param workflowAggregateClass The aggregate serving the test's BPMN process, or
    *          <code>null</code> for a process no workflow service of the application declares
@@ -190,7 +190,7 @@ public final class TestModels {
 
   /**
    * Which case a delivered task belongs to, where no process shares the aggregate of another
-   * one. Every task is then filed under the instance it sits in.
+   * one. Then every task is filed under its own instance.
    *
    * @return The lookup
    */

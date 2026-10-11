@@ -11,17 +11,17 @@ import io.vanillabp.integration.extension.spi.election.WorkflowStart;
  * VanillaBP's election as this extension sees it: it names the adapter of a workflow, and it
  * says which id and which version VanillaBP wrote down when it started one.
  * <p>
- * It starts out knowing no start at all. That is the answer for every workflow started before
- * VanillaBP wrote such notes, so a test which says nothing about starts reads only the deliveries.
+ * At first it knows no start. That is the answer for every workflow started before VanillaBP
+ * wrote such notes. So a test which says nothing about starts reads only the deliveries.
  */
 public class TestElection implements WorkflowElection {
 
   private final Map<String, WorkflowStart> startedWorkflows = new HashMap<>();
 
   /**
-   * Writes down the start of a workflow, the way VanillaBP does once the engine answered the
-   * start with its own id of the instance. The Process-Engine-API answers no version, and the
-   * adapter says that its deliveries carry the version tag, so one may still come.
+   * Writes down the start of a workflow, as VanillaBP does once the engine answered the start
+   * with its own id of the instance. The Process-Engine-API answers with no version. The adapter
+   * says that its deliveries carry the version tag, so a version may still come.
    *
    * @param workflowAggregateId The business case
    * @param workflowId The engine's own id of the workflow it started
@@ -35,7 +35,7 @@ public class TestElection implements WorkflowElection {
   }
 
   /**
-   * Writes down the start of a workflow as a test says it.
+   * Writes down the start of a workflow exactly as the test gives it.
    *
    * @param workflowAggregateId The business case
    * @param start What VanillaBP wrote down

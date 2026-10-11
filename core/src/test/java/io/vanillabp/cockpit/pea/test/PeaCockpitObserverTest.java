@@ -33,18 +33,16 @@ import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * What a delivered user task turns into, and what it does not turn into.
+ * Tests what a delivered user task turns into, and what it does not turn into.
  * <p>
- * The integration tests of this repository run the same way through a booted application, driven
- * by the adapter's own delivery. What they cannot provoke is the other half: a task of a process
- * this application never deployed, a delivery which names no workflow aggregate or no BPMN
- * process at all, or the end of a task this node never saw. Those are the cases where reporting
- * nothing is the right answer, and a test which cannot tell "reported nothing" from "was never
- * asked" would not notice them.
+ * The integration tests of this repository do the same through a booted application, driven by
+ * the adapter's own delivery. They cannot provoke the other half: a task of a process this
+ * application never deployed, a delivery which names no workflow aggregate or no BPMN process,
+ * or the end of a task this node never saw. In those cases the right answer is to report
+ * nothing. A test which cannot tell "reported nothing" from "was never asked" would miss them.
  * <p>
- * What an engine calls an identifier is not among them any more. The adapter translates the
- * scoped ids of a workflow module deployed with a prefix back before it builds an observation,
- * and holds itself to that.
+ * The ids an engine uses are no longer one of these cases. For a workflow module deployed with a
+ * prefix, the adapter translates the ids back before it builds an observation.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitObserverTest {
@@ -189,12 +187,6 @@ public class PeaCockpitObserverTest {
 
   }
 
-  /**
-   * A repeated delivery is what the cockpit shows as a change of a task, and it is asserted here
-   * rather than through a booted application: the in-memory engine the adapter ships delivers a
-   * task without a reason, so it cannot say that a task was assigned or updated. Prompt 230 WP2 carries that change to the mock; until then the
-   * end-to-end tests assert that a repeated delivery reaches the cockpit at all.
-   */
   @Test
   @DisplayName("A task is created when the engine says, or else when this node first saw it delivered")
   public void aTaskKeepsTheTimeItWasCreated() {
@@ -220,6 +212,12 @@ public class PeaCockpitObserverTest {
 
   }
 
+  /**
+   * The cockpit shows a repeated delivery as a change of the task. This is tested here and not
+   * through a booted application: the integration tests deliver a task without a reason, so they
+   * cannot say that it was assigned or updated. They only show that a repeated delivery reaches
+   * the cockpit at all.
+   */
   @Test
   @DisplayName("A task delivered again because it changed is reported as an update")
   public void aRedeliveredUserTaskIsAnUpdate() {
@@ -347,8 +345,8 @@ public class PeaCockpitObserverTest {
   }
 
   /**
-   * The module's file carries a second process. It was deployed with the file and is recorded
-   * like the first one, which is why the record of the deployment cannot tell the two apart.
+   * The module's file has a second process. It was deployed with the file and is recorded like
+   * the first one. So the record of the deployment cannot tell the two apart.
    *
    * @param bpmnProcessId The id of the second process
    * @return What the adapter recorded while it deployed both
@@ -430,7 +428,7 @@ public class PeaCockpitObserverTest {
   }
 
   /**
-   * An observer of the ride and the check of the car the ride calls. VanillaBP wrote down the
+   * An observer of the ride and of the car check which the ride calls. VanillaBP wrote down the
    * instance it started for the ride.
    */
   private PeaCockpitObserver anObserverOfARideCallingACheck(
@@ -510,7 +508,7 @@ public class PeaCockpitObserverTest {
 
   }
 
-  /** How the warning about two different ids names the instance of the task. */
+  /** The part of the warning about two different ids which names the instance of the task. */
   private static final String TWO_IDS = "but it delivers a user task of that workflow as one of process instance '%s'";
 
   private static PeaUserTaskObservation aDeliveryOf(
@@ -543,8 +541,8 @@ public class PeaCockpitObserverTest {
   public void aTaskInAnotherInstanceThanTheStartIsSaidOnce(
       final CapturedOutput output) {
 
-    // the ride calls nothing which shares its aggregate, so this task is no step. Its engine
-    // names another instance than the one it answered the start with
+    // the ride calls nothing which shares its aggregate, so this task is not a step of a called
+    // process. Its engine names another instance than the one it answered the start with
     final var observer = anObserverOfARideCallingACheck(false);
     observer.userTaskDelivered(aDeliveryOf("task-1", TestModels.BPMN_PROCESS_ID, "instance-of-a-broken-engine"));
     observer.userTaskDelivered(aDeliveryOf("task-2", TestModels.BPMN_PROCESS_ID, "instance-of-a-broken-engine"));

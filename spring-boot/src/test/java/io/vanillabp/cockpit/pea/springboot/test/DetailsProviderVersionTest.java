@@ -21,18 +21,18 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * Which details provider runs on this BPMS, and which one never does.
+ * Tests which details provider runs on this BPMS, and which one never does.
  * <p>
- * A details provider may name the versions of the BPMN process it serves, and VanillaBP picks the
- * method by the version the BPMS reported with the event. The Process-Engine-API reports one
- * thing and only sometimes: the version tag an engine wrote into the meta map of the delivered
- * task. So a method named for that tag runs, and a method named for anything else waits for a
- * version which never arrives.
+ * A details provider may name the versions of the BPMN process it serves. VanillaBP picks the
+ * method by the version the BPMS reported with the event. The Process-Engine-API reports only one
+ * thing, and only sometimes: the version tag an engine wrote into the meta map of the delivered
+ * task. So a method named for that tag runs. A method named for anything else waits for a version
+ * which never arrives.
  * <p>
- * The second case is the one worth a test, because nothing about it is loud. No matching method
- * is a legal answer for a details provider: the cockpit sends the prefilled details and the task
- * shows up without the enrichment the application wrote. Entry 12 in the repository's GAPS.md
- * says what that costs, and the test below is what keeps the entry honest.
+ * The second case needs a test, because it fails quietly. Having no matching method is allowed
+ * for a details provider: the cockpit sends the prefilled details, and the task shows up without
+ * the enrichment the application wrote. Entry 12 in the repository's GAPS.md says what that
+ * costs, and the test below keeps the entry true.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -89,8 +89,8 @@ public class DetailsProviderVersionTest {
       final String taskId,
       final String versionTag) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.VERSIONED_TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -113,7 +113,7 @@ public class DetailsProviderVersionTest {
     assertTrue(
         userTask.body().contains("\"fare\":\"%s\"".formatted(TestWorkflowService.FARE_DETAIL)),
         userTask.body());
-    // the version travelled with the report, which is what let VanillaBP pick the method
+    // the version came with the report, and that is what let VanillaBP pick the method
     assertTrue(userTask.body().contains(TestWorkflowService.VERSION_TAG), userTask.body());
 
   }
@@ -136,8 +136,8 @@ public class DetailsProviderVersionTest {
                     .formatted(TestWorkflowService.VERSIONED_TASK_DEFINITION)),
         userTask.body());
     assertTrue(userTask.body().contains("Pay the fare"), userTask.body());
-    // and without one word of the provider, because no method serves a delivery naming no
-    // version. Nothing anywhere says so, which is the whole point of entry 12 in GAPS.md
+    // and without one word from the provider, because no method serves a delivery which names no
+    // version. Nothing says so anywhere, and that is the point of entry 12 in GAPS.md
     assertFalse(userTask.body().contains(TestWorkflowService.FARE_DETAIL), userTask.body());
 
   }
@@ -162,8 +162,8 @@ public class DetailsProviderVersionTest {
 
     final var aggregate = aStartedWorkflow("Udo");
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             "approve-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

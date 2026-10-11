@@ -15,15 +15,16 @@ import org.springframework.test.context.MergedContextConfiguration;
  * <p>
  * VanillaBP writes the user tasks it delivered into the table <code>VANILLABP_TASK_DELIVERY</code>
  * of the application's database. That table is not a JPA entity, so nothing drops it when the
- * next test class boots. The table of the workflow aggregates is created anew with every context,
- * so the ids start at 1 again. In one shared database, an open record another class left behind
- * for the same aggregate id names a workflow of a case the next class thinks has no open user
- * task. That made the tests red depending on the order they ran in.
+ * next test class boots. The table of the workflow aggregates is created again with every
+ * context, so the ids start at 1 again. In one shared database, another class can leave an open
+ * record behind for the same aggregate id. That record names a workflow for a case which the next
+ * class thinks has no open user task. So the tests failed or passed depending on the order they
+ * ran in.
  * <p>
  * Spring finds this factory in the test's <code>META-INF/spring.factories</code>, so a new test
  * class gets its own database without asking for it. The test's <code>application.yaml</code>
- * builds the URL from {@link #DATABASE_NAME_KEY} and has no default for it, so a context booted
- * some other way and without a URL of its own does not start, instead of sharing a database.
+ * builds the URL from {@link #DATABASE_NAME_KEY} and has no default for it. A context booted some
+ * other way and without a URL of its own does not start, instead of sharing a database.
  * <p>
  * The Camunda 7 half of the cockpit names its test databases the same way. The Camunda 8 half
  * sets no URL at all. It sets <code>spring.datasource.generate-unique-name</code>, and Spring gives

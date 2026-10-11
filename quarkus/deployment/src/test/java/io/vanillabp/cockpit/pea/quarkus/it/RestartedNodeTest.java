@@ -29,17 +29,17 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * What this application still knows about a user task once the node which was given it is gone.
+ * Tests what this application still knows about a user task once the node which got it is gone.
  * <p>
  * The memory of a delivery lives in one node and dies with it. VanillaBP writes every delivery it
- * processed into the application's own database, so a node which starts fresh reads there which
+ * processed into the application's own database. So a node which starts fresh reads there which
  * user tasks of a business case this application reported.
  * <p>
  * A restart is a fresh memory over the same database. Quarkus boots one application per test
- * class, so the fresh node here is a bridge built the way the producer builds one, with a memory
- * holding nothing and the delivery log the running application really writes to. Everything the
- * fresh bridge answers it read out of that database. The Spring Boot half of this repository
- * boots a second application context for the same question.
+ * class, so the fresh node here is a bridge built as the producer builds one: with an empty
+ * memory and the delivery log the running application really writes to. Everything the fresh
+ * bridge answers comes from that database. The Spring Boot half of this repository boots a second
+ * application context for the same question.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput
@@ -74,8 +74,8 @@ public class RestartedNodeTest {
   WorkflowElection election;
 
   /**
-   * The Business Cockpit half of a node which has just started: everything it knows it reads out
-   * of the application's database.
+   * The Business Cockpit half of a node which has just started. Everything it knows comes from
+   * the application's database.
    */
   private PeaCockpitBridge aFreshNode() {
 
@@ -132,9 +132,9 @@ public class RestartedNodeTest {
   }
 
   /**
-   * Makes the engine deliver a user task the application has a <code>&#64;WorkflowTask</code>
-   * method for. VanillaBP writes a record while that method runs, and a delivery nobody
-   * processes leaves none.
+   * Makes the engine deliver a user task which has a <code>&#64;WorkflowTask</code> method in the
+   * application. VanillaBP writes a record while that method runs. A delivery nobody processes
+   * leaves no record.
    */
   private void aDeliveredUserTask(
       final TestAggregate aggregate,

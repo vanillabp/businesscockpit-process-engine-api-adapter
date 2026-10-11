@@ -28,18 +28,18 @@ import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * What the cockpit reads back about a task or a business case. All this BPMS has to answer with
- * are the deliveries this node was given. The interesting answers are the empty ones: a task
- * nobody delivered here, or a business case whose tasks all ended. Those are what an application
- * notices as a cockpit which stopped following.
+ * Tests what the cockpit reads back about a task or a business case. The answers come from the
+ * deliveries this node got and from what VanillaBP wrote down when it started a workflow. The
+ * empty answers matter most: a task nobody delivered here, or a business case whose tasks all
+ * ended. An application sees those as a cockpit which stopped following.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitBridgeTest {
 
-  /** The words of the warning about a workflow VanillaBP started whose version is unknown. */
+  /** Part of the warning about a workflow which VanillaBP started but whose version is unknown. */
   private static final String VERSION_IS_UNKNOWN = "is unknown. VanillaBP started that workflow";
 
-  /** The words of the warning about a business case no source knows anything about. */
+  /** Part of the warning about a business case which no source knows anything about. */
   private static final String NOTHING_IS_KNOWN = "because no source knows a workflow";
 
   private PeaDeliveredUserTasks deliveredUserTasks;
@@ -452,13 +452,14 @@ public class PeaCockpitBridgeTest {
   public void aCaseWithoutAnOpenTaskIsFoundByItsStart(
       final CapturedOutput output) {
 
-    // a case of its own, because the output captured here is the one of the whole class
+    // a business case of its own: the output is captured for the whole class, and each case is
+    // warned about only once
     aDeliveredUserTask(observer, "task-3", "4713", "instance-3", TestModels.VERSION_TAG);
     deliveredUserTasks.ended("task-3");
     election.started("4713", "instance-3");
 
-    // what BusinessCockpitService.aggregateChanged asks while the workflow is busy with a
-    // service task, after its only user task so far was finished
+    // BusinessCockpitService.aggregateChanged asks this while the workflow runs a service task
+    // and its only user task so far has ended
     final var found = bridge
         .workflowsOfAggregate(TestModels.MODULE_ID, TestModels.BPMN_PROCESS_ID, "4713");
 
@@ -517,7 +518,7 @@ public class PeaCockpitBridgeTest {
   public void anOpenTaskNamesTheWorkflowBeforeTheStart() {
 
     aDeliveredUserTask("task-1");
-    // an engine whose answer to a start differs from what its deliveries name. The cockpit shows
+    // the engine answered the start with another id than its deliveries name. The cockpit shows
     // the case under the id of its first task, so that id has to stay
     election.started("4711", "instance-of-the-start");
 
@@ -644,8 +645,8 @@ public class PeaCockpitBridgeTest {
   @DisplayName("A change after the end of a workflow is reported to the cockpit, and nothing reaches the engine")
   public void aChangeAfterTheEndIsReported() {
 
-    // the only task ended, and so did the workflow. The note of the start lives longer, and since
-    // the election reads it, aggregateChanged reaches this bridge after the end as well
+    // the only task ended, and so did the workflow. The note of the start is kept longer. The
+    // election reads it, so aggregateChanged still reaches this bridge after the end
     aDeliveredUserTask(observer, "task-9", "4719", "instance-9", TestModels.VERSION_TAG);
     deliveredUserTasks.ended("task-9");
     election.started("4719", new WorkflowStart(TestModels.ADAPTER_ID, "instance-9", TestModels.VERSION_TAG, true));

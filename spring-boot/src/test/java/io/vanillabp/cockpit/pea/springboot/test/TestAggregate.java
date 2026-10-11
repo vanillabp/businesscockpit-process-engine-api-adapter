@@ -11,20 +11,20 @@ import jakarta.persistence.Version;
  * The business case of the test. It says what the workflow is about and what a details provider
  * changes.
  * <p>
- * It carries a version attribute, and that is what an application with a writing details provider
- * is meant to do. The provider runs while the report is built, in the transaction the cockpit
- * opens for the outbox entry, and it writes this case back when that transaction commits. An
- * application which changes the same case in that window would otherwise lose its change without
- * a word, because the provider writes every field it holds, the older reading among them. With
- * the version attribute the later of the two writers reads a conflict instead, and each of them
- * answers it the way it can. The application repeats its transaction. The cockpit loses the
- * entry, so the report of that event is gone and the next one carries the case as it is then.
+ * It has a version attribute, and an application whose details provider writes should have one
+ * too. The provider runs while the report is built, in the transaction the cockpit opens for the
+ * outbox entry, and it writes this case back when that transaction commits. If the application
+ * changes the same case in that window, it would lose its change without a word, because the
+ * provider writes every field it holds, including the old ones. With the version attribute, the
+ * later of the two writers runs into a conflict instead, and each of them handles it as it can.
+ * The application repeats its transaction. The cockpit loses the entry, so the report of that
+ * event is gone and the next report carries the case as it is then.
  * <p>
- * Keeping the version out of the BPMS leaves <code>allow-full-sync-with-bpms</code> without an
- * effect in this test application: the startup check returns as soon as an aggregate holds
- * anything back. The line stays all the same. The Quarkus test application holds nothing back and
- * does need it, and one line fewer here would only mean that this application stops starting the
- * day somebody takes the annotation off.
+ * Keeping the version out of the BPMS means that <code>allow-full-sync-with-bpms</code> has no
+ * effect in this test application: the startup check returns as soon as an aggregate keeps
+ * anything back. The line stays anyway. The Quarkus test application keeps nothing back and does
+ * need it. Without the line here, this application would stop starting on the day somebody
+ * removes the annotation.
  */
 @Entity
 public class TestAggregate {
@@ -34,9 +34,9 @@ public class TestAggregate {
   private Long id;
 
   /**
-   * What the persistence increments per write, and what a second writer runs into. It stays in
-   * the application: no model of this workflow reads it, and the number says nothing a BPMN
-   * model could decide on.
+   * The persistence increments it with every write, and a second writer runs into it. It stays
+   * in the application: no model of this workflow reads it, and a BPMN model could decide nothing
+   * by this number.
    */
   @NoSyncWithBPMS
   @Version

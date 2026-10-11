@@ -16,9 +16,9 @@ import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * The one setting this half has, and what an application is told when it wrote something nobody
- * can use. The value is read while the application starts. So a developer reads these messages on
- * the first boot rather than in the middle of a working day.
+ * Tests the one setting of this extension, and what an application is told when it sets a value
+ * nobody can use. The value is read while the application starts. So a developer sees these
+ * messages on the first boot and not in the middle of a working day.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaCockpitSettingsTest {

@@ -26,16 +26,16 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * What a details provider which throws costs, inside a booted Quarkus application.
+ * Tests what a details provider which throws costs, inside a booted Quarkus application.
  * <p>
- * It is the twin of the Spring Boot test of the same name. The behaviour it measures belongs to
- * the platform-neutral half, but which transaction the report of an event is built in is the
- * platform's own answer, and a rollback is what decides whether an entry is left behind.
+ * It is the twin of the Spring Boot test of the same name. The behaviour belongs to the
+ * platform-neutral half. But each platform decides in which transaction the report of an event
+ * is built, and a rollback decides whether an entry is left behind.
  * <p>
- * Three moments are told apart on purpose, because they cost different things. A DELIVERY is
+ * Three moments are kept apart on purpose, because they cost different things. A DELIVERY is
  * offered again. A COMPLETION travels in the outbox entry which carries the completion, so the
  * entry comes back. A CANCELATION is offered once, and a report lost there is lost for good.
- * Decision 12 in the repository's DECISIONS.md holds what was measured on each of them.
+ * Decision 12 in the repository's DECISIONS.md holds what was measured for each of them.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput
@@ -67,7 +67,7 @@ public class FailingDetailsProviderTest {
 
   /**
    * A provider left broken would break every test which runs after this class, because the
-   * switch is a static of the application under test.
+   * switch is a static field of the application under test.
    */
   @AfterEach
   public void leaveAWorkingProvider() {
@@ -97,8 +97,8 @@ public class FailingDetailsProviderTest {
       final TestAggregate aggregate,
       final String taskId) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -113,8 +113,8 @@ public class FailingDetailsProviderTest {
     final var aggregate = aStartedWorkflow("Rosa");
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
 
-    // the engine hands a failed delivery back to whoever delivered, which is what an engine
-    // behind this API sees as well
+    // the engine hands a failed delivery back to the caller, and an engine behind this API sees
+    // the same
     final var failure = assertThrows(
         PeaUserTaskObserverFailure.class,
         () -> aDeliveredUserTask(aggregate, "broken-1"));
@@ -218,7 +218,7 @@ public class FailingDetailsProviderTest {
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
     // completing a user task is a phase-two operation, so the engine is asked after this
     // transaction committed, on a worker of the outbox. What the provider throws is that
-    // worker's business and never the caller's (decision 12)
+    // worker's problem and never the caller's (decision 12)
     transaction.begin();
     workflowService
         .processes()
@@ -239,8 +239,8 @@ public class FailingDetailsProviderTest {
 
   /**
    * Whether the failure which reached the engine still carries what the application's details
-   * provider threw. How many wrappers there are between the two is nobody's promise, so the whole
-   * chain is read.
+   * provider threw. Nobody promises how many wrappers lie between the two, so the whole chain is
+   * read.
    */
   private static boolean saysWhatTheProviderThrew(
       final Throwable failure) {

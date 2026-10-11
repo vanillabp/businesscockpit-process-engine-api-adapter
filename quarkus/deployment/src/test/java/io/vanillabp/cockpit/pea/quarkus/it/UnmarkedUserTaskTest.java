@@ -10,12 +10,12 @@ import io.quarkus.test.QuarkusExtensionTest;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * What happens to a user task which has no <code>&#64;WorkflowTask</code> method and is not
- * marked as served elsewhere, inside a Quarkus application.
+ * Tests what happens to a user task which has no <code>&#64;WorkflowTask</code> method and is
+ * not marked as served elsewhere, inside a Quarkus application.
  * <p>
- * It is the twin of the Spring Boot test of the same name, which says why a details provider of
- * the Business Cockpit does not count as serving a task. The line which marks the task is taken
- * away here, so the start has to end and name the line to add.
+ * It is the twin of the Spring Boot test of the same name, which explains why a details provider
+ * of the Business Cockpit does not count as serving a task. Here the line which marks the task is
+ * removed, so the start has to end and name the line to add.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

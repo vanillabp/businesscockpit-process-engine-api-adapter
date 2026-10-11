@@ -8,10 +8,10 @@ import org.springframework.context.annotation.Bean;
 import io.vanillabp.spi.cockpit.workflowmodules.WorkflowModuleDetailsProvider;
 
 /**
- * The application the Process-Engine-API half of the Business Cockpit extension is tested inside.
- * It holds a JPA workflow aggregate, a workflow service with details providers, and the in-memory
- * engine the VanillaBP Process-Engine-API adapter runs against when an application brings none of
- * its own.
+ * The application in which the Process-Engine-API half of the Business Cockpit extension is
+ * tested. It has a JPA workflow aggregate, a workflow service with details providers, and the
+ * in-memory engine the VanillaBP Process-Engine-API adapter uses when an application brings no
+ * engine of its own.
  */
 @SpringBootApplication
 public class TestApplication {
