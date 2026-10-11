@@ -12,13 +12,12 @@ import io.vanillabp.cockpit.extension.spi.WorkflowEventKind;
 import io.vanillabp.cockpit.extension.spi.WorkflowReference;
 
 /**
- * The platform-neutral half of the extension, played by the test. It writes down what it was told
- * instead of writing an outbox entry, so that a test can tell "reported nothing" from "was never
- * asked".
+ * Plays the platform-neutral half of the extension. It writes down what it was told instead of
+ * writing an outbox entry. So a test can tell "reported nothing" from "was never asked".
  * <p>
- * It can also refuse to take a report, which is something a cockpit half has to survive. The
- * outbox writes into a database, and a database says no. What the observer remembers about a
- * report it could not write decides whether the case or the task is reported at all.
+ * It can also refuse a report, and this extension has to survive that. The outbox writes into a
+ * database, and a database can say no. What the observer remembers about a report it could not
+ * write decides whether the case or the task is reported at all.
  */
 public class RecordingPublisher implements BusinessCockpitEventPublisher {
 
@@ -41,7 +40,7 @@ public class RecordingPublisher implements BusinessCockpitEventPublisher {
   private boolean refusingWorkflowEvents;
 
   /**
-   * Lets every following user-task report fail, the way a database which is gone would.
+   * Makes every following user-task report fail, as a database which is down would.
    */
   public void refuseUserTaskEvents() {
 
@@ -50,7 +49,7 @@ public class RecordingPublisher implements BusinessCockpitEventPublisher {
   }
 
   /**
-   * Lets every following workflow report fail, the way a database which is gone would.
+   * Makes every following workflow report fail, as a database which is down would.
    */
   public void refuseWorkflowEvents() {
 

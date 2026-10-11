@@ -23,9 +23,8 @@ import io.vanillabp.spi.service.WorkflowService;
 import io.vanillabp.spi.service.WorkflowTask;
 
 /**
- * The application under test. It is a taxi ride whose user task the cockpit is to show, with a
- * details provider which enriches what the engine delivered and writes into the aggregate while
- * doing so.
+ * The application under test: a taxi ride whose user task the cockpit shows. Its details provider
+ * enriches what the engine delivered and writes into the aggregate while doing so.
  */
 @Service
 @WorkflowService(
@@ -53,10 +52,10 @@ public class TestWorkflowService {
    */
   public static final String UNCLAIMED_BPMN_PROCESS_ID = "RideReview";
 
-  /** The external form reference of the user task only the process nobody claims has. */
+  /** The external form reference of the user task of the process nobody claims. */
   public static final String UNCLAIMED_TASK_DEFINITION = "rate-the-driver";
 
-  /** The external form reference of the user task, which is what the cockpit calls its task definition. */
+  /** The external form reference of the user task. The cockpit calls it the task definition. */
   public static final String TASK_DEFINITION = "approve-the-ride";
 
   /** The BPMN element id of the user task. */
@@ -64,8 +63,8 @@ public class TestWorkflowService {
 
   /**
    * The external form reference of the second user task. No <code>&#64;WorkflowTask</code> method
-   * of this application claims it, which is what the measurement of story 1299 is about: a task
-   * worked on in a task list only.
+   * of this application claims it. Story 1299 measured what the cockpit hears about such a task,
+   * which people work on only in a task list.
    */
   public static final String UNSERVED_TASK_DEFINITION = "inspect-the-car";
 
@@ -78,7 +77,7 @@ public class TestWorkflowService {
 
   /**
    * The external form reference of the third user task. Its details provider names a version, so
-   * it only runs for a delivery which says which version of the model it came from. No
+   * it only runs for a delivery which names the version of its model. No
    * <code>&#64;WorkflowTask</code> method claims this task either, so the test configuration marks
    * it as well.
    */
@@ -88,9 +87,9 @@ public class TestWorkflowService {
   public static final String VERSIONED_BPMN_TASK_ID = "Pay";
 
   /**
-   * The version tag the engine of this test writes into the meta map of a delivered task. It is
-   * the only thing the Process-Engine-API ever reports as the version of a process, and the
-   * provider of the third user task is written against exactly this spelling.
+   * The version tag the engine of this test writes into the meta map of a delivered task. The
+   * Process-Engine-API reports nothing else as the version of a process. The provider of the third
+   * user task names exactly this spelling.
    */
   public static final String VERSION_TAG = "ride-2026-09";
 
@@ -98,9 +97,9 @@ public class TestWorkflowService {
   public static final String FARE_DETAIL = "priced by the provider";
 
   /**
-   * The process variable only the details provider of the first user task reads. No
-   * <code>&#64;WorkflowTask</code> method of this application reads it, so the engine delivers it
-   * only because the subscription asks for what the cockpit reads as well.
+   * The process variable which only the details provider of the first user task reads. No
+   * <code>&#64;WorkflowTask</code> method of this application reads it. The engine delivers it
+   * only because the subscription also asks for what the cockpit reads.
    */
   public static final String PASSENGER_VARIABLE = "passenger";
 
@@ -114,8 +113,8 @@ public class TestWorkflowService {
   public static final String PROVIDER_BROKE = "the details provider broke";
 
   /**
-   * How many more calls of the details provider of the first user task are to fail. A test sets
-   * it, the provider counts it down, and every other test meets a provider which works.
+   * How many more calls of the details provider of the first user task have to fail. A test sets
+   * it, the provider counts it down, and every other test gets a provider which works.
    */
   public static final AtomicInteger APPROVALS_TO_FAIL = new AtomicInteger();
 
@@ -152,12 +151,12 @@ public class TestWorkflowService {
 
   /**
    * Matched by the external form reference of the user task. It enriches what the engine
-   * delivered and writes into the workflow aggregate, which is what a details provider is for.
+   * delivered and writes into the workflow aggregate. That is what a details provider is for.
    * <p>
-   * The write has to stay even though no test reads the note any more. It is what leaves the case
-   * dirty in the transaction the cockpit opens to write its outbox entry. A provider writing
-   * nothing is no second writer of the case, and a second writer is what the version attribute of
-   * TestAggregate answers.
+   * The write has to stay even though no test reads the note any more. It leaves the case changed
+   * in the transaction the cockpit opens to write its outbox entry. A provider which writes
+   * nothing is no second writer of the case, and the version attribute of TestAggregate exists
+   * for exactly that second writer.
    *
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param prefilled What the engine knew about the task
@@ -190,12 +189,12 @@ public class TestWorkflowService {
   }
 
   /**
-   * What the application is told about the FIRST user task. It is the control of the measurement:
-   * a task this application has code for, next to one it has none for.
+   * What the application is told about the FIRST user task. It is the control case of the
+   * measurement: a task this application has code for, next to one it has no code for.
    * <p>
-   * It changes nothing about the workflow aggregate on purpose. A handler which writes the case
-   * would be a second writer next to the details provider of the report being built, and this
-   * test is about who hears of a task, not about who writes the case.
+   * It changes nothing in the workflow aggregate on purpose. A handler which writes the case
+   * would be a second writer next to the details provider of the report being built. This test
+   * is about who hears of a task, not about who writes the case.
    *
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param taskId The engine's id of the task
@@ -211,8 +210,8 @@ public class TestWorkflowService {
 
   /**
    * The details of the user task nothing claims. It is wired by the external form reference like
-   * every other provider, so the only thing telling the two user tasks apart is the missing
-   * <code>&#64;WorkflowTask</code> method.
+   * every other provider. So only the missing <code>&#64;WorkflowTask</code> method tells the two
+   * user tasks apart.
    *
    * @param aggregate The workflow aggregate, loaded by VanillaBP
    * @param prefilled What the engine knew about the task
@@ -230,9 +229,9 @@ public class TestWorkflowService {
   }
 
   /**
-   * The details of the user task the version decides about. It runs for the deliveries which say
-   * they come from the version this method names, and for no other, which on this BPMS means the
-   * deliveries carrying that version tag.
+   * The details of the user task whose provider depends on the version. It runs only for
+   * deliveries which name the version this method names. On this BPMS, these are the deliveries
+   * which carry that version tag.
    * <p>
    * A delivery which names no version reaches no method at all, and that is allowed: the cockpit
    * then sends the prefilled details. Entry 12 in the repository's GAPS.md says what it costs.

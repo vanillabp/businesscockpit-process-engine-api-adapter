@@ -17,11 +17,11 @@ import io.vanillabp.cockpit.pea.PeaCockpitSettings;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * That a number nobody can use is read while the application starts.
+ * Tests that a number nobody can use is found while the application starts.
  * <p>
- * The unit test of the setting shows what the message says. This one shows that somebody reads the
- * setting at all. That is the difference between a developer learning about the typo on the first
- * boot and a node reporting no user task on a working day.
+ * The unit test of the setting shows what the message says. This one shows that the setting is
+ * read at all. Without it, a developer would not learn about the typo on the first boot. A node
+ * would report no user task on a working day instead.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

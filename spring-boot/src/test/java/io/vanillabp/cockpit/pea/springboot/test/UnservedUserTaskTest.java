@@ -23,13 +23,13 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
 
 /**
- * What the Business Cockpit hears about a user task no <code>&#64;WorkflowTask</code> method of
- * the application claims.
+ * Tests what the Business Cockpit hears about a user task which no <code>&#64;WorkflowTask</code>
+ * method of the application claims.
  * <p>
  * The taxi ride of this test module has two user tasks. One is served: the application has a
- * method for it and is notified when the engine delivers it. The other is not: it is worked on in
- * a task list and nothing in the application is called for it. Everything else about the two is
- * the same, the details provider included, so a difference in what the cockpit is told can only
+ * method for it and is notified when the engine delivers it. The other is not: people work on it
+ * in a task list, and nothing in the application is called for it. Everything else about the two
+ * is the same, the details provider too. So a difference in what the cockpit is told can only
  * come from the missing method.
  * <p>
  * The VanillaBP core ends the start for a task without a method unless the application marks it
@@ -37,10 +37,10 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * method. So the test's <code>application.yaml</code> marks the unserved task, and
  * {@link UnmarkedUserTaskTest} shows that the start ends without that line.
  * <p>
- * The measurement was asked for by story 1299, which weighs the memory of this extension
- * (decision 3 in the repository's DECISIONS.md) against the delivery log of the platform. That
- * log is written where a handler was invoked, so it holds the served task and not the other one.
- * What this test says is whether the cockpit half sees more than the log could ever answer.
+ * Story 1299 asked for this measurement. It compares the memory of this extension (decision 3 in
+ * the repository's DECISIONS.md) with the delivery log of the platform. That log is written only
+ * where a handler was called, so it holds the served task and not the other one. This test shows
+ * whether the cockpit half sees more than the log could ever answer.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -89,14 +89,14 @@ public class UnservedUserTaskTest {
   }
 
   /**
-   * Delivers the user task nothing claims, the way an engine does when a workflow reaches it.
+   * Delivers the user task nothing claims, as an engine does when a workflow reaches it.
    */
   private void anUnservedUserTask(
       final TestAggregate aggregate,
       final String taskId) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.UNSERVED_TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -212,8 +212,8 @@ public class UnservedUserTaskTest {
 
     final var aggregate = aStartedWorkflow("Quirin");
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             "served-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

@@ -22,12 +22,12 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * What the Business Cockpit hears about a user task no <code>&#64;WorkflowTask</code> method of
- * the application claims, inside a booted Quarkus application.
+ * Tests what the Business Cockpit hears about a user task which no <code>&#64;WorkflowTask</code>
+ * method of the application claims, inside a booted Quarkus application.
  * <p>
  * It is the twin of the Spring Boot test of the same name. It exists because the two platforms
- * collect the observers of an application in ways of their own, and a platform-neutral half being
- * right says nothing about a platform's glue ever calling it.
+ * collect the observers of an application in their own ways. A correct platform-neutral half does
+ * not prove that the platform code ever calls it.
  * <p>
  * The unserved task is marked with <code>implemented-externally=true</code> in
  * <code>business-cockpit.yaml</code>, because without that line the start ends. That is what
@@ -79,14 +79,14 @@ public class UnservedUserTaskTest {
   }
 
   /**
-   * Delivers the user task nothing claims, the way an engine does when a workflow reaches it.
+   * Delivers the user task nothing claims, as an engine does when a workflow reaches it.
    */
   private void anUnservedUserTask(
       final TestAggregate aggregate,
       final String taskId) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.UNSERVED_TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -178,8 +178,8 @@ public class UnservedUserTaskTest {
 
     final var aggregate = aStartedWorkflow("Quirin");
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             "served-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

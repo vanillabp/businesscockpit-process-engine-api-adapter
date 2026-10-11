@@ -11,23 +11,23 @@ import io.vanillabp.integration.spi.TaskDelivery;
 import io.vanillabp.integration.spi.TaskDeliveryLog;
 
 /**
- * A delivery log which keeps its records in a list, standing in for the store an application
- * runs. It answers the two questions this extension asks of a real store, and it answers them
- * the way the contract of {@link TaskDeliveryLog} describes: the open records of a business
- * case, oldest first, and one record of a task whether it is open or closed.
+ * A delivery log which keeps its records in a list. It stands in for the store an application
+ * runs. It answers the two questions this extension asks a real store, as the contract of
+ * {@link TaskDeliveryLog} describes: the open records of a business case, oldest first, and the
+ * one record of a task, open or closed.
  */
 public class TestDeliveryLog implements TaskDeliveryLog {
 
   private final List<TaskDelivery> records = new ArrayList<>();
 
   /**
-   * Writes down a delivery which is still open, the way VanillaBP writes one while it hands a
-   * user task to the application.
+   * Writes down a delivery which is still open, as VanillaBP does while it hands a user task to
+   * the application.
    * <p>
-   * The record names neither the workflow nor the BPMN element. That is a record of an engine
-   * which names no process instance and no element in its delivery, where the adapter could not
-   * read the element out of the model either, or a record written before the adapter filled
-   * these fields. It is the record which leaves the most to this extension.
+   * The record names neither the workflow nor the BPMN element. Such a record comes from an
+   * engine which names no process instance and no element in its delivery, where the adapter
+   * could not read the element from the model either. It can also be a record written before the
+   * adapter filled these fields. This record leaves the most work to this extension.
    *
    * @param adapterId The configured adapter id which delivered
    * @param workflowAggregateId The business case
@@ -45,9 +45,9 @@ public class TestDeliveryLog implements TaskDeliveryLog {
   }
 
   /**
-   * Writes down a delivery which is still open and names the version of its process, the way
-   * VanillaBP writes one where the engine put a version tag into the meta map of the task. The
-   * record names neither the workflow nor the BPMN element, like {@link #anOpenTask}.
+   * Writes down a delivery which is still open and names the version of its process. VanillaBP
+   * writes such a record where the engine put a version tag into the meta map of the task. Like
+   * {@link #anOpenTask}, the record names neither the workflow nor the BPMN element.
    *
    * @param adapterId The configured adapter id which delivered
    * @param workflowAggregateId The business case
@@ -67,8 +67,8 @@ public class TestDeliveryLog implements TaskDeliveryLog {
   }
 
   /**
-   * Writes down a delivery which is still open and names the workflow and the BPMN element, the
-   * way the Process-Engine-API adapter writes one where the engine names the process instance.
+   * Writes down a delivery which is still open and names the workflow and the BPMN element. The
+   * Process-Engine-API adapter writes such a record where the engine names the process instance.
    *
    * @param adapterId The configured adapter id which delivered
    * @param workflowAggregateId The business case

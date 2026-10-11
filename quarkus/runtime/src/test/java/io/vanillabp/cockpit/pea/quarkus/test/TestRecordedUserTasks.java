@@ -13,10 +13,9 @@ import io.vanillabp.integration.spi.TaskDeliveryLog;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
- * A reader of VanillaBP's delivery log for a test which does not read one. The tests of this
- * module ask which adapter ids get a bridge, and a bridge needs the reader to be built at all.
- * What the reader answers is asserted in the platform-neutral module, against a store which
- * holds records.
+ * A reader of VanillaBP's delivery log for tests which do not read the log. The tests of this
+ * module ask which adapter ids get a bridge, and a bridge cannot be built without a reader. The
+ * platform-neutral module tests what the reader answers, against a store which holds records.
  */
 public final class TestRecordedUserTasks {
 

@@ -13,15 +13,15 @@ import io.vanillabp.cockpit.extension.test.support.CockpitServer;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * What happens to a user task which has no <code>&#64;WorkflowTask</code> method and is not
- * marked as served elsewhere.
+ * Tests what happens to a user task which has no <code>&#64;WorkflowTask</code> method and is
+ * not marked as served elsewhere.
  * <p>
  * The VanillaBP core ends the start for such a task. A details provider of the Business Cockpit
- * does not count as serving it: the provider says what the cockpit shows, and nothing in it works
- * the task off. So the application has to say that a task list does, with the line
+ * does not count as serving it: the provider says what the cockpit shows, and nothing in it
+ * completes the task. So the application has to say that a task list does, with the line
  * <code>implemented-externally=true</code>. {@link UnservedUserTaskTest} boots the same model
- * with that line and shows what the cockpit hears. This test takes the line away for one task and
- * shows that the start ends, naming the line to add.
+ * with that line and shows what the cockpit hears. This test removes the line for one task and
+ * shows that the start ends and names the line to add.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput

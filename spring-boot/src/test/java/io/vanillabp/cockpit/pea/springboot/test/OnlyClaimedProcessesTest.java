@@ -20,26 +20,26 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
 
 /**
- * The cockpit hears only about the BPMN processes a <code>&#64;WorkflowService</code> of the
- * application claims.
+ * Tests that the cockpit hears only about the BPMN processes a <code>&#64;WorkflowService</code>
+ * of the application claims.
  * <p>
- * The file of the taxi ride carries three processes. The ride is claimed by the workflow service.
- * The car check is called by the ride and claimed by the same service as a secondary process. The
- * ride review is claimed by nobody: it only travels in the file, and the test configuration marks it
- * as served by somebody else. A fourth process is not deployed by this application at all. It
- * stands for a process of somebody else which runs on the same engine.
+ * The file of the taxi ride has three processes. The workflow service claims the ride. The ride
+ * calls the car check, and the same service claims it as a secondary process. Nobody claims the
+ * ride review: it is only part of the file, and the test configuration marks it as served by
+ * somebody else. A fourth process is not deployed by this application at all. It stands for a
+ * process of somebody else which runs on the same engine.
  * <p>
- * The engine of this test runs nothing by itself. A test delivers a task the way an engine does,
- * and it can only deliver to a subscription. So a task of a process nobody claims can reach the
- * cockpit only where it shows the same form as a task of a claimed process. That is what the review
- * and the foreign process do here, and it is the way such a task would arrive in production.
+ * The engine of this test runs nothing by itself. A test delivers a task as an engine does, and
+ * it can only deliver to a subscription. So a task of a process nobody claims reaches the cockpit
+ * only if it shows the same form as a task of a claimed process. The review and the foreign
+ * process do that here, and that is how such a task would arrive in production.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput
 public class OnlyClaimedProcessesTest {
 
-  /** A process this application never deployed, which an engine may run all the same. */
+  /** A process this application never deployed, which an engine may still run. */
   private static final String FOREIGN_BPMN_PROCESS_ID = "SomebodyElsesRide";
 
   @DynamicPropertySource
@@ -88,8 +88,8 @@ public class OnlyClaimedProcessesTest {
       final TestAggregate aggregate,
       final String taskId) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.TASK_DEFINITION, bpmnProcessId, Map
@@ -125,7 +125,7 @@ public class OnlyClaimedProcessesTest {
     final var aggregate = aStartedWorkflow("Rita");
 
     anApprovalFormOf(TestWorkflowService.UNCLAIMED_BPMN_PROCESS_ID, aggregate, "review-1");
-    // a task of the ride after it, so that the quiet below is not just a slow outbox
+    // a task of the ride after it, so that the silence below is not just a slow outbox
     anApprovalFormOf(TestWorkflowService.BPMN_PROCESS_ID, aggregate, "ride-1");
     CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"ride-1\"");
     CockpitServer.awaitQuiet();
@@ -176,8 +176,8 @@ public class OnlyClaimedProcessesTest {
 
     final var aggregate = aStartedWorkflow("Tom");
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             "check-1", TestWorkflowService.CALLED_TASK_DEFINITION, TestWorkflowService.CALLED_BPMN_PROCESS_ID, Map

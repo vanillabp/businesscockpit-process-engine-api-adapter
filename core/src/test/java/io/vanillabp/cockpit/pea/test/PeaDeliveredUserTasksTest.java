@@ -17,10 +17,10 @@ import io.vanillabp.cockpit.pea.PeaDeliveredUserTasks.DeliveredUserTask;
 import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 
 /**
- * The memory of a node has an end, and what happens when it is reached is the difference between
- * a cockpit which loses a report and an application which runs out of heap. The order the
- * deliveries keep in it is the second thing tested here, because it is what answers the version
- * of a business case.
+ * The memory of a node has a limit. What happens when it is full decides between a cockpit which
+ * loses a report and an application which runs out of heap. The second thing tested here is the
+ * order in which the memory keeps the deliveries, because that order gives the version of a
+ * business case.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaDeliveredUserTasksTest {

@@ -20,10 +20,10 @@ import jakarta.inject.Inject;
 import jakarta.transaction.UserTransaction;
 
 /**
- * Which details provider runs on this BPMS, and which one never does, inside a booted Quarkus
- * application. It is the twin of the Spring Boot test of the same name, and it exists for the
- * same reason every twin here exists: the two platforms wire the handlers of an application in
- * ways of their own.
+ * Tests which details provider runs on this BPMS, and which one never does, inside a booted
+ * Quarkus application. It is the twin of the Spring Boot test of the same name. Like every twin
+ * here, it exists because the two platforms wire the handlers of an application in their own
+ * ways.
  */
 @ExtendWith(SuppressOutputExtension.class)
 @SuppressOutputExtension.SuppressBackgroundOutput
@@ -79,8 +79,8 @@ public class DetailsProviderVersionTest {
       final String taskId,
       final String versionTag) {
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             taskId, TestWorkflowService.VERSIONED_TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
@@ -103,7 +103,7 @@ public class DetailsProviderVersionTest {
     assertTrue(
         userTask.body().contains("\"fare\":\"%s\"".formatted(TestWorkflowService.FARE_DETAIL)),
         userTask.body());
-    // the version travelled with the report, which is what let VanillaBP pick the method
+    // the version came with the report, and that is what let VanillaBP pick the method
     assertTrue(userTask.body().contains(TestWorkflowService.VERSION_TAG), userTask.body());
 
   }
@@ -126,8 +126,8 @@ public class DetailsProviderVersionTest {
                     .formatted(TestWorkflowService.VERSIONED_TASK_DEFINITION)),
         userTask.body());
     assertTrue(userTask.body().contains("Pay the fare"), userTask.body());
-    // and without one word of the provider, because no method serves a delivery naming no
-    // version. Nothing anywhere says so, which is the whole point of entry 12 in GAPS.md
+    // and without one word from the provider, because no method serves a delivery which names no
+    // version. Nothing says so anywhere, and that is the point of entry 12 in GAPS.md
     assertFalse(userTask.body().contains(TestWorkflowService.FARE_DETAIL), userTask.body());
 
   }
@@ -152,8 +152,8 @@ public class DetailsProviderVersionTest {
 
     final var aggregate = aStartedWorkflow("Udo");
 
-    // the id as text matches no start variable, so this engine names no instance, like one
-    // which keeps no instance id in its tasks. The case stands under the aggregate's id
+    // the id as text matches no start variable, so the engine names no instance, like an engine
+    // which keeps no instance id in its tasks. The case is filed under the aggregate's id
     engine
         .deliverTask(
             "approve-1", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map

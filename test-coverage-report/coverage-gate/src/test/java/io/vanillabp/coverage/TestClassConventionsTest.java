@@ -13,11 +13,12 @@ import io.vanillabp.integration.test.utils.TestClassConventions;
 
 /**
  * One more gate in the module which already gates this repository as a whole. Every test class
- * registers {@link SuppressOutputExtension}, so a build log carries what a failing test printed
- * and nothing else.
+ * registers {@link SuppressOutputExtension}, so a build log holds what a failing test printed
+ * and nothing else. A class which also starts containers registers it above
+ * <code>&#64;Testcontainers</code>, or the Docker client logs before anything catches it.
  * <p>
- * The rule slips away without a word, because a class which forgets it stays quiet as long as its
- * tests pass. So it is checked here instead of being reviewed.
+ * The rule is easy to break without anybody noticing, because a class which forgets it stays
+ * quiet as long as its tests pass. So it is checked here instead of in a review.
  * <p>
  * It also checks the guiding messages of this repository. A message is what a developer reads in
  * the moment something goes wrong, so a sentence which fell apart in the source takes away the one

@@ -20,17 +20,17 @@ import io.vanillabp.integration.test.utils.SuppressOutputExtension;
 import io.vanillabp.pea.mock.InMemoryProcessEngine;
 
 /**
- * That the in-memory engine of the VanillaBP Process-Engine-API adapter still hands a delivered
- * user task to ONE subscription, the way the Process-Engine-API's own reference engine adapter
- * does.
+ * Tests that the in-memory engine of the VanillaBP Process-Engine-API adapter still hands a
+ * delivered user task to ONE subscription only. The Process-Engine-API's own reference engine
+ * adapter does the same.
  * <p>
- * The whole design of this half rests on that. An extension cannot subscribe next to the workflow
- * application, because it would either see nothing or take the task away. That is why there is a
- * port waiting for a seam in the adapter instead (decision 5 in the repository's DECISIONS.md).
- * The engine used here is a test double of the adapter, and a double which quietly grew a second
- * seat would leave that design resting on nothing. So what this test guards is how true the
- * double stays, not the API itself. Entry 1 of the repository's <code>GAPS.md</code> holds the
- * evidence from the reference adapter and what follows for the cockpit.
+ * The design of this extension rests on that. The extension cannot subscribe next to the workflow
+ * application, because it would either see nothing or take the task away. So the adapter calls
+ * the extension from its own subscription instead (decision 7 in the repository's DECISIONS.md).
+ * The engine used here is a test double of the adapter. If the double quietly started to deliver
+ * to a second subscription, the reason for that design would be gone and nobody would notice. So
+ * this test guards how true the double stays, not the API itself. Entry 1 of the repository's
+ * <code>GAPS.md</code> holds the evidence from the reference adapter.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaSubscriptionProbeTest {

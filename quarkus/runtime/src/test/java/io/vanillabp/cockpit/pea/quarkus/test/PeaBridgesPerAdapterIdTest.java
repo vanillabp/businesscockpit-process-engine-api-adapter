@@ -19,13 +19,13 @@ import io.vanillabp.pea.PeaAdapter;
 import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
 
 /**
- * Which Process-Engine-API adapter ids get a bridge.
+ * Tests which Process-Engine-API adapter ids get a bridge.
  * <p>
- * The answer is VanillaBP's ({@code MigrationAdapterProperties#adapterIdsOfType}). A hand-rolled
- * filter over the configured adapter TYPES misses the everyday case on this BPMS: an application
- * takes the single adapter dependency and configures no adapter section at all, so the id it runs
- * under is the one the classpath derives. The adapter then opened its subscriptions while this
- * half built no bridge, which left every report without a BPMS to ask.
+ * VanillaBP gives the answer ({@code MigrationAdapterProperties#adapterIdsOfType}). A filter of
+ * our own over the configured adapter TYPES misses the everyday case on this BPMS. There, an
+ * application adds the single adapter dependency and configures no adapter section at all, so
+ * its adapter id is the one derived from the classpath. The adapter then opened its
+ * subscriptions, but this half built no bridge, and no report had a BPMS to ask.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaBridgesPerAdapterIdTest {

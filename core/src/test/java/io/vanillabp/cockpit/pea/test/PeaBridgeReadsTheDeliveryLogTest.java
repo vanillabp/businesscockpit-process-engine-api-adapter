@@ -31,12 +31,12 @@ import io.vanillabp.pea.observation.PeaUserTaskObservation;
 import io.vanillabp.pea.wiring.PeaTaskMeta;
 
 /**
- * What the cockpit reads back once the memory of this node cannot answer any more.
+ * Tests what the cockpit reads back when the memory of this node has no answer.
  * <p>
- * A node which restarts starts with an empty memory, and a node which never got the delivery
- * never had one. VanillaBP wrote the delivery down in the application's own database, so that
- * record answers where the memory cannot. A restart is simulated the way it looks from here: the
- * same delivery log, and a memory which holds nothing.
+ * A node which restarts begins with an empty memory. A node which never got the delivery never
+ * had one. VanillaBP wrote the delivery into the application's own database, so that record
+ * answers instead. The test simulates a restart as this extension sees it: the same delivery log,
+ * and an empty memory.
  */
 @ExtendWith(SuppressOutputExtension.class)
 public class PeaBridgeReadsTheDeliveryLogTest {
@@ -44,14 +44,14 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   private static final String AGGREGATE_ID = "4711";
 
   /**
-   * What the engine calls the running instance. The records of most tests here do not carry it,
-   * like the record of an engine which names no process instance.
+   * The engine's id of the running instance. Most records in these tests leave it out, like the
+   * record of an engine which names no process instance.
    */
   private static final String WORKFLOW_ID = "instance-1";
 
   /**
-   * Words of the sentence which says that the change of a case was not reported, because its open
-   * user task is known only from the delivery log and nothing names its version.
+   * Part of the message which says that the change of a business case was not reported. The open
+   * user task of the case is known only from the delivery log, and nothing names its version.
    */
   private static final String VERSION_IS_UNKNOWN = "was not reported to the Business Cockpit for its workflow";
 
@@ -78,8 +78,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   }
 
   /**
-   * Builds what a boot builds: a memory holding nothing, an observer writing into it, and a
-   * bridge reading it next to the delivery log the application's database keeps.
+   * Builds what a boot builds: an empty memory, an observer which writes into it, and a bridge
+   * which reads it next to the delivery log in the application's database.
    */
   private void startTheNode() {
 
@@ -105,9 +105,9 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   }
 
   /**
-   * A user task the engine delivered to this node, which is what fills the memory. This engine
-   * names the running instance, so the memory knows a workflow id the records of these tests
-   * mostly do not carry.
+   * A user task the engine delivered to this node. Deliveries are what fill the memory. This
+   * engine names the running instance, so the memory knows a workflow id which most records in
+   * these tests do not carry.
    */
   private void aDeliveredUserTask(
       final String taskId) {
@@ -263,7 +263,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   public void aTaskOfTheLogWithoutAVersionIsNotReported(
       final CapturedOutput output) {
 
-    // a case of its own, because the output captured here is the one of the whole class
+    // a business case of its own: the output is captured for the whole class, and each case is
+    // warned about only once
     deliveryLog
         .anOpenTask(TestModels.ADAPTER_ID, "4712", "task-2", Instant.now());
 
@@ -294,8 +295,8 @@ public class PeaBridgeReadsTheDeliveryLogTest {
   @DisplayName("A record without a version takes the version of VanillaBP's note of the start")
   public void aTaskOfTheLogWithoutAVersionTakesTheOneOfTheStart() {
 
-    // the record names no workflow, so the task stands under the aggregate's id, and the note
-    // names the engine's id of the one workflow VanillaBP started for the case
+    // the record names no workflow, so the task is filed under the aggregate's id. The note names
+    // the engine's id of the one workflow VanillaBP started for the case
     deliveryLog
         .anOpenTask(TestModels.ADAPTER_ID, AGGREGATE_ID, "task-1", Instant.now());
     election.started(AGGREGATE_ID, new WorkflowStart(TestModels.ADAPTER_ID, WORKFLOW_ID, TestModels.VERSION_TAG, true));
