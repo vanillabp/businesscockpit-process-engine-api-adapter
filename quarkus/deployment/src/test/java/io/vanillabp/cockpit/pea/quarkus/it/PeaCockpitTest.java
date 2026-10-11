@@ -239,7 +239,7 @@ public class PeaCockpitTest {
   }
 
   @Test
-  @DisplayName("A task the engine delivers again reaches the cockpit again")
+  @DisplayName("A task the engine delivers again reaches the cockpit again, as created or as updated")
   public void aRepeatedDeliveryReachesTheCockpitAgain() throws Exception {
 
     final var aggregate = aStartedWorkflow("Rita");
@@ -247,16 +247,24 @@ public class PeaCockpitTest {
     CockpitServer.awaitRequestOf("/usertask/created", "\"userTaskId\":\"task-6\"");
     CockpitServer.forgetRequests();
 
-    // the engine repeats a delivery whenever something about the task changed: its assignee,
-    // its candidates or its data. The cockpit is told again. The reason the engine names decides
-    // whether the cockpit hears "created" or "updated". This test delivers with no reason, so a
-    // repeated delivery arrives here as a second creation. The unit tests of the neutral module
-    // show that the kind follows the reason.
+    // the engine repeats a delivery whenever something about the task changed: its assignee, its
+    // candidates or its data. The cockpit is told again. The reason the engine names decides
+    // whether the cockpit hears "created" or "updated". This delivery names no reason, so it
+    // arrives as a second creation. The next one names a change, and arrives as an update.
     aDeliveredUserTask(aggregate, "task-6");
 
     final var again = CockpitServer
         .awaitRequest("/usertask/created", "\"userTaskId\":\"task-6\"");
     assertTrue(again.body().contains("\"customer\":\"Rita\""), again.body());
+
+    engine
+        .deliverTask(
+            "task-6", TestWorkflowService.TASK_DEFINITION, TestWorkflowService.BPMN_PROCESS_ID, Map
+                .of("id", aggregate.getId()),
+            Map.of(TaskInformation.REASON, TaskInformation.UPDATE));
+
+    final var updated = CockpitServer.awaitAnyRequest("/usertask/task-6/updated");
+    assertTrue(updated.body().contains("\"customer\":\"Rita\""), updated.body());
 
   }
 
