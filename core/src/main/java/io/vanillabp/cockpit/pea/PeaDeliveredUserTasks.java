@@ -18,16 +18,16 @@ import io.vanillabp.cockpit.extension.spi.UserTaskReference;
  * that is kept until the task is gone.
  * <p>
  * The report of a delivered task is built while that delivery is being handled, out of what was
- * just written here, and it travels inside the outbox entry. So no report waits on this memory.
+ * just written here. It travels inside the outbox entry. So no report waits on this memory.
  * The questions which come later do: how a task ended, which tasks of a business case are open,
  * and what <code>getUserTask</code> shows.
  * <p>
  * It is kept in memory, per node, and bounded. What that costs is said out loud rather than
  * hidden. A node which restarts has none of it, and a task delivered to another node is unknown
- * here, so those later questions go unanswered there. Persisting it instead would make the
+ * here. So those later questions go unanswered there. Persisting it instead would make the
  * extension keep a second copy of the engine's state, which is exactly what an application's own
  * database is for. This is decision 3 in the repository's DECISIONS.md, and decision 10 says what
- * the report being built at the event took off it.
+ * building the report at the event took off it.
  */
 public class PeaDeliveredUserTasks {
 
@@ -116,15 +116,15 @@ public class PeaDeliveredUserTasks {
   }
 
   /**
-   * Notes that a task is gone. It is called once the end was reported, so that a report which
-   * never got written leaves the memory as it was and the engine saying a second time that the
-   * task is gone reports it again.
+   * Notes that a task is gone. It is called once the end was reported. So a report which never
+   * got written leaves the memory as it was, and a second word of the engine that the task is
+   * gone reports it again.
    * <p>
    * What was known stays here, and it keeps the place it had. It stays because the reads of a
    * business case ask this memory first, and it is the only source which saw the engine take the
    * task away: VanillaBP's delivery log holds a task until the application completes it. It keeps
    * its place because nothing is waiting for it any more. The report of the end was built before
-   * this call and carries what it needs, so a task which is over must not push out one somebody
+   * this call and carries what it needs. So a task which is over must not push out one somebody
    * is still working on.
    *
    * @param userTaskId The engine's own id of the task
@@ -289,7 +289,7 @@ public class PeaDeliveredUserTasks {
    * Whether a remembered task belongs to one workflow of one engine.
    * <p>
    * The workflow module and the BPMN process are part of the question, although the engine's own
-   * id of a workflow should be enough on its own. That id is not always the engine's: a delivery
+   * id of a workflow should be enough on its own. That id is not always the engine's. A delivery
    * which names no workflow is remembered under the aggregate's id instead, and two aggregates of
    * two BPMN processes may well carry the same id. Without the process, one business case would
    * then answer with the version of another.

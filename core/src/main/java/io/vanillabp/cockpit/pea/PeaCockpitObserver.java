@@ -30,7 +30,7 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * It does the same little every BPMS half of the cockpit does. It turns what the engine said into
  * the identifiers the cockpit addresses a task by, keeps what only the delivery knows, and hands
  * the event over. The cockpit builds the report there and then and writes it into one outbox
- * entry, so the report says what the task looked like when the engine handed it over. Nothing is
+ * entry. So the report says what the task looked like when the engine handed it over. Nothing is
  * sent to the cockpit server while the engine's delivery thread waits, and nothing is read back
  * afterwards, because on this BPMS there is nothing to read back from.
  * <p>
@@ -45,8 +45,8 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * failure out. That is decision 11 in the repository's DECISIONS.md.
  * <p>
  * The end of a task is two ends, and they cost a broken provider different things. A COMPLETION
- * runs on the thread which asked the engine to finish the task, which in a VanillaBP application
- * is the worker of the phase-two outbox, so the failure fails that outbox entry and the entry
+ * runs on the thread which asked the engine to finish the task. In a VanillaBP application that
+ * is the worker of the phase-two outbox. So the failure fails that outbox entry, and the entry
  * comes back. A CANCELATION runs on a thread of the engine's own and is offered once, so a report
  * which fails there is gone. Decision 12 in the repository's DECISIONS.md holds the measurement
  * behind both.
@@ -253,9 +253,9 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
                 .formatted(observation.taskId()),
             OffsetDateTime.now(), EventTransaction.NEW);
     // only now. The report of the end is built inside the call above and reads what the delivery
-    // said from here. A report which did not get written leaves the task open here, and what that
-    // costs depends on which end this was: a completion travels in an outbox entry which comes
-    // back, a cancelation is offered once and is then gone (decision 12 in the repository's
+    // said from here. A report which did not get written leaves the task open here. What that
+    // costs depends on which end this was. A completion travels in an outbox entry which comes
+    // back. A cancelation is offered once and is then gone (decision 12 in the repository's
     // DECISIONS.md)
     deliveredUserTasks.ended(observation.taskId());
 
@@ -405,8 +405,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
    * <p>
    * This is the version a details provider is picked by, so only a value which says which model
    * the task came from belongs here. The deployment key this application got when it deployed
-   * its files does not: it names one deployment of one node and changes every time the files go
-   * out again, so a method written for it would serve a different set of workflows after every
+   * its files does not. It names one deployment of one node and changes every time the files go
+   * out again. So a method written for it would serve a different set of workflows after every
    * release. It stays what a person reads, in the prefilled details.
    * <p>
    * What that leaves for a provider naming versions is entry 12 in the repository's GAPS.md.
@@ -421,8 +421,8 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
   /**
    * The version the cockpit SHOWS for the task: the version tag an engine put into the meta map
    * of the delivery, or what this application deployed where it put none. A deployment key tells
-   * two releases of an application apart for somebody looking at a case, which is more than
-   * nothing and is why it is good enough here.
+   * two releases of an application apart for somebody looking at a case. That is more than
+   * nothing, and good enough here.
    */
   private String shownVersionOf(
       final PeaUserTaskObservation observation,

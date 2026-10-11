@@ -79,24 +79,24 @@ kinds of event, and the reads the cockpit does.
 ## Two sources, and what each of them answers
 
 This BPMS cannot be asked anything about a user task, so the extension answers out of what it was
-told. The memory of this node holds what the engine said about a delivery, which is what the
-cockpit shows. VanillaBP's delivery log holds that a delivery happened and how it ended, in the
-application's own database, which is what survives a restart and what every node reads. The memory
-answers first because it carries more, and the log adds the tasks the memory never saw or has
-forgotten. Decision 9 in [`DECISIONS.md`](./DECISIONS.md) writes the border down, and entries 10
-and 11 of [`GAPS.md`](./GAPS.md) say what falls between the two.
+told. The memory of this node holds what the engine said about a delivery, which is what the cockpit
+shows. VanillaBP's delivery log, in the application's own database, holds that a delivery happened
+and how it ended. The log survives a restart, and every node reads it. The memory answers first
+because it carries more, and the log adds the tasks the memory never saw or has forgotten. Decision
+9 in [`DECISIONS.md`](./DECISIONS.md) writes the border down, and entries 10 and 11 of
+[`GAPS.md`](./GAPS.md) say what falls between the two.
 
-The report of a delivered task is built while that delivery is handled, out of the memory it was
-just written to, and it travels inside the outbox entry. So a restart costs no report which was
-already written. What it costs is every later question about that task, and decision 10 says what
-that leaves the memory for. A details provider which throws while a report is built fails the
-delivery. The engine then offers the task again, so the report is not simply lost. Decision 11 says
-that.
+The report of a delivered task is built while that delivery is handled, out of the memory the
+delivery was just written to. The report travels inside the outbox entry. So a restart costs no
+report which was already written. What it costs is every later question about that task, and
+decision 10 says what that leaves the memory for. A details provider which throws while a report is
+built fails the delivery. The engine then offers the task again, so the report is not simply lost.
+Decision 11 says that.
 
 The end of a user task is two ends. A completion is a task the engine finished because somebody
 asked it to, and a cancelation is the engine taking the task away, say through a boundary event. A
-broken provider costs them different things: a completion comes back with the outbox entry which
-carries it, while a cancelation is reported once and the report is gone if it fails. Decision 12
+broken provider costs them different things. A completion comes back with the outbox entry which
+carries it. A cancelation is reported once, and the report is gone if it fails. Decision 12
 holds what was measured on both.
 
 While the seam was missing, this repository carried a port of the same shape and asked an
@@ -133,14 +133,13 @@ the platform whose tests ran it, so a core line Quarkus never reaches is a featu
 runs. Both platforms are held to the same number, and each one has to earn it with its own tests.
 
 `test-coverage-report/coverage-gate` is the last module of the build. It reads both reports and
-fails whenever a platform is below its threshold in the root POM
-(`coverage.threshold.spring-boot` and `coverage.threshold.quarkus`, in percent of covered
-instructions, which is the number the badges show). Both hold 85, the number every VanillaBP
-repository gates on, and that number is not the target. The target is `coverage.rule`, which holds
-90, so a report between the two passes the build and still names a gap somebody owes a test for.
-The gate is therefore never edited to make a build pass. It also compares every module writing a
-`jacoco.exec` with the two aggregates, so a module added to the build but to no report cannot stay
-unnoticed.
+fails when a platform is below its threshold in the root POM: `coverage.threshold.spring-boot` and
+`coverage.threshold.quarkus`. A threshold is a percentage of covered instructions, which is the
+number the badges show. Both hold 85, the number every VanillaBP repository gates on. That number is
+not the target. The target is `coverage.rule`, which holds 90. So a report between the two passes
+the build and still names a gap somebody owes a test for. That is why nobody edits the gate to make
+a build pass. The gate also compares every module which writes a `jacoco.exec` with the two
+aggregates. So a module which is in the build but in no report does not go unnoticed.
 
 `CoverageGateTest` is where both measurements happen, and it prints what it measured on every run,
 green ones included. That makes it the one test class of this repository which says something while
@@ -153,13 +152,13 @@ coverage gate | Quarkus: <percent> % instructions (<missed> of <total> missed) |
 
 `mvn package` does not check the threshold. JaCoCo writes the aggregated reports in the `verify`
 phase, and a build which stops at `package` never gets that far. The gate then prints a line per
-platform saying that the coverage was not checked and naming the command which does check it, and
-those two tests are reported as skipped, instead of failing over a file the run could not have
+platform. The line says that the coverage was not checked and names the command which does check
+it. The two tests are reported as skipped instead of failing over a file the run could not have
 written.
 
 `TestClassConventionsTest` next to the gate keeps every test class on the output suppression. It
-also reads the main sources of this repository, for a guiding message whose sentence fell apart: a
-run of spaces between two words, or two words a line continuation glued into one.
+also reads the main sources of this repository and looks for a guiding message whose sentence fell
+apart: a run of spaces between two words, or two words a line continuation glued into one.
 
 ## What CI runs
 
@@ -174,10 +173,10 @@ beside a publish.
 
 `nightly-build.yaml` runs `build.yaml` on `main` once a night, with `--update-snapshots`. So a
 `main` which a new snapshot of the platform or of the cockpit breaks is seen, even when nobody
-pushed here. It publishes nothing. It waits for a publish which is running or waiting, and then
-joins the publish's group, so it never takes the place of a waiting publish. A red night becomes
-one issue with the label `nightly-build`, and a night which is still red is a comment on that
-issue. A green night after a red one is a comment too, and somebody closes the issue by hand.
+pushed here. It publishes nothing. It waits for a publish which is running or waiting. Then it joins
+the group of that publish, so it never takes the place of a waiting publish. A red night becomes one
+issue with the label `nightly-build`, and a night which is still red is a comment on that issue. A
+green night after a red one is a comment too, and somebody closes the issue by hand.
 
 `publish-snapshots.yaml` also publishes the two coverage reports to GitHub Pages, which is
 what the badges at the top of this page link to. `deploy` runs every phase the pull-request build

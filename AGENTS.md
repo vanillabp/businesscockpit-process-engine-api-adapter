@@ -8,14 +8,15 @@ work and why, and how to build.
 
 ## What a POM hands an application
 
-A tool that only translates our source belongs in scope `provided`, and the scope stands at the
-declaration in the module using it. Lombok is such a tool, and an annotation processor is another.
-Somebody added one dependency to see their user tasks in the cockpit. Every jar they did not ask
-for is one more thing to ship and to answer a CVE report about.
+A tool which is only needed to compile our source belongs in scope `provided`. The scope is written
+at the declaration in the module which uses it. Lombok is such a tool, and an annotation processor
+is another. Somebody added one dependency to see their user tasks in the cockpit. Every jar they did
+not ask for is one more thing to ship, and one more thing to answer a CVE report about. A CVE is a
+public record of a security hole.
 
 Writing `<optional>true</optional>` in a `dependencyManagement` does not do it. Maven copies a
-managed version, scope and exclusions into a dependency and leaves the optional flag behind, so
-the POM we publish says nothing at all about that dependency.
+managed version, scope and exclusions into a dependency, but not the optional flag. So the POM we
+publish says nothing at all about that dependency.
 
 The two cases differ, and a sentence written for one does not fit the other. A declaration without
 a scope hands the jar to every application, and that is a defect. An `optional` in a

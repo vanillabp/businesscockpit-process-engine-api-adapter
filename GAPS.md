@@ -38,8 +38,8 @@ they are told first, and then the failure leaves the adapter as a failed deliver
 for this extension is decision 11 in this repository's `DECISIONS.md`.
 
 What a failed delivery costs and what a failed end costs are two different questions, and the end
-is two questions again. A delivery is offered a second time, a completion comes back with the
-outbox entry which carries it, and a cancelation is offered once and never again. Decision 12 in
+is two questions again. A delivery is offered a second time. A completion comes back with the
+outbox entry which carries it. A cancelation is offered once and never again. Decision 12 in
 this repository's `DECISIONS.md` holds the measurement behind that.
 
 This extension implements that interface in `PeaCockpitObserver` and contributes it as a bean on
@@ -110,7 +110,7 @@ collects the `@TaskParam` names of every method an extension registered a contra
 cockpit's details providers are such methods. The adapter adds these names to what its one
 subscription asks the engine for. It asks with the element id and with the task definition, the two
 keys a details provider can be found by. The cockpit registers its contract while the application
-starts, before the adapter deploys and subscribes, on Spring Boot and on Quarkus alike.
+starts, on Spring Boot and on Quarkus alike. That is before the adapter deploys and subscribes.
 `PeaCockpitTest` on both platforms delivers a variable which only a details provider reads, and the
 report the cockpit receives carries its value.
 
@@ -171,11 +171,11 @@ in memory too.
 the deliveries the node it runs on has seen (decision 3 in `DECISIONS.md`). The second is
 VanillaBP's own delivery log, which answers `TaskDeliveryLog#openTasksOfAggregate` with the open
 deliveries of a business case. The log reads a table of the application's own database, so it
-answers after a restart and on any node, and decision 9 in `DECISIONS.md` says which of the two
+answers after a restart and on any node. Decision 9 in `DECISIONS.md` says which of the two
 wins where both can answer.
 
-What the log cannot do is what this entry asks for. It holds deliveries, so it names a user task
-only where a `@WorkflowTask` method of the application ran for it, and a task nobody wrote a method
+What the log cannot do is what this entry asks for. It holds deliveries. So it names a user task
+only where a `@WorkflowTask` method of the application ran for it. A task nobody wrote a method
 for was never recorded. It holds a record until the application's completion of that task reaches
 the BPMS, so a task the engine withdrew some other way stays in it. The identifiers of a record are
 mostly there. The Process-Engine-API adapter writes the engine's id of the
@@ -189,26 +189,26 @@ A third source names the workflow of a case, but no task. VanillaBP writes down 
 answered a start with, and `WorkflowElection#workflowStartOf` reads it. So a case whose workflow
 VanillaBP started is found even while it has no open user task, and `aggregateChanged` updates it.
 That needs the version the workflow runs on, and only a delivery says it on this BPMS. VanillaBP
-writes it into its note where a delivery of that workflow carried it, and otherwise a delivery this
+writes it into its note where a delivery of that workflow carried it. Otherwise a delivery this
 node still remembers answers. Without either the change is not reported, and the log says why.
 Why the open tasks still answer first is decision 14, and where the version comes from is
 decision 16.
 
 A task only the delivery log knows names the version VanillaBP wrote into its record, which is
-the version tag its delivery carried. Where the record names none, the note of the start answers,
-and where that names none either, the change of the case is not reported, and the log says why.
+the version tag its delivery carried. Where the record names none, the note of the start answers.
+Where that names none either, the change of the case is not reported, and the log says why.
 A record without a version cannot tell an engine which fills no tag from a record which lost it.
-Decision 17 says why the change is then left out rather than reported without a
-version.
+Decision 17 says why the change is then left out rather than reported without a version.
 
-So a business case whose tasks were all withdrawn, or served by nobody, and whose start VanillaBP
-did not write down, is still a case this half cannot find again. That is a workflow started before
-VanillaBP wrote such notes, one whose note is older than `vanillabp.delivery.workflow-start-retention`,
-or one on an engine which answers a start with no id. Nothing about it is reported to the cockpit
-then, and the log says so once per case. The user tasks of a case are found only through the first
-two sources, because the id of a workflow names no task. `getUserTask` answers empty for a task neither source knows, and it answers empty for a task
-only the delivery log knows, because a report of a running task without its details is no report
-(entry 10).
+Take a business case whose tasks were all withdrawn or served by nobody, and whose start VanillaBP
+did not write down. This half still cannot find such a case again. That is a workflow started before
+VanillaBP wrote such notes, one whose note is older than
+`vanillabp.delivery.workflow-start-retention`, or one on an engine which answers a start with no id.
+Nothing about it is reported to the cockpit then, and the log says so once per case. The user tasks
+of a case are found only through the first two sources, because the id of a workflow names no task.
+`getUserTask` answers empty for a task neither source knows. It also answers empty for a task only
+the delivery log knows, because a report of a running task without its details is no report (entry
+10).
 
 **What would close it:** a query for user tasks by a restriction the API already knows
 (`businessKey`, `processInstanceId`), which is the cheapest read a task list needs anyway.
@@ -264,17 +264,17 @@ business case changed.
 **The API offers** nothing to read it from (entries 6 and 7), so this extension answers out of
 what the delivery said, in memory.
 
-**What it costs:** the report of a delivered task is safe. It is built in the moment the task
-arrives, out of the memory that same delivery was just written to, and it travels inside the
+**What it costs:** the report of a delivered task is safe. It is built the moment the task
+arrives, out of the memory that same delivery was just written to. It travels inside the
 outbox entry (decision 10 in `DECISIONS.md`). A restart before that entry is sent takes nothing
 from it, and neither does sending it on another node.
 
 What a restart takes is every later question about that task. Its name, who it is assigned to,
 who may claim it, its dates and its variables lived in the memory of the node the engine delivered
 to and nowhere else. So a fresh node reports nothing when an application calls `aggregateChanged`
-for a task only the delivery log knows, because a report of a running task without its details is
+for a task only the delivery log knows. A report of a running task without its details is
 no report, and the log says so. `getUserTask` answers nothing for the same reason. And an end the
-engine reports never becomes an entry at all: a termination names the task and nothing else, so
+engine reports never becomes an entry at all. A termination names the task and nothing else. So
 `PeaCockpitObserver#userTaskTerminated` asks the memory what the task was, finds nothing and says
 so in a debug line. The cockpit keeps showing that task as open, and entry 11 says why the memory
 cannot be rebuilt to answer it.
@@ -297,18 +297,19 @@ Every other BPMS half of the cockpit reads exactly that from its engine, wheneve
 **The API offers** nothing to read a task from. There is no task query, no single-task get and no
 history. What a subscriber knows is what was delivered to it, and the API's own helper for keeping
 that, `UserTaskSupport`, keeps it in memory as well. An engine repeats a delivery when something
-about the task changes, but nobody can ask it to repeat one, so a node cannot fetch what it lost.
+about the task changes. But nobody can ask it to repeat one, so a node cannot fetch what it lost.
 
-VanillaBP fills half of the hole and cannot fill the other half. Its delivery log says which user
-tasks of a business case this application was handed and which of them are over, out of the
-application's own database, so a fresh node knows the tasks again (decision 9 in `DECISIONS.md`).
+VanillaBP fills half of the hole and cannot fill the other half. Its delivery log lives in the
+application's own database. It says which user tasks of a business case this application was
+handed and which of them are over, so a fresh node knows the tasks again (decision 9 in
+`DECISIONS.md`).
 The record holds no field of the content, and it must not: the platform would then write the
 engine's state into the application's database.
 
 **What it costs:** a fresh node has nothing to show about a task it did not see delivered. A
 report an application asks for with `aggregateChanged` is dropped then, so the cockpit misses that
 task until the engine delivers it again (entry 10). An end which the engine reports after the
-restart is not even written, because a termination on this API names the task and nothing else, and
+restart is not even written. A termination on this API names the task and nothing else, but
 the delivery log has to be asked with the workflow module, the BPMN process, the workflow aggregate
 and the task. That task stays open in
 the cockpit until somebody looks at the engine. `getUserTask` answers empty for the same reason, so
@@ -329,10 +330,10 @@ generation of a model, and VanillaBP chooses between them the way it chooses a `
 
 **The API offers** one version, and only sometimes. There is no repository, so there are no process
 definitions to count and no version numbers (entry 5). What reaches this half is the
-`processDefinitionVersionTag` an engine writes into the meta map of a delivered task, where it keeps one.
-So the reference of a user task and of the business case it appears with carries that tag, or nothing.
-A task this node knows only from VanillaBP's delivery log carries the same tag, because VanillaBP writes
-the version of a delivery into its record.
+`processDefinitionVersionTag` an engine writes into the meta map of a delivered task, if the engine
+keeps a tag at all. So the reference of a user task and of the business case it appears with carries
+that tag, or nothing. A task this node knows only from VanillaBP's delivery log carries the same
+tag, because VanillaBP writes the version of a delivery into its record.
 
 One way of writing a version survives that. `version = "ride-2026-09"` is compared to the reported tag as
 text, so a method written that way runs for the deliveries carrying that tag. Everything else needs the
@@ -340,32 +341,33 @@ catalogue this BPMS has none of. A specification made of numbers (`3`, `1-3`, `>
 compare against, and a range between two tags (`v1.0..v2.0`) has to place both ends in the deployment
 order, which only a list of the deployed versions answers.
 
-**What it costs:** a method which serves no version does nothing, and does it quietly. A `@WorkflowTask`
-method in the same position is loud, because a delivery whose methods all name versions fails and the
-message says why; the adapter's own `GAPS.md` writes that down as its entry 19. A details provider is the opposite, and
-that is by design: no matching method is a LEGAL answer. The cockpit then sends the details it had
-prefilled, so the task appears with the names out of the BPMN and with what the engine said about it, and
-the enrichment the application wrote is not there.
+**What it costs:** a method which serves no version does nothing, and does it quietly. A
+`@WorkflowTask` method in the same position is loud, because a delivery whose methods all name
+versions fails, and the message says why. The adapter's own `GAPS.md` writes that down as its entry
+19. A details provider is the opposite, and that is by design: no matching method is a LEGAL answer.
+The cockpit then sends the details it had prefilled. So the task appears with the names out of the
+BPMN and with what the engine said about it, but without the enrichment the application wrote.
 
-Two checks could catch it and neither does. The platform warns about a method naming versions where the
-extension reports no version with its calls, and this extension does report one, so that warning stays
-silent. The check for a method which serves no deployed version needs the list of deployed versions, which
-no adapter of this BPMS can answer.
+Two checks could catch it and neither does. The platform warns about a method which names versions
+where the extension reports no version with its calls. This extension does report one, so that
+warning stays silent. The check for a method which serves no deployed version needs the list of
+deployed versions, which no adapter of this BPMS can answer.
 
-What is left is the two lines the platform does write, and neither of them lands. At startup it says that a
-version tag is known to no BPMS and that the method serves no workflow. That is the wrong way round here: a
-tag is the one specification which does run. And a delivery whose tag no method names draws one line about a
-BPMS nobody can ask for its versions. A delivery carrying NO version draws nothing at all, and that is the
-normal state of this BPMS. An engine which fills no version tag leaves every version-named provider idle
-without a word. So an application which cut its providers by version loses that enrichment here, and the
-only sign of it is a cockpit showing less than the application wrote.
+What is left is the two lines the platform does write, and neither of them helps. At startup it says
+that a version tag is known to no BPMS and that the method serves no workflow. That is the wrong way
+round here: a tag is the one specification which does run. And a delivery whose tag no method names
+draws one line about a BPMS nobody can ask for its versions. A delivery carrying NO version draws
+nothing at all, and that is the normal state of this BPMS. An engine which fills no version tag
+leaves every version-named provider idle without a word. So an application which cut its providers
+by version loses that enrichment here, and the only sign of it is a cockpit showing less than the
+application wrote.
 
-One case is answered the other way round. A business case whose open user task this node knows only from
-VanillaBP's delivery log, and whose record names no version, is not reported when the application changes
-it. A report could then pass over a provider which names a version, and replace what the cockpit shows with
-empty details. The log says so once per case. Decision 17 says why.
+One case is answered the other way round. Take a business case whose open user task this node knows
+only from VanillaBP's delivery log, and whose record names no version. It is not reported when the
+application changes it. A report could then skip a provider which names a version, and replace what
+the cockpit shows with empty details. The log says so once per case. Decision 17 says why.
 
-**What would close it:** what entry 5 asks for, both halves of it. A repository API answering the process
-definitions of a key with their versions is the catalogue, and a version in the meta map of a delivery is
-the version of the task at hand. With the two together a version specification means here what it means on
-every other BPMS.
+**What would close it:** what entry 5 asks for, both halves of it. A repository API answering the
+process definitions of a key with their versions is the catalogue. A version in the meta map of a
+delivery is the version of the task at hand. With the two together a version specification means
+here what it means on every other BPMS.

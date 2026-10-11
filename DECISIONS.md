@@ -162,27 +162,26 @@ asks for content, the second one for bookkeeping.
 The content stays where decision 3 put it, and that entry stands. `TaskDelivery`, the record
 VanillaBP writes about a delivery, carries not one field of that memory: no task name, no
 assignee, no candidate users or groups, no dates, no variables. Taking those fields into the
-record would make the platform write the engine's state into the application's database, which is
+record would make the platform write the engine's state into the application's database. That is
 the second copy decision 3 argues against. So a report which needs the content still needs the
 node the engine delivered to.
 
 The bookkeeping is read out of the platform's delivery log. VanillaBP writes one record per
-delivery it processed, in the transaction which saves the workflow aggregate, and it stamps the
+delivery it processed, in the transaction which saves the workflow aggregate. It stamps the
 record once the completion of that task reaches the BPMS. That record sits in the application's
 own database, so it outlives a restart and every node reads the same one. This extension only
 reads it. A second writer would put work into the log which never ran, and the core would then
 skip a delivery nobody processed.
 
-Where both can answer, the memory answers. It carries more, and it heard what the engine said,
-while a record says that a delivery happened and how it ended. The log adds what the memory never
-saw or has forgotten. The rule is applied per task and not per business case: a task the memory
-holds is the memory's answer even where the memory says the task is over while the record is
-still open. The memory saw the engine take that task away, and the log only learns of an end
-which the application asked for.
+Where both can answer, the memory answers. It carries more, and it heard what the engine said, while
+a record says that a delivery happened and how it ended. The log adds what the memory never saw or
+has forgotten. The rule is applied per task and not per business case. For a task the memory holds,
+the memory answers, even where it says the task is over and the record is still open. The memory saw
+the engine take that task away, and the log only learns of an end which the application asked for.
 
 Two reads are not part of this. `prefilledUserTaskDetails` answers content, and the log holds
-none, so it stays on the memory alone. The end of a task stays there too, because the
-Process-Engine-API names only the task when it says one is gone, while the log has to be asked
+none, so it stays on the memory alone. The end of a task stays there too. When the
+Process-Engine-API says a task is gone, it names only the task, but the log has to be asked
 with the workflow module, the BPMN process, the workflow aggregate and the task.
 
 The log leaves two things out, and the repository's `GAPS.md` says what each of them costs. A user
@@ -207,18 +206,18 @@ from there. The end of a task works the same way round: the report is built firs
 marked as ended after it. Both places used to be tidy and are now the reason this works, so both
 of them say why.
 
-This narrows decision 3. The memory no longer has to outlive the sending of an entry. A report
-which was written is in the entry, so it costs nothing if the node restarts, if another node sends
-the entry, or if newer tasks push the task out. What the memory is still the only source for is
-how a task ended, which tasks of a business case are open, and what `getUserTask` shows. Entry 10
-of `GAPS.md` says what each of those costs on a fresh node. An ended task therefore keeps the age
-it had instead of moving to the young end of the map. Nothing waits for it any more, so it must
-not push out a task somebody is still working on.
+This narrows decision 3. The memory no longer has to outlive the sending of an entry. A report which
+was written is in the entry, so it costs nothing if the node restarts, if another node sends the
+entry, or if newer tasks push the task out. The memory is still the only source for three things:
+how a task ended, which tasks of a business case are open, and what `getUserTask` shows. Entry 10 of
+`GAPS.md` says what each of those costs on a fresh node. An ended task therefore keeps the age it
+had instead of moving to the young end of the map. Nothing waits for it any more, so it must not
+push out a task somebody is still working on.
 
 What it costs is the failing details provider. It now runs while the engine's delivery thread
-waits, and the cockpit wants an error there to disturb, so that somebody fixes it instead of a
-repeat hiding it. On this BPMS it cannot disturb. An observer cannot refuse a delivery, so the
-adapter logs the exception and the task reaches the application anyway, and no entry is written.
+waits. The cockpit wants an error there to disturb, so that somebody fixes it instead of a
+repeat hiding it. On this BPMS it cannot disturb. An observer cannot refuse a delivery. So the
+adapter logs the exception, the task reaches the application anyway, and no entry is written.
 One ERROR line of the adapter is the whole sign of a lost report. Before, the outbox repeated the
 failing provider with a growing backoff until its store gave up. Neither way is an incident, and
 this API offers nothing which would be one.
@@ -236,12 +235,12 @@ What happens now was read off the code of both sides. Four answers come out of i
 - No entry is written, which is the one sentence of decision 10 which survives. The provider runs
   while the entry is built, in the transaction decision 2 opens for that entry, so a provider which
   throws rolls that transaction back.
-- The exception leaves `PeaCockpitObserver` as it is. The adapter wraps it, names this observer,
-  the task and the workflow module in the message, writes the whole failure to its own log and
+- The exception leaves `PeaCockpitObserver` as it is. The adapter wraps it and names this observer,
+  the task and the workflow module in the message. It writes the whole failure to its own log and
   hands it to the engine as a failed delivery.
 - The application keeps its notification. The adapter runs the `@WorkflowTask` method of the
-  delivery before it lets the failure out, and VanillaBP knows a repeated delivery by its task id,
-  so that method runs once per task however often the engine delivers it.
+  delivery before it lets the failure out. VanillaBP knows a repeated delivery by its task id,
+  so that method runs once per task, however often the engine delivers it.
 - The task is not lost. The adapter measured what the API's reference implementation for an
   embedded Camunda 7 does with a failed delivery: the task stays in the engine, no incident is
   raised, and the next pull offers the task again. The API itself promises nothing about a handler
@@ -261,10 +260,10 @@ way it does for a node which never saw the delivery (entry 11 in `GAPS.md`).
 A repeated delivery does not become a second outbox entry. The attempt which failed left none, and
 the attempt which works writes one, under the idempotency key of decision 4 of `business-cockpit`:
 the operation, the adapter id, the task and the kind of event. A repeat carries the same kind, so
-it carries the same key, and an entry of that key which is still waiting is replaced rather than
-joined. The business case is reported once as well. Its entry is written first, in a transaction of
-its own, and the node marks the case as reported after that entry is in, so a repeat of the same
-task finds the case reported and passes it over.
+it carries the same key. A waiting entry with that key is replaced, not joined. The business case
+is reported once as well. Its entry is written first, in a transaction of its own. The node marks
+the case as reported once that entry is in. So a repeat of the same task finds the case reported
+and skips it.
 
 `FailingDetailsProviderTest` on both platforms holds all of this, against the adapter's own
 delivery.
@@ -294,34 +293,34 @@ asked for the completion, inside that caller's transaction, and it names the rea
 the observer and everything it does belong to the caller, and a failure travels back to it.
 
 That caller is not the application's thread. Completing a user task is a phase-two operation of
-the Process-Engine-API adapter, scheduled while the application's transaction commits and
-dispatched after it by VanillaBP's phase-two outbox. Measured in the test application: while the
+the Process-Engine-API adapter. It is scheduled while the application's transaction commits, and
+VanillaBP's phase-two outbox dispatches it afterwards. Measured in the test application: while the
 application's transaction was still open and right after it committed, no details provider had
-run, and it ran a moment later on an outbox worker thread. An application which calls
-`ProcessService#completeUserTask` therefore never sees what a broken provider throws, and its own
-transaction is not rolled back by it.
+run. It ran a moment later on an outbox worker thread. An application which calls
+`ProcessService#completeUserTask` therefore never sees what a broken provider throws, and the
+failure does not roll back its own transaction.
 
 What a broken provider costs a completion is decided by the outbox and by the engine together. The
-failed dispatch is a failed outbox entry, and the outbox brings that entry back. Where the engine
-takes part in the transaction the dispatch runs in, which an embedded engine does, the rollback
-takes the completion with it. That half was measured against the reference implementation with a
-transaction of the test's own around the completion, which is the shape a dispatch has: the user
-task was still there afterwards, and the next pull offered it again as a new delivery. The next
-attempt then completes the task again and reports the end once the provider works. Where the
-engine keeps the completion, which is what a remote engine and the in-memory engine of the tests
-do, the next attempt finds no task. VanillaBP reads that as a stale entry, writes one WARN line
+failed dispatch is a failed outbox entry, and the outbox brings that entry back. An embedded engine
+takes part in the transaction the dispatch runs in, so there the rollback takes the completion with
+it. That half was measured against the reference implementation. The test put a transaction of its
+own around the completion, which is the shape a dispatch has. The user task was still there
+afterwards, and the next pull offered it again as a new delivery. The next
+attempt then completes the task again and reports the end once the provider works. A remote
+engine and the in-memory engine of the tests keep the completion. There the next attempt finds no
+task. VanillaBP reads that as a stale entry, writes one WARN line
 and consumes the entry, and the report of that end is gone. That is what the test application
 showed: one retry, one warning, and nothing at the cockpit server after it.
 
 A cancelation is the quiet half decision 11 described. The reference implementation notices at its
-next pull that a task it had delivered is gone, calls the handler on one of its own worker
-threads, outside any transaction of the application, and names the reason `delete`. The
-subscription of that task is forgotten before the handler runs, so the same end is never offered a
-second time. Measured: the failure travels out of the pull cycle into the scheduler's error log,
-the task is not delivered again, and the terminations which were queued behind it in that cycle
-are skipped with it. A report lost on a cancelation is lost for good, and the task stays open in
-the memory of the node and open in the cockpit, the way it does for a node which never saw the
-delivery (entry 11 in `GAPS.md`).
+next pull that a task it had delivered is gone. It calls the handler on one of its own worker
+threads, outside any transaction of the application, and names the reason `delete`. The subscription
+of that task is forgotten before the handler runs, so the same end is never offered a second time.
+What was measured: the failure travels out of the pull cycle into the scheduler's error log. The
+task is not delivered again. The terminations which were queued behind it in that cycle are skipped
+with it. A report lost on a cancelation is lost for good, and the task stays open in the memory of
+the node and open in the cockpit, the way it does for a node which never saw the delivery (entry 11
+in `GAPS.md`).
 
 One more thing was measured, and it is not new but it is worth saying next to the two words. The
 reason `complete` only reaches this extension for a completion which went through the API. A task
@@ -346,7 +345,7 @@ Why:
 
 Every test of a module reports into one server, and the dispatch of an outbox entry outlives the
 test which caused it. A report of an earlier test therefore arrives on a collecting path at any
-moment, and a wait which takes the next report of its kind is satisfied by it. The test walks on
+moment. A wait which takes the next report of its kind is satisfied by it. The test walks on
 although nothing it provoked has happened yet.
 
 Eight of the 17 made that costly, because they stood one line above a `forgetRequests()`:
@@ -381,7 +380,7 @@ written the same way as the 14 which story `1373` moved.
 
 `quarkus/deployment/.../PeaCockpitTest` keeps its `forgetRequests()` calls in the test bodies and
 gets no `@BeforeEach`. Each of its tests now waits for its own report, so what an earlier test
-left in the server reaches none of them, and a `@BeforeEach` would only hide which test depends on
+left in the server reaches none of them. A `@BeforeEach` would only hide which test depends on
 what.
 
 Where this is referred to, each in its own words rather than by number:
@@ -396,7 +395,7 @@ Where this is referred to, each in its own words rather than by number:
 - the decision log of `business-cockpit`: why the cockpit server refuses the wait instead
   of trusting the next test class to get it right
 - decision 11 and decision 12 keep their text. `FailingDetailsProviderTest` holds their behaviour
-  and asserts the same things as before, it only waits for the right report now
+  and asserts the same things as before. It only waits for the right report now
 
 ## 14. A business case without an open user task is found by the workflow VanillaBP started - what a start written down with its version reports narrowed by decision 16, the in-memory engine corrected by decision 22
 
@@ -430,7 +429,7 @@ The version of a workflow found this way comes from a delivery of that workflow 
 still remembers, finished or not. Where there is none, the workflow is left out, and a warning says
 why, once per case. Only a delivery names a version on this BPMS. There is no repository to ask, and
 what this application deployed is not the version a running workflow started on. The version picks
-the `@WorkflowDetailsProvider` method. A report without one passes over every method which names a
+the `@WorkflowDetailsProvider` method. A report without one skips every method which names a
 version, so it arrives with empty details. The cockpit server takes the details of an update as
 they come, so that report would replace what the cockpit shows with nothing. No report keeps it as
 it is.
@@ -483,8 +482,8 @@ cannot tell them apart, and the field stays empty.
 A record written before the adapter filled these fields names neither.
 
 Nothing in this extension had to change for it. The reader of the log already took both fields out
-of the record first and answered only an empty one itself. It answers an empty element out of what
-the adapter deployed, by the same rule a delivery is answered by, and an empty workflow with the
+of the record first and answered only an empty one itself. For an empty element it reads what
+the adapter deployed, by the same rule as for a delivery. For an empty workflow it takes the
 aggregate's id, as decision 6 says. The observer answers a delivery by the same two rules. So a
 task read back out of the log on a fresh node has the same element and the same workflow as the
 report of its delivery.
@@ -505,10 +504,10 @@ first".
 Decision 14 takes the version of a workflow found by its start from a delivery of that workflow
 which this node still remembers. Where there is none, the change is not reported, and a warning says
 why. Since `adapter-platform-integration` decision 110 VanillaBP writes the version into its note of
-the start as well, and `WorkflowElection#workflowStartOf` reads id, version and adapter together. The
-Process-Engine-API answers a start with no version, so the note gets one from a delivery row of the
-same workflow, which carries the version tag where the engine fills it. That row may come from another
-node, or from before a restart, where the memory of this node holds nothing.
+the start as well, and `WorkflowElection#workflowStartOf` reads id, version and adapter together.
+The Process-Engine-API answers a start with no version. So the note gets one from a delivery row of
+the same workflow. That row carries the version tag where the engine fills it. It may come
+from another node, or from before a restart, where the memory of this node holds nothing.
 
 `workflowsOfAggregate` still asks the open user tasks first (decision 14). Where none is known, it asks
 `workflowStartOf` instead of `workflowIdOf`, once. The version is the one of the note. Where the note
@@ -533,10 +532,11 @@ about. Its id belongs to another engine. A note which names no adapter is still 
 
 Since `adapter-platform-integration` decision 111, `adapterIdOfWorkflow` reads the note of the start
 first and no longer throws after a workflow ended, for as long as the note lives. So
-`BusinessCockpitService.aggregateChanged` reaches this bridge after the end as well. It answers like
-for a case between two user tasks: the note names the workflow, the note or the memory names the
-version, and the cockpit gets an update. This bridge holds no client of the engine, so nothing can
-reach the engine from here. That is what an application asks for when it changes a case after its end.
+`BusinessCockpitService.aggregateChanged` reaches this bridge after the end as well. It answers as
+it does for a case between two user tasks: the note names the workflow, the note or the memory names
+the version, and the cockpit gets an update. This bridge holds no client of the engine, so nothing
+can reach the engine from here. That is what an application asks for when it changes a case after
+its end.
 
 ## 17. A user task known only from the delivery log takes its version from its record, and without one its case is not reported
 
@@ -570,7 +570,7 @@ version.
 
 Where none of the three names a version, the workflow is left out, and a warning says why, once per
 case. That is the rule of decision 16, for the same reason. The version picks the
-`@WorkflowDetailsProvider` method. A report without one passes over every method which names a
+`@WorkflowDetailsProvider` method. A report without one skips every method which names a
 version, and the cockpit would replace the details it shows with an empty map. A record without a
 version cannot tell an engine which fills no tag from a record which lost it: one written before the
 platform kept the version, or one in an application's own store which keeps none. Nothing here can
@@ -595,8 +595,8 @@ lives in the core, in `adapter-platform-integration`. Before it, a user task wit
 passed, and the Process-Engine-API adapter only named it in the log.
 
 The question for this extension was whether a `@UserTaskDetailsProvider` method counts as serving
-a user task. It does not. The provider says what the cockpit shows about a task. Nothing in it works
-the task off, and a task with only a provider is still a task a task list works on. So an
+a user task. It does not. The provider says what the cockpit shows about a task. Nothing in it does
+the work of the task, and a task with only a provider is still a task a task list works on. So an
 application marks such a task like any other task which something else serves.
 
 The test applications on both platforms follow this. The taxi ride has two user tasks without a
@@ -635,8 +635,8 @@ and it does not catch the exception of `resolveWorkflowAggregateIdName` itself.
 Before, the outcome was already mostly the same, but by accident. The Process-Engine-API adapter
 opens no subscription for a process nobody claims. A task of such a process can still arrive, because a
 subscription matches a task by its form reference and two processes may show the same form. A process
-of somebody else was then passed over because this application never deployed it. A process which came
-with the application's own file was passed over only because the adapter could not name its aggregate.
+of somebody else was then skipped because this application never deployed it. A process which came
+with the application's own file was skipped only because the adapter could not name its aggregate.
 Now the observer asks the question itself, and both cases stop at the same check.
 
 This extension adds nothing to a BPMN file and registers no listener, on any process. This BPMS has
@@ -701,9 +701,9 @@ instance the task sits in and nothing above it. So the extension uses two answer
   that is the process the start row is written under.
 
 Where the task sits in the instance of the note, it belongs to that case. Where it sits in another
-instance, it sits in a called process: its `workflowId` is the instance of the note, and the case is
-reported under the caller's process, with the version VanillaBP wrote down or else the one this
-adapter deployed. The task itself keeps naming its own process (decision 29 of the Camunda 8
+instance, it sits in a called process. Its `workflowId` is then the instance of the note. The case
+is reported under the caller's process, with the version VanillaBP wrote down, or else with the one
+this adapter deployed. The task itself keeps naming its own process (decision 29 of the Camunda 8
 cockpit adapter has the same rule).
 
 **Where nothing can tell the two apart,** the task stays under the instance it sits in, as before.
@@ -711,7 +711,7 @@ That is a delivery without an instance id, where decision 6 files the task under
 and an aggregate whose start VanillaBP did not write down or whose note is older than
 `vanillabp.delivery.workflow-start-retention`.
 
-The answer is remembered per instance, because every delivery of a task would read the note again,
+The answer is remembered per instance. Otherwise every delivery of a task would read the note again,
 and an instance does not change its caller. The class is `PeaBusinessCases`.
 
 **Not changed:** the bridge still answers the questions of the cockpit about an aggregate with the
@@ -736,8 +736,8 @@ is not true any more.
 names no process instance in its tasks. It does now. It names the instance whose start variables a
 task carries, with the same value and the same type. A task which matches no start still names
 none. The tests of this repository hand over the aggregate's id with its real type, so their cases
-stand under the id of the start. A few tests hand it over as text on purpose, which plays an engine
-that names no instance.
+stand under the id of the start. A few tests hand it over as text on purpose. That plays an engine
+which names no instance.
 
 **A task which names another instance is said out loud.** `PeaBusinessCases` compares the instance
 a task names with the note VanillaBP wrote down when it started the task's own process. Where both
@@ -760,6 +760,6 @@ The order keeps a change of such a case under the id the cockpit knows. It also 
 engine which breaks the promise.
 
 We tried the other order. With the note asked first, `PeaCockpitTest` of the Spring Boot module
-failed only in the test with an engine which names no instance: the update went out under the id of
-the start, which the cockpit does not know. Every test with an engine which names the instance
+failed only in the test with an engine which names no instance. The update went out under the id of
+the start, and the cockpit does not know that id. Every test with an engine which names the instance
 passed. So the order stays.
