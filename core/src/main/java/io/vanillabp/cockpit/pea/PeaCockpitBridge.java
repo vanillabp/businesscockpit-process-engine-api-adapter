@@ -33,13 +33,13 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * wiki says it in the words of somebody using the cockpit.
  * <p>
  * There is a second source, and it answers the other half of the question. VanillaBP writes down
- * every delivery it processed, in the application's own database, so that log says what this
- * application reported and how it ended after a restart and on any node. The memory answers
+ * every delivery it processed, in the application's own database. So that log says what this
+ * application reported and how it ended, after a restart and on any node. The memory answers
  * first, because it carries more, and the log adds the tasks the memory never saw or has
  * forgotten. The border between the two is decision 9 in the repository's DECISIONS.md.
  * <p>
  * A third source names a workflow, and only a workflow. VanillaBP writes down the engine's id of
- * a workflow when it starts it, together with the version where one is known, and
+ * a workflow when it starts it, together with the version where one is known.
  * {@link WorkflowElection#workflowStartOf} reads that note without asking the engine. It answers
  * for a business case which has no open user task at the moment, such as a workflow which is busy
  * with a service task. Why it comes after the tasks, and what an empty answer means, is decision
@@ -184,8 +184,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * reference names answers. That is the one VanillaBP wrote down for the workflow or for one of
    * its user tasks, and the one that picked the details provider.
    * <p>
-   * Falling back to what this application deployed is the normal case and not an exception, which
-   * is worth saying because it reads like dead code. A node remembers a bounded number of
+   * Falling back to what this application deployed is the normal case and not an exception. That
+   * is worth saying, because it reads like dead code. A node remembers a bounded number of
    * deliveries (<code>vanillabp.cockpit.process-engine-api.remembered-user-tasks</code>). So a
    * business case whose tasks were pushed out of that memory is answered with the deployment key
    * where its reference names no version. So is a case this node never saw a task of.
@@ -219,7 +219,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * workflow. The version is the one VanillaBP wrote down with it, which it took from a delivery of
    * that workflow where the start named none. Where VanillaBP has none, the version tag of a
    * delivery of that workflow this node still remembers answers. It is the tag and not the version
-   * the memory shows, because without a tag that is a deployment key, and a deployment key picks
+   * the memory shows. Without a tag the memory shows a deployment key, and a deployment key picks
    * no details provider which names a version. Where there is no tag either, the workflow is left
    * out with a warning, because a report without a version would empty the details the cockpit
    * shows. The tasks come first, because they name the id the cockpit already shows the case under
@@ -252,7 +252,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
         : deliveredUserTasks.versionTagOfWorkflow(adapterId, workflowModuleId, bpmnProcessId, workflowId);
     if (!hasAVersion(version)) {
       // the version picks the @WorkflowDetailsProvider method. Without one, a method which names
-      // a version is passed over, and the report would replace the details the cockpit shows
+      // a version is skipped, and the report would replace the details the cockpit shows
       // with an empty map. No report leaves them as they are
       sayThatTheVersionIsUnknown(workflowModuleId, bpmnProcessId, workflowAggregateId, workflowId);
       return List.of();
@@ -491,11 +491,11 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * A record names the workflow where the engine named it in the delivery. A record of an engine
    * which named none, or one written before the adapter filled the field, names no workflow, and
    * the reader falls back to the aggregate's id. Where a delivery of the same case is in the
-   * memory, the engine's own id for that workflow may still be known, and the two answers must
-   * not stand next to each other: the cockpit would show one
-   * business case twice, once under each id. The memory's answer wins here for the same reason it
-   * wins everywhere else, and a case with no delivery in the memory keeps the aggregate's id, as
-   * decision 6 in the repository's DECISIONS.md says it should.
+   * memory, the engine's own id for that workflow may still be known. The two answers must not
+   * stand next to each other, or the cockpit would show one business case twice, once under each
+   * id. The memory's answer wins here for the same reason it wins everywhere else. A case with no
+   * delivery in the memory keeps the aggregate's id, as decision 6 in the repository's
+   * DECISIONS.md says it should.
    */
   private static UserTaskReference under(
       final UserTaskReference recorded,
@@ -543,7 +543,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * not reported, because nothing on this node says which version the workflow runs on.
    * <p>
    * Only a delivery carries a version on this BPMS, and the version picks the
-   * <code>@WorkflowDetailsProvider</code> method. A report without one passes over every method
+   * <code>@WorkflowDetailsProvider</code> method. A report without one skips every method
    * which names a version, and the cockpit would then replace the details it shows with an empty
    * map. Like the sentence of {@link #sayThatNothingIsKnown}, it is said once per business case.
    */
@@ -638,8 +638,8 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * anything: this node saw no open task of the case, VanillaBP wrote none down either, and
    * VanillaBP wrote down no start of its workflow. Both reads ask the same sources, so they are
    * silent together and say the same sentence.
-   * Reporting nothing is the honest answer, and an exception would be the wrong one, because the
-   * application's own work is done and rolling it back over a cockpit update helps nobody. The
+   * Reporting nothing is the honest answer. An exception would be the wrong one: the
+   * application's own work is done, and rolling it back over a cockpit update helps nobody. The
    * sentence is said once per business case, because an application which reports every change
    * would otherwise fill the log with it. It is said again for a case which enough other ones
    * have pushed out of the memory.

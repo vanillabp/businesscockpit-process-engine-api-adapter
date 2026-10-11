@@ -37,7 +37,7 @@ public class PeaCockpitBeanRegistrar implements BeanRegistrar {
 
   /**
    * Spring Boot builds the registrar because the auto-configuration imports it. It holds no
-   * state of its own, the beans are registered in {@link #register}.
+   * state of its own. The beans are registered in {@link #register}.
    */
   public PeaCockpitBeanRegistrar() {
 

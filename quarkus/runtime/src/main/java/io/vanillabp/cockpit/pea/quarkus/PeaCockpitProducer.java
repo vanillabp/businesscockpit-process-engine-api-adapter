@@ -85,9 +85,8 @@ public class PeaCockpitProducer {
 
   /**
    * What VanillaBP wrote down about the deliveries it processed. It is the durable half of what
-   * this extension knows about a user task, and the platform is asked for it rather than the
-   * store being picked here: which store serves an aggregate follows the persistence VanillaBP
-   * resolved for it.
+   * this extension knows about a user task. The store is not picked here. The platform is asked,
+   * because which store serves an aggregate follows the persistence VanillaBP resolved for it.
    *
    * @param handlers VanillaBP's answer to which workflow aggregate serves a BPMN process
    * @param deliveryLogs The platform's resolver of the store holding an aggregate's records

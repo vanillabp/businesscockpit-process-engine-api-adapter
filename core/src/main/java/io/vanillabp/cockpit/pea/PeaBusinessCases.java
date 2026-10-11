@@ -38,7 +38,7 @@ import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
  * apart. Then the task is filed under the instance it sits in, which is what every task got before
  * decision 21.
  * <p>
- * What was found is remembered per process instance, because each delivery would read the note
+ * What was found is remembered per process instance. Otherwise each delivery would read the note
  * again. A called instance does not change its caller.
  * <p>
  * A task which is no step of a called process is checked against the note of its own process as

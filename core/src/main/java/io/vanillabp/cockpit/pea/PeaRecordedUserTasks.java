@@ -16,9 +16,9 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * The user tasks VanillaBP wrote down while it handed them to the application.
  * <p>
  * The platform keeps a delivery log in the application's own database. It writes one record per
- * delivery it processed, in the transaction which saves the workflow aggregate, and it stamps
- * the record once the completion of that task reached the BPMS. That log outlives a restart and
- * it is read by every node, which is exactly what the memory of this node cannot do. So this
+ * delivery it processed, in the transaction which saves the workflow aggregate. It stamps the
+ * record once the completion of that task reached the BPMS. That log outlives a restart, and
+ * every node reads it. The memory of this node can do neither. So this
  * half reads it for what it carries: that a task was delivered, with which outcome it ended, and
  * when.
  * <p>
@@ -141,7 +141,7 @@ public class PeaRecordedUserTasks {
    * Whether a record was written for the engine this bridge serves. One store holds the records
    * of every configured adapter id, and a task of another engine answered under this one would
    * send the cockpit to the wrong BPMS. A record naming no adapter at all was written before
-   * that field existed, and it could belong to any of them, so it is not answered either.
+   * that field existed. It could belong to any of them, so it is not answered either.
    */
   private static boolean deliveredBy(
       final TaskDelivery record,
@@ -169,8 +169,7 @@ public class PeaRecordedUserTasks {
    * the meta map of the task, so a task read back out of the log names the version its delivery
    * named. A record names none where the engine filled no tag. It names none either where it was
    * written before the platform kept the version, or where the application's own store keeps no
-   * version. The bridge decides what a missing version means, as
-   * decision 17 says.
+   * version. The bridge decides what a missing version means, as decision 17 says.
    */
   private UserTaskReference referenceOf(
       final String adapterId,
