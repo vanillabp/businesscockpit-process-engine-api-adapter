@@ -465,6 +465,27 @@ public class PeaCockpitObserverTest {
   }
 
   @Test
+  @DisplayName("A task of a called step carries the version tag of its own delivery, not the caller's version")
+  public void aTaskOfACalledStepCarriesTheVersionOfTheCalledProcess() {
+
+    anObserverOfARideCallingACheck(true)
+        .userTaskDelivered(
+            new PeaUserTaskObservation(
+                TestModels.ADAPTER_ID, TestModels.MODULE_ID, "ARideCheck", TestModels.USER_TASK_FORM, "4711", new TaskInformation(
+                    "task-1", Map
+                        .of(PeaTaskMeta.BPMN_TASK_ID, "review", CommonRestrictions.PROCESS_INSTANCE_ID,
+                            "instance-of-the-check", PeaTaskMeta.PROCESS_VERSION_TAG, "check-2")), Map.of()));
+
+    // the Business Cockpit picks the details provider of the task by this pair. The engine tags
+    // the delivery of a task with the version of the model the task belongs to
+    final var reported = publisher.userTasks().getFirst();
+    assertEquals("ARideCheck", reported.bpmnProcessId());
+    assertEquals("check-2", reported.processVersion());
+    assertEquals("instance-of-the-ride", reported.workflowId());
+
+  }
+
+  @Test
   @DisplayName("A task of a called process with an aggregate of its own is reported under its own case")
   public void aTaskOfACalledProcessWithItsOwnAggregateIsACase() {
 
