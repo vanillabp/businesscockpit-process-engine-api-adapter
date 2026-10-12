@@ -26,7 +26,7 @@ import io.vanillabp.pea.mock.InMemoryProcessEngine;
  * <p>
  * The design of this extension rests on that. The extension cannot subscribe next to the workflow
  * application, because it would either see nothing or take the task away. So the adapter calls
- * the extension from its own subscription instead (decision 7 in the repository's DECISIONS.md).
+ * the extension from its own subscription instead (decision 1 in the repository's DECISIONS.md).
  * The engine used here is a test double of the adapter. If the double quietly started to deliver
  * to a second subscription, the reason for that design would be gone and nobody would notice. So
  * this test guards how true the double stays, not the API itself. Entry 1 of the repository's

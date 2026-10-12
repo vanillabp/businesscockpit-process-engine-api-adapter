@@ -35,11 +35,11 @@ subscription asked for. The identifiers are the PLAIN ones, which the adapter tr
 through name-clash avoidance. Every delivery reaches an observer, including one no `@WorkflowTask`
 method of the application claims. An observer which throws costs the observers behind it nothing:
 they are told first, and then the failure leaves the adapter as a failed delivery. What that means
-for this extension is decision 11 in this repository's `DECISIONS.md`.
+for this extension is decision 10 in this repository's `DECISIONS.md`.
 
 What a failed delivery costs and what a failed end costs are two different questions, and the end
 is two questions again. A delivery is offered a second time. A completion comes back with the
-outbox entry which carries it. A cancelation is offered once and never again. Decision 12 in
+outbox entry which carries it. A cancelation is offered once and never again. Decision 10 in
 this repository's `DECISIONS.md` holds the measurement behind that.
 
 This extension implements that interface in `PeaCockpitObserver` and contributes it as a bean on
@@ -181,9 +181,9 @@ the BPMS, so a task the engine withdrew some other way stays in it. The identifi
 mostly there. The Process-Engine-API adapter writes the engine's id of the
 workflow into a record where the engine named the process instance in its delivery. It writes the
 BPMN element where the engine named it, or where the deployed model has only one user task with that
-form. A field the adapter leaves empty is answered the way a delivery answers it, and decisions 9 and 15
-in `DECISIONS.md` say how. The in-memory engine of the tests names the instance it started, so its
-records name that workflow (decision 22).
+form. A field the adapter leaves empty is answered the way a delivery answers it, and decision 9
+in `DECISIONS.md` says how. The in-memory engine of the tests names the instance it started, so its
+records name that workflow (decision 14).
 
 A third source names the workflow of a case, but no task. VanillaBP writes down the id the engine
 answered a start with, and `WorkflowElection#workflowStartOf` reads it. So a case whose workflow
@@ -191,14 +191,13 @@ VanillaBP started is found even while it has no open user task, and `aggregateCh
 That needs the version the workflow runs on, and only a delivery says it on this BPMS. VanillaBP
 writes it into its note where a delivery of that workflow carried it. Otherwise a delivery this
 node still remembers answers. Without either the change is not reported, and the log says why.
-Why the open tasks still answer first is decision 14, and where the version comes from is
-decision 16.
+Why the open tasks still answer first, and where the version comes from, is decision 14.
 
 A task only the delivery log knows names the version VanillaBP wrote into its record, which is
 the version tag its delivery carried. Where the record names none, the note of the start answers.
 Where that names none either, the change of the case is not reported, and the log says why.
 A record without a version cannot tell an engine which fills no tag from a record which lost it.
-Decision 17 says why the change is then left out rather than reported without a version.
+Decision 9 says why the change is then left out rather than reported without a version.
 
 Take a business case whose tasks were all withdrawn or served by nobody, and whose start VanillaBP
 did not write down. This half still cannot find such a case again. That is a workflow started before
@@ -365,7 +364,7 @@ application wrote.
 One case is answered the other way round. Take a business case whose open user task this node knows
 only from VanillaBP's delivery log, and whose record names no version. It is not reported when the
 application changes it. A report could then skip a provider which names a version, and replace what
-the cockpit shows with empty details. The log says so once per case. Decision 17 says why.
+the cockpit shows with empty details. The log says so once per case. Decision 9 says why.
 
 **What would close it:** what entry 5 asks for, both halves of it. A repository API answering the
 process definitions of a key with their versions is the catalogue. A version in the meta map of a

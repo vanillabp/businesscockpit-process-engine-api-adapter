@@ -162,14 +162,14 @@ public class PeaRecordedUserTasks {
    * adapter filled them. An empty field is answered the way a delivery answers it: the element
    * out of what the adapter deployed, and the workflow by the aggregate the case is shown for
    * (decision 6 in the repository's DECISIONS.md). Decision 9 says what a record holds, and
-   * decision 15 which of its fields name the workflow and the element.
+   * decision 9 which of its fields name the workflow and the element.
    * <p>
    * The version of the process is read out of the record too. VanillaBP writes down the version
    * the adapter named with the delivery. On this BPMS that is the version tag the engine put into
    * the meta map of the task, so a task read back out of the log names the version its delivery
    * named. A record names none where the engine filled no tag. It names none either where it was
    * written before the platform kept the version, or where the application's own store keeps no
-   * version. The bridge decides what a missing version means, as decision 17 says.
+   * version. The bridge decides what a missing version means, as decision 9 says.
    */
   private UserTaskReference referenceOf(
       final String adapterId,

@@ -42,8 +42,8 @@ import io.vanillabp.pea.deployment.PeaDeployedProcessesRegistry;
  * a workflow when it starts it, together with the version where one is known.
  * {@link WorkflowElection#workflowStartOf} reads that note without asking the engine. It answers
  * for a business case which has no open user task at the moment, such as a workflow which is busy
- * with a service task. Why it comes after the tasks, and what an empty answer means, is decision
- * 14. Why it still comes after them on an engine which keeps the id of the start is decision 22.
+ * with a service task. Why it comes after the tasks, also on an engine which keeps the id of the
+ * start, and what an empty answer means, is decision 14.
  */
 public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
 
@@ -223,7 +223,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * no details provider which names a version. Where there is no tag either, the workflow is left
    * out with a warning, because a report without a version would empty the details the cockpit
    * shows. The tasks come first, because they name the id the cockpit already shows the case under
-   * (decision 14). On an engine which keeps the promise of decision 22 both ids are the same. The
+   * (decision 14). On an engine which keeps the promise of decision 14 both ids are the same. The
    * order still serves an engine which names no instance in its tasks.
    * <p>
    * The same holds whether VanillaBP says that a version may still come or that it never will
@@ -278,7 +278,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * tag from a record which lost it, and the version picks the details provider. So a report
    * without one could replace the details the cockpit shows with an empty map, which is the harm
    * decision 14 in the repository's DECISIONS.md is about. Why this holds for such a task as well
-   * is in decision 17.
+   * is in decision 9.
    */
   private List<WorkflowReference> workflowsOfTheOpenTasks(
       final List<UserTaskReference> openTasks,
@@ -322,7 +322,7 @@ public class PeaCockpitBridge implements BusinessCockpitBpmsBridge {
    * It answers with the version tag that task carried and not with the version it shows, because
    * a deployment key picks no details provider which names a version. Then the record answers,
    * because VanillaBP wrote the version of the delivery into it.
-   * Then the note VanillaBP wrote when it started the workflow, as decision 16 in the repository's
+   * Then the note VanillaBP wrote when it started the workflow, as decision 14 in the repository's
    * DECISIONS.md reads it. The note is taken where it names the same workflow, and where the
    * record named no workflow, so that the task stands under the aggregate's id. A note is about
    * the one workflow VanillaBP started last for the case, and that is the workflow such a task

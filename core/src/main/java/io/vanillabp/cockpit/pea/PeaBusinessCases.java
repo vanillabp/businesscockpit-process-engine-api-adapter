@@ -45,7 +45,7 @@ import io.vanillabp.integration.extension.spi.handler.ExtensionHandlers;
  * well. The Process-Engine-API promises that the id a start answers with is the id the tasks of
  * that instance name. Where the note names another instance, the engine breaks that promise, and
  * the cockpit would show the case under two ids. That is said once per instance, with the first
- * task of it. See decision 22 in the repository's DECISIONS.md.
+ * task of it. See decision 14 in the repository's DECISIONS.md.
  */
 public class PeaBusinessCases {
 

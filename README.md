@@ -91,12 +91,12 @@ delivery was just written to. The report travels inside the outbox entry. So a r
 report which was already written. What it costs is every later question about that task, and
 decision 10 says what that leaves the memory for. A details provider which throws while a report is
 built fails the delivery. The engine then offers the task again, so the report is not simply lost.
-Decision 11 says that.
+Decision 10 says that.
 
 The end of a user task is two ends. A completion is a task the engine finished because somebody
 asked it to, and a cancelation is the engine taking the task away, say through a boundary event. A
 broken provider costs them different things. A completion comes back with the outbox entry which
-carries it. A cancelation is reported once, and the report is gone if it fails. Decision 12
+carries it. A cancelation is reported once, and the report is gone if it fails. Decision 10
 holds what was measured on both.
 
 While the seam was missing, this repository carried a port of the same shape and asked an
