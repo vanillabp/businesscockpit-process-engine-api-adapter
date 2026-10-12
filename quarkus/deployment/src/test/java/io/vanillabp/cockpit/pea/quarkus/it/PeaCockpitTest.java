@@ -353,7 +353,7 @@ public class PeaCockpitTest {
     changeTheCustomer(aggregate, "Hanna the second");
 
     // the open task wins over the id of the start, so the update goes to the case the cockpit
-    // knows. See decision 22 in the repository's DECISIONS.md
+    // knows. See decision 14 in the repository's DECISIONS.md
     final var updated = CockpitServer.awaitAnyRequest("/workflow/%s/updated".formatted(aggregateId));
     assertTrue(updated.body().contains("\"customer\":\"Hanna the second\""), updated.body());
     CockpitServer.awaitQuiet();
@@ -394,7 +394,7 @@ public class PeaCockpitTest {
     final var aggregate = aStartedWorkflow("Fritz");
     final var workflowId = workflowIdOf(aggregate);
     // the engine names the instance it answered the start with, as every task of it does. It
-    // also names a version tag: without one the case has no version, and then decision 16 in the
+    // also names a version tag: without one the case has no version, and then decision 14 in the
     // repository's DECISIONS.md reports no change
     engine
         .deliverTask(

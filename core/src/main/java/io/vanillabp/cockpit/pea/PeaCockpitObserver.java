@@ -42,13 +42,13 @@ import io.vanillabp.pea.wiring.PeaTaskMeta;
  * it writes no entry and leaves this class: the adapter turns it into a failed delivery, so the
  * engine hears about the broken provider and offers the task again. The application keeps its
  * notification, because the adapter calls its {@code @WorkflowTask} method before it lets the
- * failure out. That is decision 11 in the repository's DECISIONS.md.
+ * failure out. That is decision 10 in the repository's DECISIONS.md.
  * <p>
  * The end of a task is two ends, and they cost a broken provider different things. A COMPLETION
  * runs on the thread which asked the engine to finish the task. In a VanillaBP application that
  * is the worker of the phase-two outbox. So the failure fails that outbox entry, and the entry
  * comes back. A CANCELATION runs on a thread of the engine's own and is offered once, so a report
- * which fails there is gone. Decision 12 in the repository's DECISIONS.md holds the measurement
+ * which fails there is gone. Decision 10 in the repository's DECISIONS.md holds the measurement
  * behind both.
  * <p>
  * Only a BPMN process a <code>&#64;WorkflowService</code> of the application claims is reported.
@@ -255,7 +255,7 @@ public class PeaCockpitObserver implements PeaUserTaskObserver {
     // only now. The report of the end is built inside the call above and reads what the delivery
     // said from here. A report which did not get written leaves the task open here. What that
     // costs depends on which end this was. A completion travels in an outbox entry which comes
-    // back. A cancelation is offered once and is then gone (decision 12 in the repository's
+    // back. A cancelation is offered once and is then gone (decision 10 in the repository's
     // DECISIONS.md)
     deliveredUserTasks.ended(observation.taskId());
 

@@ -118,7 +118,7 @@ public class PeaDeliveredUserTasks {
   /**
    * Notes that a task is gone. It is called once the end was reported, so a report which never
    * got written leaves the task open in this memory. The engine does not say a second time that
-   * the task is gone, so such a task stays open here and in the cockpit. See decision 11 in the
+   * the task is gone, so such a task stays open here and in the cockpit. See decision 10 in the
    * repository's DECISIONS.md.
    * <p>
    * What was known stays here, and it keeps the place it had. It stays because the reads of a

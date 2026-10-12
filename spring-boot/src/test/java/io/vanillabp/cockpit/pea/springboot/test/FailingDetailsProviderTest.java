@@ -34,13 +34,13 @@ import io.vanillabp.pea.observation.PeaUserTaskObserverFailure;
  * provider runs there. This half used to swallow what the provider threw, because an observer of
  * the Process-Engine-API could not refuse a delivery. Now it can: the adapter turns a failing
  * observer into a failing delivery, and an engine behind this API offers a failed delivery again.
- * Decision 11 in the repository's DECISIONS.md gives the reasons, and this test checks the
+ * Decision 10 in the repository's DECISIONS.md gives the reasons, and this test checks the
  * behaviour.
  * <p>
  * Three moments are kept apart on purpose, because they cost different things. A DELIVERY is
  * offered again. A COMPLETION travels in the outbox entry which carries the completion, so the
  * entry comes back. A CANCELATION is offered once, and a report lost there is lost for good.
- * Decision 12 holds what was measured for each of them.
+ * Decision 10 also holds what was measured for each of them.
  */
 @SpringBootTest(classes = TestApplication.class)
 @ExtendWith(SuppressOutputExtension.class)
@@ -211,7 +211,7 @@ public class FailingDetailsProviderTest {
     CockpitServer.awaitQuiet();
     assertTrue(
         CockpitServer.matching("/usertask/broken-3/cancelled").isEmpty(),
-        "the end of the task is not reported, and a cancelation is offered once (decision 12)");
+        "the end of the task is not reported, and a cancelation is offered once (decision 10)");
 
   }
 
@@ -227,7 +227,7 @@ public class FailingDetailsProviderTest {
     TestWorkflowService.APPROVALS_TO_FAIL.set(1);
     // completing a user task is a phase-two operation, so the engine is asked after this
     // transaction committed, on a worker of the outbox. What the provider throws is that
-    // worker's problem and never the caller's (decision 12)
+    // worker's problem and never the caller's (decision 10)
     transactions
         .executeWithoutResult(
             status -> workflowService
