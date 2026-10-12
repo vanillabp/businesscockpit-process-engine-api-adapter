@@ -527,7 +527,7 @@ way whatever the flag says: the memory answers, or nothing is reported.
 A note which names another adapter is left out, and the case is treated as one VanillaBP knows nothing
 about. Its id belongs to another engine. A note which names no adapter is still taken.
 
-Since `adapter-platform-integration` decision 111, `adapterIdOfWorkflow` reads the note of the start
+Since `adapter-platform-integration` decision 5, `adapterIdOfWorkflow` reads the note of the start
 first and no longer throws after a workflow ended, for as long as the note lives. So
 `BusinessCockpitService.aggregateChanged` reaches this bridge after the end as well. It answers as
 it does for a case between two user tasks: the note names the workflow, the note or the memory names
