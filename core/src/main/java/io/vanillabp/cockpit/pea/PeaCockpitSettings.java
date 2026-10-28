@@ -45,8 +45,8 @@ public final class PeaCockpitSettings {
   /**
    * Every key this half reads, below <code>vanillabp.cockpit</code>. The check for a key a
    * workflow module wrote walks this list. So does the test which holds the configuration
-   * metadata of the Spring Boot module against what is read. A new key goes here, and that test
-   * then asks for its description.
+   * metadata an IDE reads against what is read. A new key goes here, and that test then asks for
+   * its description.
    */
   public static final List<String> KEYS_READ = List.of(REMEMBERED_USER_TASKS);
 
