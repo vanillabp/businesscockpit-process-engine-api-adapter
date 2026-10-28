@@ -668,3 +668,30 @@ application.
 *Merged into decision 14 on 2026-10-12, before the 1.0 release.* Decision 14 now says what the
 Process-Engine-API promises about the id of a start, and that a task which names another instance
 is warned about.
+
+## 23. The IDE learns the key of this half from the cockpit's shared jar, and a test here keeps it right
+
+Built by story 994 on 2026-10-28.
+
+An IDE offers the keys of `application.yaml` and marks a key it does not know. It reads them from
+`META-INF/spring-configuration-metadata.json` in the jars of the application.
+
+This half binds no class of its own. Its one key, `process-engine-api.remembered-user-tasks`,
+stands below `vanillabp.cockpit`, and the cockpit's `extensions-commons-spring-boot` binds it. That
+jar describes it as well, with its default and with the remark that a workflow module must not write
+it. This one describes nothing. A name described by two jars leaves it to the IDE which entry it
+shows, so each key has exactly one place. The other jar is the place because its configuration
+processor writes an entry for every field it binds. See decision 66 in the DECISIONS.md of
+`business-cockpit`.
+
+The keys this half reads are a list in the code, `PeaCockpitSettings.KEYS_READ`. The check which
+ends the start when a workflow module writes one of them walks that list. So does
+`EveryKeyIsKnownToTheIdeTest`. It reads the metadata of the shared jar and fails when a key of the
+list has no entry there, when the description does not say that the key ends the start below a
+workflow module, and when the default differs from `DEFAULT_REMEMBERED_USER_TASKS`. It also fails
+when this jar describes a key itself. And it binds each key of the list onto the class the
+application binds and reads it back, so the list cannot name a key nobody reads. We chose a list over
+searching the sources for key names, because a list is what the code itself uses.
+
+The default lives here and its description lives in the other repository. A change to the default
+turns this test red until the description there follows.

@@ -75,6 +75,12 @@
     </dependency>
 
     <dependency>
+      <!-- reads the configuration metadata in EveryKeyIsKnownToTheIdeTest, the way tools do -->
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-configuration-metadata</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>

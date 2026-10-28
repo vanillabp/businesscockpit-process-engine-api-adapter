@@ -1,6 +1,7 @@
 package io.vanillabp.cockpit.pea;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,14 @@ public final class PeaCockpitSettings {
    * small enough to be paid for without thinking about it.
    */
   public static final int DEFAULT_REMEMBERED_USER_TASKS = 1000;
+
+  /**
+   * Every key this half reads, below <code>vanillabp.cockpit</code>. The check for a key a
+   * workflow module wrote walks this list. So does the test which holds the configuration
+   * metadata an IDE reads against what is read. A new key goes here, and that test then asks for
+   * its description.
+   */
+  public static final List<String> KEYS_READ = List.of(REMEMBERED_USER_TASKS);
 
   private PeaCockpitSettings() {
   }
@@ -110,17 +119,23 @@ public final class PeaCockpitSettings {
       final Iterable<String> propertyNames) {
 
     final var ofAWorkflowModule = new ArrayList<String>();
+    final var globalKeys = new ArrayList<String>();
     for (final var propertyName : propertyNames) {
-      if (propertyName.startsWith("vanillabp.workflow-modules.") && propertyName.endsWith("."
-          + ConfigurationKeys.COCKPIT_SECTION
-          + "."
-          + REMEMBERED_USER_TASKS)) {
-        ofAWorkflowModule.add(propertyName);
+      for (final var key : KEYS_READ) {
+        if (propertyName.startsWith("vanillabp.workflow-modules.") && propertyName.endsWith("."
+            + ConfigurationKeys.COCKPIT_SECTION
+            + "."
+            + key)) {
+          ofAWorkflowModule.add(propertyName);
+          globalKeys.add(ConfigurationKeys.globalKey(key));
+        }
       }
     }
     if (ofAWorkflowModule.isEmpty()) {
       return;
     }
+    // the list holds one key today, and the message explains that key. A second key needs
+    // words of its own here
     throw new IllegalStateException(
         """
             The Business Cockpit's Process-Engine-API half was configured per workflow module (%s), \
@@ -129,7 +144,7 @@ public final class PeaCockpitSettings {
             Move the value to '%s', or remove it, which leaves it at %d."""
             .formatted(
                 String.join(", ", ofAWorkflowModule),
-                ConfigurationKeys.globalKey(REMEMBERED_USER_TASKS),
+                String.join("', '", globalKeys.stream().distinct().toList()),
                 DEFAULT_REMEMBERED_USER_TASKS));
 
   }
