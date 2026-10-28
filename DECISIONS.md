@@ -668,3 +668,31 @@ application.
 *Merged into decision 14 on 2026-10-12, before the 1.0 release.* Decision 14 now says what the
 Process-Engine-API promises about the id of a start, and that a task which names another instance
 is warned about.
+
+## 23. The IDE learns the key of this half from the Spring Boot jar, and a test keeps it complete
+
+Built by story 994 on 2026-10-28.
+
+An IDE offers the keys of `application.yaml` and marks a key it does not know. It reads them from
+`META-INF/spring-configuration-metadata.json` in the jars of the application. Until this story
+the Spring Boot jar of this half shipped no such file.
+
+This half binds no class of its own. Its one key, `process-engine-api.remembered-user-tasks`,
+stands below `vanillabp.cockpit`, in the tree of the extension's platform-neutral half, and that
+half binds it. So the configuration processor finds nothing to describe here. It still runs, and
+it copies the hand-written `META-INF/additional-spring-configuration-metadata.json` into the jar.
+That file describes the key with its type, its default and what it does. A key which a workflow
+module must not write cannot get an entry of its own, because the format has no name for "any
+module". The description says instead that such a key ends the start.
+
+The keys this half reads are a list in the code, `PeaCockpitSettings.KEYS_READ`. The check which
+ends the start when a workflow module writes one of them walks that list. So does
+`EveryKeyIsKnownToTheIdeTest`. It fails when a key of the list has no entry, when an entry
+describes a key the list does not name, and when a default or a type in the file differs from the
+code. It also binds each key of the list onto the class the application binds and reads it back,
+so the list cannot name a key nobody reads. We chose a list over searching the sources for key
+names, because a list is what the code itself uses.
+
+The key is described here and not in the jar of the extension's neutral half. Only an application
+with this half reads it, and its default lives here. That jar ships no metadata today. When it
+gets some, it should leave this key out, or two jars describe the same name.

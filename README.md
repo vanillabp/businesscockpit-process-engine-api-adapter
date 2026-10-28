@@ -57,6 +57,26 @@ Process-Engine-API adapter it plugs into.
 [`GAPS.md`](./GAPS.md) holds the questions the cockpit asks a workflow engine which this one cannot
 answer yet. The wiki says the same in the words of somebody using the cockpit.
 
+### What the IDE knows about the key
+
+The Spring Boot jar ships `META-INF/spring-configuration-metadata.json`. An IDE reads it to offer
+the keys in `application.yaml` and to mark a key it does not know. See decision 23 in
+[`DECISIONS.md`](./DECISIONS.md).
+
+This half has one key, `vanillabp.cockpit.process-engine-api.remembered-user-tasks`. The
+extension's neutral half binds it, so the configuration processor finds no class here. The entry
+is written by hand, in `spring-boot/src/main/resources/META-INF/additional-spring-configuration-metadata.json`,
+with a type, a default and a description. The processor copies it into the jar.
+
+The keys this half reads are the list `PeaCockpitSettings.KEYS_READ`. A new key goes into that
+list and into the hand-written file. `EveryKeyIsKnownToTheIdeTest` fails when the entry is missing,
+when an entry describes a key the list does not name, and when a type or a default differs from the
+code.
+
+The processor merges the hand-written file only while `javac` compiles. A change to that file alone
+leaves the old metadata in `target`, and the test then reads the old file. Build with `clean` after
+such a change.
+
 ## How the probe shaped the design
 
 The first question was whether this extension can watch user tasks at all, and it was answered

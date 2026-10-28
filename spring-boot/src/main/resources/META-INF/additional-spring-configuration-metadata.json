@@ -1,0 +1,10 @@
+{
+  "properties": [
+    {
+      "name": "vanillabp.cockpit.process-engine-api.remembered-user-tasks",
+      "type": "java.lang.Integer",
+      "description": "How many delivered user tasks one node keeps in memory. The Process-Engine-API cannot be asked about a task a second time, so the node keeps what arrived with the delivery until the task is gone. The key is read here only. A workflow module which writes it at 'vanillabp.workflow-modules.<module>.cockpit.process-engine-api.remembered-user-tasks' ends the start, because the memory is one per node and shared by every workflow module.",
+      "defaultValue": 1000
+    }
+  ]
+}
